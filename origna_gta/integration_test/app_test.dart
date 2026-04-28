@@ -13,7 +13,9 @@ void main() {
 
   // Single test that launches app once and runs all verifications
   // This avoids the "Cannot set URL strategy a second time" error
-  testWidgets('Flutter Web E2E - Complete App Test', (WidgetTester tester) async {
+  testWidgets('Flutter Web E2E - Complete App Test', (
+    WidgetTester tester,
+  ) async {
     // Launch app once
     await app.mainTest();
     final bootstrapped = await waitForAppBootstrap(tester);
@@ -44,21 +46,31 @@ void main() {
 
     // ===== 4. Look for text fields =====
     final textFields = find.byType(TextField);
-    debugPrint('✓ TextField check complete (Found: ${textFields.evaluate().length})');
+    debugPrint(
+      '✓ TextField check complete (Found: ${textFields.evaluate().length})',
+    );
 
     // ===== 5. Look for buttons =====
     final elevatedButtons = find.byType(ElevatedButton);
     final textButtons = find.byType(TextButton);
     final iconButtons = find.byType(IconButton);
-    final totalButtons = elevatedButtons.evaluate().length + textButtons.evaluate().length + iconButtons.evaluate().length;
+    final totalButtons =
+        elevatedButtons.evaluate().length +
+        textButtons.evaluate().length +
+        iconButtons.evaluate().length;
     debugPrint('✓ Button check complete (Found: $totalButtons buttons)');
 
     // ===== 6. ScrollView check =====
     final scrollViews = find.byType(SingleChildScrollView);
     final listViews = find.byType(ListView);
     final customScrollViews = find.byType(CustomScrollView);
-    final totalScrollables = scrollViews.evaluate().length + listViews.evaluate().length + customScrollViews.evaluate().length;
-    debugPrint('✓ ScrollView check complete (Found: $totalScrollables scrollables)');
+    final totalScrollables =
+        scrollViews.evaluate().length +
+        listViews.evaluate().length +
+        customScrollViews.evaluate().length;
+    debugPrint(
+      '✓ ScrollView check complete (Found: $totalScrollables scrollables)',
+    );
 
     // ===== 7. GridView / Product display check =====
     final gridViews = find.byType(GridView);
@@ -67,11 +79,15 @@ void main() {
 
     // ===== 8. Image widgets =====
     final images = find.byType(Image);
-    debugPrint('✓ Image check complete (Found: ${images.evaluate().length} images)');
+    debugPrint(
+      '✓ Image check complete (Found: ${images.evaluate().length} images)',
+    );
 
     // ===== 9. Card widgets =====
     final cards = find.byType(Card);
-    debugPrint('✓ Card check complete (Found: ${cards.evaluate().length} cards)');
+    debugPrint(
+      '✓ Card check complete (Found: ${cards.evaluate().length} cards)',
+    );
 
     // ===== 10. Test button interactions =====
     if (elevatedButtons.evaluate().isNotEmpty) {
@@ -89,13 +105,10 @@ void main() {
     }
 
     // ===== 12. Product detail path =====
-    final productCard = find.byWidgetPredicate(
-      (widget) {
-        final key = widget.key;
-        return key is ValueKey<String> && key.value.startsWith('product_card_');
-      },
-      description: 'any home product card',
-    );
+    final productCard = find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      return key is ValueKey<String> && key.value.startsWith('product_card_');
+    }, description: 'any home product card');
     if (productCard.evaluate().isNotEmpty) {
       await tester.tap(productCard.first, warnIfMissed: false);
       await tester.pump(const Duration(seconds: 3));

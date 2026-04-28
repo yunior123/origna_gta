@@ -12,9 +12,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:orignabase/orignabase.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrignaBase>(),
-])
+@GenerateNiceMocks([MockSpec<OrignaBase>()])
 import 'seller_warehouses_screen_test.mocks.dart';
 
 void main() {
@@ -29,8 +27,9 @@ void main() {
     mockOrignaBase = MockOrignaBase();
     initTestMocks();
 
-    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-        .thenAnswer((_) async => <String, dynamic>{});
+    when(
+      mockOrignaBase.request(any, any, body: anyNamed('body')),
+    ).thenAnswer((_) async => <String, dynamic>{});
   });
 
   final testAddress = Address(
@@ -58,8 +57,12 @@ void main() {
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         currentUserProvider.overrideWithValue(signedInUser),
         userIdProvider.overrideWithValue(signedInUser.uid),
-        sellerWarehousesStreamProvider.overrideWith((ref) => Stream.value(warehouses)),
-        warehousesViewModelProvider.overrideWith((ref) => WarehousesViewModel(ref)),
+        sellerWarehousesStreamProvider.overrideWith(
+          (ref) => Stream.value(warehouses),
+        ),
+        warehousesViewModelProvider.overrideWith(
+          (ref) => WarehousesViewModel(ref),
+        ),
       ],
       child: const SellerWarehousesScreen(),
     );
@@ -139,12 +142,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('seller.warehouse_delete_confirm'.tr(namedArgs: {'name': 'Toronto Warehouse'})), findsOneWidget);
+      expect(
+        find.text(
+          'seller.warehouse_delete_confirm'.tr(
+            namedArgs: {'name': 'Toronto Warehouse'},
+          ),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.text('common.delete'.tr()).last);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1000));
 
-      verify(mockOrignaBase.request(any, any, body: anyNamed('body'))).called(greaterThan(0));
+      verify(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).called(greaterThan(0));
     });
 
     testWidgets('can set warehouse as default', (tester) async {
@@ -152,7 +164,11 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
 
-      final nonDefaultWh = testWarehouse.copyWith(warehouseId: 'wh_456', isDefault: false, label: 'Other');
+      final nonDefaultWh = testWarehouse.copyWith(
+        warehouseId: 'wh_456',
+        isDefault: false,
+        label: 'Other',
+      );
       await tester.pumpWidget(createTestWidget(warehouses: [nonDefaultWh]));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -165,7 +181,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1000));
 
-      verify(mockOrignaBase.request(any, any, body: anyNamed('body'))).called(greaterThan(0));
+      verify(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).called(greaterThan(0));
     });
   });
 }

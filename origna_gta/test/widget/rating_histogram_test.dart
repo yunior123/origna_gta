@@ -14,9 +14,11 @@ void main() {
       final counts = [100, 80, 60, 40, 20]; // 5, 4, 3, 2, 1 star counts
       final total = 300;
 
-      await tester.pumpWidget(TestWrapper(
-        child: RatingHistogram(counts: counts, total: total),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          child: RatingHistogram(counts: counts, total: total),
+        ),
+      );
       await tester.pump();
 
       // Check star numbers
@@ -41,13 +43,17 @@ void main() {
       final counts = [0, 0, 0, 0, 0];
       final total = 0;
 
-      await tester.pumpWidget(TestWrapper(
-        child: RatingHistogram(counts: counts, total: total),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          child: RatingHistogram(counts: counts, total: total),
+        ),
+      );
       await tester.pump();
 
       expect(find.byType(LinearProgressIndicator), findsNWidgets(5));
-      final indicators = tester.widgetList<LinearProgressIndicator>(find.byType(LinearProgressIndicator));
+      final indicators = tester.widgetList<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
+      );
       for (final indicator in indicators) {
         expect(indicator.value, 0.0);
       }

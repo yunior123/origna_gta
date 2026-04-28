@@ -108,13 +108,10 @@ void main() {
 
     debugPrint('📦 ========== SEEDED PRODUCT SEARCH START ========== 📦');
     debugPrint('  Creating generic product card finder...');
-    final anyProductCardFinder = find.byWidgetPredicate(
-      (widget) {
-        final key = widget.key;
-        return key is ValueKey<String> && key.value.startsWith('product_card_');
-      },
-      description: 'any product card (key starts with product_card_)',
-    );
+    final anyProductCardFinder = find.byWidgetPredicate((widget) {
+      final key = widget.key;
+      return key is ValueKey<String> && key.value.startsWith('product_card_');
+    }, description: 'any product card (key starts with product_card_)');
     debugPrint(
       '  Generic product card finder ready: ${anyProductCardFinder.evaluate().isNotEmpty}',
     );

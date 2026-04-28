@@ -26,16 +26,14 @@ void main() {
       expect(
         env.orignabaseUrl,
         isNotEmpty,
-        reason: 'ORIGNABASE_URL dart-define should point tests at a live server.',
+        reason:
+            'ORIGNABASE_URL dart-define should point tests at a live server.',
       );
 
       container = ProviderContainer();
       ob = container.read(orignabaseProvider);
 
-      await ob.auth.signInWithEmail(
-        'e2e-buyer@test.origna.ca',
-        'REDACTED_TEST_PASSWORD',
-      );
+      await ob.auth.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
     });
 
     tearDownAll(() {
@@ -66,7 +64,8 @@ void main() {
               expect(
                 (hit as Map<String, dynamic>).containsKey('id'),
                 isTrue,
-                reason: 'Search hit must contain id field (Meilisearch objectId)',
+                reason:
+                    'Search hit must contain id field (Meilisearch objectId)',
               );
             }
             return;
@@ -92,7 +91,9 @@ void main() {
           return;
         }
 
-        fail('Expected at least one active indexed product in dev, got $result');
+        fail(
+          'Expected at least one active indexed product in dev, got $result',
+        );
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );

@@ -13,10 +13,16 @@ class _FakeUserRepo implements UserRepository {
   @override
   Stream<SellerAccountStatus> watchSellerAccountStatus(String uid) {
     if (nextError != null) return Stream.error(nextError!);
-    return Stream.value(nextStatus ?? SellerAccountStatus(
-      isSeller: true, chargesEnabled: true, detailsSubmitted: true,
-      hasPendingRequirements: false, pendingRequirements: [],
-    ));
+    return Stream.value(
+      nextStatus ??
+          SellerAccountStatus(
+            isSeller: true,
+            chargesEnabled: true,
+            detailsSubmitted: true,
+            hasPendingRequirements: false,
+            pendingRequirements: [],
+          ),
+    );
   }
 
   @override
@@ -28,8 +34,12 @@ class _FakeOb implements OrignaBase {
   Object? nextError;
 
   @override
-  Future<Map<String, dynamic>> request(String method, String path,
-      {Map<String, dynamic>? body, Map<String, String>? headers}) async {
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
     if (nextError != null) throw nextError!;
     return nextResponse;
   }
@@ -49,10 +59,12 @@ void main() {
 
   group('sellerAccountStatusProvider', () {
     test('emits error when userId is null', () async {
-      final c = ProviderContainer(overrides: [
-        userRepositoryProvider.overrideWithValue(fakeRepo),
-        obUserIdProvider.overrideWithValue(null),
-      ]);
+      final c = ProviderContainer(
+        overrides: [
+          userRepositoryProvider.overrideWithValue(fakeRepo),
+          obUserIdProvider.overrideWithValue(null),
+        ],
+      );
       addTearDown(c.dispose);
       await expectLater(
         c.read(sellerAccountStatusProvider.future),
@@ -61,10 +73,12 @@ void main() {
     });
 
     test('emits status when userId is set', () async {
-      final c = ProviderContainer(overrides: [
-        userRepositoryProvider.overrideWithValue(fakeRepo),
-        obUserIdProvider.overrideWithValue('user_1'),
-      ]);
+      final c = ProviderContainer(
+        overrides: [
+          userRepositoryProvider.overrideWithValue(fakeRepo),
+          obUserIdProvider.overrideWithValue('user_1'),
+        ],
+      );
       addTearDown(c.dispose);
       final result = await c.read(sellerAccountStatusProvider.future);
       expect(result.isSeller, isTrue);
@@ -74,10 +88,12 @@ void main() {
 
   group('refreshSellerStatusProvider', () {
     test('throws when userId is null', () {
-      final c = ProviderContainer(overrides: [
-        orignabaseProvider.overrideWithValue(fakeOb),
-        obUserIdProvider.overrideWithValue(null),
-      ]);
+      final c = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(fakeOb),
+          obUserIdProvider.overrideWithValue(null),
+        ],
+      );
       addTearDown(c.dispose);
       expect(
         () => c.read(refreshSellerStatusProvider(null).future),
@@ -92,10 +108,12 @@ void main() {
         'detailsSubmitted': true,
         'requirementsCurrentlyDue': <dynamic>[],
       };
-      final c = ProviderContainer(overrides: [
-        orignabaseProvider.overrideWithValue(fakeOb),
-        obUserIdProvider.overrideWithValue('user_1'),
-      ]);
+      final c = ProviderContainer(
+        overrides: [
+          orignabaseProvider.overrideWithValue(fakeOb),
+          obUserIdProvider.overrideWithValue('user_1'),
+        ],
+      );
       addTearDown(c.dispose);
       final result = await c.read(refreshSellerStatusProvider(null).future);
       expect(result.chargesEnabled, isTrue);

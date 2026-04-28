@@ -40,8 +40,9 @@ void main() {
 
   group('userProfileProvider', () {
     test('returns user profile when logged in', () async {
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream.value(testUser));
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream.value(testUser));
 
       container = ProviderContainer(
         overrides: [
@@ -73,8 +74,9 @@ void main() {
     test('streams updates to profile', () async {
       final controller = StreamController<UserModel?>.broadcast();
 
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => controller.stream);
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => controller.stream);
 
       container = ProviderContainer(
         overrides: [
@@ -96,8 +98,9 @@ void main() {
 
   group('needsTermsUpdateProvider', () {
     test('returns false when profile is null', () {
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream.value(null));
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream.value(null));
 
       container = ProviderContainer(
         overrides: [
@@ -121,8 +124,9 @@ void main() {
         termsVersion: null,
       );
 
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream.value(oldUser));
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream.value(oldUser));
 
       container = ProviderContainer(
         overrides: [
@@ -146,8 +150,9 @@ void main() {
         termsVersion: PolicyVersionValues.defaultVersion,
       );
 
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream.value(currentUser));
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream.value(currentUser));
 
       container = ProviderContainer(
         overrides: [
@@ -171,8 +176,9 @@ void main() {
         termsVersion: '1.0.0',
       );
 
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream.value(outdatedUser));
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream.value(outdatedUser));
 
       container = ProviderContainer(
         overrides: [
@@ -189,8 +195,9 @@ void main() {
     });
 
     test('returns false while profile is loading', () {
-      when(mockAuthRepo.watchProfile(testUserId))
-          .thenAnswer((_) => Stream<UserModel?>.empty());
+      when(
+        mockAuthRepo.watchProfile(testUserId),
+      ).thenAnswer((_) => Stream<UserModel?>.empty());
 
       container = ProviderContainer(
         overrides: [
@@ -208,9 +215,7 @@ void main() {
   group('authActionsProvider', () {
     setUp(() {
       container = ProviderContainer(
-        overrides: [
-          authRepositoryProvider.overrideWithValue(mockAuthRepo),
-        ],
+        overrides: [authRepositoryProvider.overrideWithValue(mockAuthRepo)],
       );
     });
 

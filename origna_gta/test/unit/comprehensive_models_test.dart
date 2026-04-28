@@ -22,11 +22,7 @@ void main() {
         Fields.currency: 'cad',
         Fields.stripeSessionId: 'sess_123',
         Fields.items: [
-          {
-            Fields.productId: 'p1',
-            Fields.quantity: 2,
-            Fields.price: 50.0,
-          }
+          {Fields.productId: 'p1', Fields.quantity: 2, Fields.price: 50.0},
         ],
         Fields.shippingAddress: {
           Fields.street: '123 Main St',

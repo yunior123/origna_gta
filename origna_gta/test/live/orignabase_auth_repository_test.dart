@@ -112,20 +112,16 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'signOut clears current user',
-      () async {
-        const email = 'e2e-admin@test.origna.ca';
-        const password = 'REDACTED_TEST_PASSWORD';
+    test('signOut clears current user', () async {
+      const email = 'e2e-admin@test.origna.ca';
+      const password = 'REDACTED_TEST_PASSWORD';
 
-        await authRepo.signInWithEmail(email, password);
-        expect(ob.auth.accessToken, isNotEmpty);
+      await authRepo.signInWithEmail(email, password);
+      expect(ob.auth.accessToken, isNotEmpty);
 
-        await authRepo.signOut();
-        expect(ob.auth.accessToken, isNull);
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      await authRepo.signOut();
+      expect(ob.auth.accessToken, isNull);
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'validateCurrentUser returns true for authenticated user',

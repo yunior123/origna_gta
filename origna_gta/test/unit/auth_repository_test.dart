@@ -4,9 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<AuthRepository>(),
-])
+@GenerateNiceMocks([MockSpec<AuthRepository>()])
 import 'auth_repository_test.mocks.dart';
 
 void main() {
@@ -21,7 +19,14 @@ void main() {
     when(repository.deleteAccount()).thenAnswer((_) async {});
     when(repository.signInWithEmail(any, any)).thenAnswer((_) async {});
     when(repository.isEmailVerified()).thenAnswer((_) async => true);
-    when(repository.registerWithEmail(any, any, any, marketingOptIn: anyNamed('marketingOptIn'))).thenAnswer((_) async {});
+    when(
+      repository.registerWithEmail(
+        any,
+        any,
+        any,
+        marketingOptIn: anyNamed('marketingOptIn'),
+      ),
+    ).thenAnswer((_) async {});
     when(repository.sendPasswordResetEmail(any)).thenAnswer((_) async {});
     when(repository.signOut()).thenAnswer((_) async {});
     when(repository.validateCurrentUser()).thenAnswer((_) async => true);
@@ -40,7 +45,9 @@ void main() {
 
     test('signInWithEmail calls repository', () async {
       await repository.signInWithEmail('test@example.com', 'password123');
-      verify(repository.signInWithEmail('test@example.com', 'password123')).called(1);
+      verify(
+        repository.signInWithEmail('test@example.com', 'password123'),
+      ).called(1);
     });
 
     test('isEmailVerified returns true', () async {
@@ -55,13 +62,35 @@ void main() {
     });
 
     test('registerWithEmail calls repository', () async {
-      await repository.registerWithEmail('test@example.com', 'password123', 'Test User');
-      verify(repository.registerWithEmail('test@example.com', 'password123', 'Test User')).called(1);
+      await repository.registerWithEmail(
+        'test@example.com',
+        'password123',
+        'Test User',
+      );
+      verify(
+        repository.registerWithEmail(
+          'test@example.com',
+          'password123',
+          'Test User',
+        ),
+      ).called(1);
     });
 
     test('registerWithEmail with marketing opt-in', () async {
-      await repository.registerWithEmail('test@example.com', 'password123', 'Test User', marketingOptIn: true);
-      verify(repository.registerWithEmail('test@example.com', 'password123', 'Test User', marketingOptIn: true)).called(1);
+      await repository.registerWithEmail(
+        'test@example.com',
+        'password123',
+        'Test User',
+        marketingOptIn: true,
+      );
+      verify(
+        repository.registerWithEmail(
+          'test@example.com',
+          'password123',
+          'Test User',
+          marketingOptIn: true,
+        ),
+      ).called(1);
     });
 
     test('sendPasswordResetEmail calls repository', () async {
@@ -101,15 +130,17 @@ void main() {
     });
 
     test('watchProfile returns UserModel stream', () async {
-      when(repository.watchProfile('user_123')).thenAnswer((_) => Stream.value(
-        UserModel(
-          uid: 'user_123',
-          name: 'Test User',
-          email: 'test@example.com',
-          roles: [UserRole.buyer],
-          createdAt: DateTime.now(),
+      when(repository.watchProfile('user_123')).thenAnswer(
+        (_) => Stream.value(
+          UserModel(
+            uid: 'user_123',
+            name: 'Test User',
+            email: 'test@example.com',
+            roles: [UserRole.buyer],
+            createdAt: DateTime.now(),
+          ),
         ),
-      ));
+      );
 
       final stream = repository.watchProfile('user_123');
       final model = await stream.first;
@@ -119,7 +150,9 @@ void main() {
     });
 
     test('watchProfile returns null for non-existent user', () async {
-      when(repository.watchProfile('nonexistent')).thenAnswer((_) => Stream.value(null));
+      when(
+        repository.watchProfile('nonexistent'),
+      ).thenAnswer((_) => Stream.value(null));
 
       final stream = repository.watchProfile('nonexistent');
       final model = await stream.first;
@@ -134,19 +167,33 @@ void main() {
 
     test('confirmPasswordReset calls repository', () async {
       await repository.confirmPasswordReset('oob_code', 'newPassword123');
-      verify(repository.confirmPasswordReset('oob_code', 'newPassword123')).called(1);
+      verify(
+        repository.confirmPasswordReset('oob_code', 'newPassword123'),
+      ).called(1);
     });
 
     test('signInWithEmail throws on error', () async {
-      when(repository.signInWithEmail(any, any)).thenThrow(Exception('Invalid credentials'));
-      expect(() => repository.signInWithEmail('bad@email.com', 'wrong'), throwsA(isA<Exception>()));
+      when(
+        repository.signInWithEmail(any, any),
+      ).thenThrow(Exception('Invalid credentials'));
+      expect(
+        () => repository.signInWithEmail('bad@email.com', 'wrong'),
+        throwsA(isA<Exception>()),
+      );
     });
 
     test('registerWithEmail throws on duplicate email', () async {
-      when(repository.registerWithEmail(any, any, any, marketingOptIn: anyNamed('marketingOptIn')))
-          .thenThrow(Exception('email-already-in-use'));
+      when(
+        repository.registerWithEmail(
+          any,
+          any,
+          any,
+          marketingOptIn: anyNamed('marketingOptIn'),
+        ),
+      ).thenThrow(Exception('email-already-in-use'));
       expect(
-        () => repository.registerWithEmail('existing@email.com', 'pass', 'Name'),
+        () =>
+            repository.registerWithEmail('existing@email.com', 'pass', 'Name'),
         throwsA(isA<Exception>()),
       );
     });

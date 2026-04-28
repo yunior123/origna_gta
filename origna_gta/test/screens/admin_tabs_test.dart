@@ -28,10 +28,19 @@ void main() {
 
     // Default stubs for streams
     when(mockAdminRepo.watchUsers()).thenAnswer((_) => Stream.value([]));
-    when(mockAdminRepo.watchOrders(status: anyNamed('status'))).thenAnswer((_) => Stream.value([]));
-    when(mockAdminRepo.watchProducts(sellerId: anyNamed('sellerId'))).thenAnswer((_) => Stream.value([]));
+    when(
+      mockAdminRepo.watchOrders(status: anyNamed('status')),
+    ).thenAnswer((_) => Stream.value([]));
+    when(
+      mockAdminRepo.watchProducts(sellerId: anyNamed('sellerId')),
+    ).thenAnswer((_) => Stream.value([]));
     when(mockAdminRepo.watchSellers()).thenAnswer((_) => Stream.value([]));
-    when(mockAdminRepo.watchReviews(flaggedOnly: anyNamed('flaggedOnly'), hasPhotosOnly: anyNamed('hasPhotosOnly'))).thenAnswer((_) => Stream.value([]));
+    when(
+      mockAdminRepo.watchReviews(
+        flaggedOnly: anyNamed('flaggedOnly'),
+        hasPhotosOnly: anyNamed('hasPhotosOnly'),
+      ),
+    ).thenAnswer((_) => Stream.value([]));
   });
 
   group('Admin Tabs Smoke Tests', () {
@@ -66,7 +75,9 @@ void main() {
     testWidgets('pumps AdminProductsTab', (tester) async {
       tester.view.physicalSize = const Size(3000, 3000);
       tester.view.devicePixelRatio = 1.0;
-      when(mockAdminRepo.watchPendingReviewProducts()).thenAnswer((_) => Stream.value([]));
+      when(
+        mockAdminRepo.watchPendingReviewProducts(),
+      ).thenAnswer((_) => Stream.value([]));
       await tester.pumpWidget(
         TestWrapper(
           overrides: [adminRepositoryProvider.overrideWithValue(mockAdminRepo)],

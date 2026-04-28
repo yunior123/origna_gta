@@ -108,7 +108,9 @@ class _CartBadgeState extends ConsumerState<CartBadge>
   Widget build(BuildContext context) {
     final isLoggedIn = ref.watch(currentUserProvider.select((u) => u != null));
     final cartCount = ref.watch(cartItemCountProvider);
-    final cartLabel = cartCount > 0 ? 'btn-cart cart-badge-count-$cartCount' : 'btn-cart';
+    final cartLabel = cartCount > 0
+        ? 'btn-cart cart-badge-count-$cartCount'
+        : 'btn-cart';
     final baseTooltip =
         widget.tooltip ??
         (widget.animated ? 'home.shopping_cart'.tr() : 'common.cart'.tr());

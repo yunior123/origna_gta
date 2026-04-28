@@ -55,9 +55,7 @@ void main() {
 
     test('normalizes whitespace-only apartment to null', () {
       final raw = {
-        Fields.sellerAddress: {
-          'apartment': '   ',
-        },
+        Fields.sellerAddress: {'apartment': '   '},
       };
 
       final result = sanitizeProductData(raw);
@@ -91,10 +89,7 @@ void main() {
     });
 
     test('does not modify original map', () {
-      final raw = {
-        Fields.productId: 'p1',
-        'name': 'Test',
-      };
+      final raw = {Fields.productId: 'p1', 'name': 'Test'};
       sanitizeProductData(raw);
       expect(raw.containsKey(Fields.productId), isTrue);
     });

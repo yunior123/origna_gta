@@ -11,7 +11,9 @@ void main() {
   testWidgets(
     'Add Product — standard/digital/free/local/perishable/validation',
     (tester) async {
-      debugPrint('🛍️🛍️🛍️ ========== ADD PRODUCT TEST START ========== 🛍️🛍️🛍️');
+      debugPrint(
+        '🛍️🛍️🛍️ ========== ADD PRODUCT TEST START ========== 🛍️🛍️🛍️',
+      );
       debugPrint('🔍 Checking STRICT_INTEGRATION env var...');
       const strictIntegration = bool.fromEnvironment(
         'STRICT_INTEGRATION',
@@ -355,7 +357,9 @@ void main() {
       debugPrint('🧪 Running final tracker validation...');
       debugPrint('📊 Test Statistics:');
       debugPrint('  Total checks performed: ${tracker.caseCount}');
-      debugPrint('  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}');
+      debugPrint(
+        '  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}',
+      );
       debugPrint('  ❌ Failed: ${tracker.failedCases.length}');
       if (tracker.failedCases.isNotEmpty) {
         debugPrint('  ⚠️  Failed cases:');
@@ -364,7 +368,9 @@ void main() {
         }
       }
       tracker.throwIfFailed();
-      debugPrint('🎉🎉🎉 ========== ADD PRODUCT TEST COMPLETE ========== 🎉🎉🎉');
+      debugPrint(
+        '🎉🎉🎉 ========== ADD PRODUCT TEST COMPLETE ========== 🎉🎉🎉',
+      );
     },
     timeout: const Timeout(Duration(minutes: 8)),
   );
@@ -395,7 +401,10 @@ void main() {
 
       final navOk = await navigateToAddProduct(tester);
       if (!navOk) {
-        tracker.stopOnSkip('S006', '[P10b] Unable to navigate to add product screen');
+        tracker.stopOnSkip(
+          'S006',
+          '[P10b] Unable to navigate to add product screen',
+        );
         tracker.throwIfFailed();
         return;
       }
@@ -411,7 +420,10 @@ void main() {
       // Digital section should appear
       tracker.check(
         'C10b1',
-        find.byKey(const Key('addproduct_digital_section')).evaluate().isNotEmpty,
+        find
+            .byKey(const Key('addproduct_digital_section'))
+            .evaluate()
+            .isNotEmpty,
         'P10b: digital section visible after toggle',
       );
 
@@ -473,7 +485,10 @@ void main() {
 
       final navOk = await navigateToAddProduct(tester);
       if (!navOk) {
-        tracker.stopOnSkip('S006', '[P10c] Unable to navigate to add product screen');
+        tracker.stopOnSkip(
+          'S006',
+          '[P10c] Unable to navigate to add product screen',
+        );
         tracker.throwIfFailed();
         return;
       }

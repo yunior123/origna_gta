@@ -15,7 +15,9 @@ void main() {
 
   group('ChatRepository', () {
     test('getOrCreateChat returns chatId', () async {
-      when(mockRepository.getOrCreateChat('p1')).thenAnswer((_) async => 'c123');
+      when(
+        mockRepository.getOrCreateChat('p1'),
+      ).thenAnswer((_) async => 'c123');
 
       final result = await mockRepository.getOrCreateChat('p1');
       expect(result, 'c123');
@@ -47,7 +49,9 @@ void main() {
         isRead: false,
       );
 
-      when(mockRepository.messagesStream('c1')).thenAnswer((_) => Stream.value([fakeMsg]));
+      when(
+        mockRepository.messagesStream('c1'),
+      ).thenAnswer((_) => Stream.value([fakeMsg]));
 
       final stream = mockRepository.messagesStream('c1');
       final messages = await stream.first;
@@ -66,7 +70,9 @@ void main() {
         lastMessageAt: DateTime.now(),
       );
 
-      when(mockRepository.userChatsStream('u1')).thenAnswer((_) => Stream.value([fakeThread]));
+      when(
+        mockRepository.userChatsStream('u1'),
+      ).thenAnswer((_) => Stream.value([fakeThread]));
 
       final stream = mockRepository.userChatsStream('u1');
       final threads = await stream.first;

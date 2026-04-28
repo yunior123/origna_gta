@@ -128,7 +128,9 @@ mixin ProductImageHelpers {
               headers: {'Content-Type': 'image/jpeg'},
             )
             .timeout(const Duration(seconds: 30));
-        if (response.statusCode == 200) return urlInfo[Fields.storagePath] as String;
+        if (response.statusCode == 200) {
+          return urlInfo[Fields.storagePath] as String;
+        }
         return null;
       } catch (e) {
         AppLogger.w(

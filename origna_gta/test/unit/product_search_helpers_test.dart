@@ -227,9 +227,7 @@ void main() {
 
       expect(result.length, 1);
       expect(result.first.productId, 'p1');
-      verify(
-        mockCollection.where(Fields.productId, whereIn: ['p1']),
-      ).called(1);
+      verify(mockCollection.where(Fields.productId, whereIn: ['p1'])).called(1);
     });
 
     test('skips non-existent documents', () async {

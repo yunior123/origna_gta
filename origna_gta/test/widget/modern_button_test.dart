@@ -4,14 +4,13 @@ import 'package:origna_gta/widgets/modern_button.dart';
 
 void main() {
   group('ModernButton Widget Tests', () {
-    testWidgets('renders primary button correctly', (WidgetTester tester) async {
+    testWidgets('renders primary button correctly', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ModernButton(
-              label: 'Test Button',
-              onPressed: () {},
-            ),
+            body: ModernButton(label: 'Test Button', onPressed: () {}),
           ),
         ),
       );
@@ -44,7 +43,9 @@ void main() {
       expect(pressed, isTrue);
     });
 
-    testWidgets('renders loading state correctly and disables interaction', (WidgetTester tester) async {
+    testWidgets('renders loading state correctly and disables interaction', (
+      WidgetTester tester,
+    ) async {
       bool pressed = false;
 
       await tester.pumpWidget(
@@ -62,7 +63,10 @@ void main() {
       );
 
       // Label should still be in semantics or hidden by indicator (ModernLoadingIndicator is shown instead of Text)
-      expect(find.text('Loading Button'), findsNothing); // Text is replaced by loading indicator in the actual widget
+      expect(
+        find.text('Loading Button'),
+        findsNothing,
+      ); // Text is replaced by loading indicator in the actual widget
 
       // Tap should not trigger onPressed
       await tester.tap(find.byType(ModernButton));
@@ -71,14 +75,13 @@ void main() {
       expect(pressed, isFalse);
     });
 
-    testWidgets('disabled state when onPressed is null', (WidgetTester tester) async {
+    testWidgets('disabled state when onPressed is null', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ModernButton(
-              label: 'Disabled',
-              onPressed: null,
-            ),
+            body: ModernButton(label: 'Disabled', onPressed: null),
           ),
         ),
       );
@@ -87,7 +90,9 @@ void main() {
       expect(find.text('Disabled'), findsOneWidget);
     });
 
-    testWidgets('renders outlined button correctly', (WidgetTester tester) async {
+    testWidgets('renders outlined button correctly', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -101,10 +106,14 @@ void main() {
       );
 
       expect(find.text('Outlined'), findsOneWidget);
-      final container = tester.widget<Container>(find.descendant(
-        of: find.byType(ModernButton),
-        matching: find.byType(Container),
-      ).first);
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ModernButton),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
 
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.border, isNotNull);
@@ -127,25 +136,28 @@ void main() {
       expect(find.text('Icon Button'), findsOneWidget);
     });
 
-    testWidgets('handles tap gestures for animation', (WidgetTester tester) async {
+    testWidgets('handles tap gestures for animation', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ModernButton(
-              label: 'Anim Button',
-              onPressed: () {},
-            ),
+            body: ModernButton(label: 'Anim Button', onPressed: () {}),
           ),
         ),
       );
 
-      final gestureDetector = find.descendant(
-        of: find.byType(ModernButton),
-        matching: find.byType(GestureDetector),
-      ).first;
+      final gestureDetector = find
+          .descendant(
+            of: find.byType(ModernButton),
+            matching: find.byType(GestureDetector),
+          )
+          .first;
 
       // Simulate pointer down
-      final TestGesture gesture = await tester.startGesture(tester.getCenter(gestureDetector));
+      final TestGesture gesture = await tester.startGesture(
+        tester.getCenter(gestureDetector),
+      );
       await tester.pump(); // Start animation
       await tester.pump(const Duration(milliseconds: 50)); // Advance animation
 
@@ -154,27 +166,30 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-     testWidgets('handles tap cancel gesture for animation', (WidgetTester tester) async {
+    testWidgets('handles tap cancel gesture for animation', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ModernButton(
-              label: 'Anim Button',
-              onPressed: () {},
-            ),
+            body: ModernButton(label: 'Anim Button', onPressed: () {}),
           ),
         ),
       );
 
-      final gestureDetector = find.descendant(
-        of: find.byType(ModernButton),
-        matching: find.byType(GestureDetector),
-      ).first;
+      final gestureDetector = find
+          .descendant(
+            of: find.byType(ModernButton),
+            matching: find.byType(GestureDetector),
+          )
+          .first;
 
       // Simulate pointer down
-      final TestGesture gesture = await tester.startGesture(tester.getCenter(gestureDetector));
+      final TestGesture gesture = await tester.startGesture(
+        tester.getCenter(gestureDetector),
+      );
       await tester.pump();
-      
+
       // Cancel gesture
       await gesture.cancel();
       await tester.pumpAndSettle();

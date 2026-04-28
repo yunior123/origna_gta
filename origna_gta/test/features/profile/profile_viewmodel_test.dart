@@ -91,13 +91,17 @@ void main() {
         final emptyContainer = ProviderContainer(
           overrides: [
             orignabaseProvider.overrideWithValue(mockOrignaBase),
-            authActionsProvider.overrideWith((ref) => AuthActions(mockAuthRepo)),
+            authActionsProvider.overrideWith(
+              (ref) => AuthActions(mockAuthRepo),
+            ),
             userRepositoryProvider.overrideWithValue(mockUserRepo),
             obUserIdProvider.overrideWithValue(null),
           ],
         );
 
-        final emptyViewModel = emptyContainer.read(profileViewModelProvider.notifier);
+        final emptyViewModel = emptyContainer.read(
+          profileViewModelProvider.notifier,
+        );
 
         await emptyViewModel.updateLanguage('fr');
 
@@ -107,13 +111,15 @@ void main() {
       });
 
       test('updates language and sets success message', () async {
-        when(mockUserRepo.updatePreferredLanguage(testUserId, 'fr'))
-            .thenAnswer((_) async {});
+        when(
+          mockUserRepo.updatePreferredLanguage(testUserId, 'fr'),
+        ).thenAnswer((_) async {});
 
         await viewModel.updateLanguage('fr');
 
-        verify(mockUserRepo.updatePreferredLanguage(testUserId, 'fr'))
-            .called(1);
+        verify(
+          mockUserRepo.updatePreferredLanguage(testUserId, 'fr'),
+        ).called(1);
 
         final state = container.read(profileViewModelProvider);
         expect(state.isLoading, false);
@@ -121,8 +127,9 @@ void main() {
       });
 
       test('sets error message on failure', () async {
-        when(mockUserRepo.updatePreferredLanguage(testUserId, 'fr'))
-            .thenThrow(Exception('Network error'));
+        when(
+          mockUserRepo.updatePreferredLanguage(testUserId, 'fr'),
+        ).thenThrow(Exception('Network error'));
 
         await viewModel.updateLanguage('fr');
 
@@ -137,13 +144,17 @@ void main() {
         final emptyContainer = ProviderContainer(
           overrides: [
             orignabaseProvider.overrideWithValue(mockOrignaBase),
-            authActionsProvider.overrideWith((ref) => AuthActions(mockAuthRepo)),
+            authActionsProvider.overrideWith(
+              (ref) => AuthActions(mockAuthRepo),
+            ),
             userRepositoryProvider.overrideWithValue(mockUserRepo),
             obUserIdProvider.overrideWithValue(null),
           ],
         );
 
-        final emptyViewModel = emptyContainer.read(profileViewModelProvider.notifier);
+        final emptyViewModel = emptyContainer.read(
+          profileViewModelProvider.notifier,
+        );
 
         await emptyViewModel.exportData();
 
@@ -154,19 +165,23 @@ void main() {
       });
 
       test('requests export and sets success message', () async {
-        when(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.adminExportData,
-          body: anyNamed('body'),
-        )).thenAnswer((_) async => {});
+        when(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.adminExportData,
+            body: anyNamed('body'),
+          ),
+        ).thenAnswer((_) async => {});
 
         await viewModel.exportData();
 
-        verify(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.adminExportData,
-          body: {},
-        )).called(1);
+        verify(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.adminExportData,
+            body: {},
+          ),
+        ).called(1);
 
         final state = container.read(profileViewModelProvider);
         expect(state.isLoading, false);
@@ -174,11 +189,13 @@ void main() {
       });
 
       test('sets error message on failure', () async {
-        when(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.adminExportData,
-          body: anyNamed('body'),
-        )).thenThrow(Exception('Export failed'));
+        when(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.adminExportData,
+            body: anyNamed('body'),
+          ),
+        ).thenThrow(Exception('Export failed'));
 
         await viewModel.exportData();
 
@@ -208,13 +225,17 @@ void main() {
         final emptyContainer = ProviderContainer(
           overrides: [
             orignabaseProvider.overrideWithValue(mockOrignaBase),
-            authActionsProvider.overrideWith((ref) => AuthActions(mockAuthRepo)),
+            authActionsProvider.overrideWith(
+              (ref) => AuthActions(mockAuthRepo),
+            ),
             userRepositoryProvider.overrideWithValue(mockUserRepo),
             obUserIdProvider.overrideWithValue(null),
           ],
         );
 
-        final emptyViewModel = emptyContainer.read(profileViewModelProvider.notifier);
+        final emptyViewModel = emptyContainer.read(
+          profileViewModelProvider.notifier,
+        );
 
         await emptyViewModel.deleteAccount('DELETE');
 
@@ -225,20 +246,27 @@ void main() {
       });
 
       test('deletes account with valid confirmation', () async {
-        when(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.authDeleteAccount,
-          body: anyNamed('body'),
-        )).thenAnswer((_) async => {});
+        when(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.authDeleteAccount,
+            body: anyNamed('body'),
+          ),
+        ).thenAnswer((_) async => {});
         when(mockAuthRepo.signOut()).thenAnswer((_) async {});
 
         await viewModel.deleteAccount('DELETE');
 
-        verify(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.authDeleteAccount,
-          body: {Fields.userId: testUserId, 'confirmation': 'DELETE_MY_ACCOUNT'},
-        )).called(1);
+        verify(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.authDeleteAccount,
+            body: {
+              Fields.userId: testUserId,
+              'confirmation': 'DELETE_MY_ACCOUNT',
+            },
+          ),
+        ).called(1);
 
         verify(mockAuthRepo.signOut()).called(1);
 
@@ -248,11 +276,13 @@ void main() {
       });
 
       test('sets error message on failure', () async {
-        when(mockOrignaBase.request(
-          'POST',
-          ApiEndpoints.authDeleteAccount,
-          body: anyNamed('body'),
-        )).thenThrow(Exception('Delete failed'));
+        when(
+          mockOrignaBase.request(
+            'POST',
+            ApiEndpoints.authDeleteAccount,
+            body: anyNamed('body'),
+          ),
+        ).thenThrow(Exception('Delete failed'));
 
         await viewModel.deleteAccount('DELETE');
 
@@ -275,10 +305,7 @@ void main() {
 
     test('copyWith creates new state with updated values', () {
       const state = ProfileState();
-      final newState = state.copyWith(
-        isLoading: true,
-        errorMessage: 'Error',
-      );
+      final newState = state.copyWith(isLoading: true, errorMessage: 'Error');
 
       expect(newState.isLoading, true);
       expect(newState.errorMessage, 'Error');
@@ -286,10 +313,7 @@ void main() {
     });
 
     test('copyWith preserves unchanged values', () {
-      const state = ProfileState(
-        isLoading: true,
-        successMessage: 'Success',
-      );
+      const state = ProfileState(isLoading: true, successMessage: 'Success');
       final newState = state.copyWith(errorMessage: 'Error');
 
       expect(newState.isLoading, true);

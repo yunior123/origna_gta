@@ -6,9 +6,7 @@ import 'package:origna_gta/features/chat/chat_provider.dart';
 import 'package:origna_gta/features/chat/chat_repository.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 
-@GenerateNiceMocks([
-  MockSpec<ChatRepository>(),
-])
+@GenerateNiceMocks([MockSpec<ChatRepository>()])
 import 'chat_provider_test.mocks.dart';
 
 void main() {
@@ -20,9 +18,11 @@ void main() {
     container = ProviderContainer(
       overrides: [
         chatRepositoryProvider.overrideWithValue(mockRepo),
-        subscriptionStreamProvider.overrideWith((ref) => Stream.value(
-          const SubscriptionInfo(status: 'active', isPremium: true),
-        )),
+        subscriptionStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            const SubscriptionInfo(status: 'active', isPremium: true),
+          ),
+        ),
       ],
     );
   });
@@ -30,10 +30,10 @@ void main() {
   group('ChatViewModel Tests', () {
     test('openChat sets chatId on success', () async {
       when(mockRepo.getOrCreateChat('p1')).thenAnswer((_) async => 'chat_123');
-      
+
       final notifier = container.read(chatViewModelProvider('p1').notifier);
       await notifier.openChat();
-      
+
       final state = container.read(chatViewModelProvider('p1'));
       expect(state.chatId, 'chat_123');
       expect(state.isLoading, isFalse);
@@ -43,9 +43,9 @@ void main() {
       when(mockRepo.getOrCreateChat('p1')).thenAnswer((_) async => 'chat_123');
       final notifier = container.read(chatViewModelProvider('p1').notifier);
       await notifier.openChat();
-      
+
       await notifier.sendMessage('Hello world');
-      
+
       verify(mockRepo.sendMessage('chat_123', 'Hello world')).called(1);
     });
 
@@ -53,9 +53,9 @@ void main() {
       when(mockRepo.getOrCreateChat('p1')).thenAnswer((_) async => 'chat_123');
       final notifier = container.read(chatViewModelProvider('p1').notifier);
       await notifier.openChat();
-      
+
       await notifier.sendMessage('Hi'); // Too short
-      
+
       final state = container.read(chatViewModelProvider('p1'));
       expect(state.errorMessage, contains('short'));
       verifyNever(mockRepo.sendMessage(any, any));

@@ -28,12 +28,12 @@ void main() {
     mockSnapshot = MockQuerySnapshot();
 
     when(mockOrignaBase.collection(any)).thenReturn(mockCollection);
-    when(mockCollection.where(any,
-      isEqualTo: anyNamed('isEqualTo'),
-    )).thenReturn(mockQuery);
-    when(mockQuery.where(any,
-      isEqualTo: anyNamed('isEqualTo'),
-    )).thenReturn(mockQuery);
+    when(
+      mockCollection.where(any, isEqualTo: anyNamed('isEqualTo')),
+    ).thenReturn(mockQuery);
+    when(
+      mockQuery.where(any, isEqualTo: anyNamed('isEqualTo')),
+    ).thenReturn(mockQuery);
     when(mockQuery.limit(any)).thenReturn(mockQuery);
     when(mockQuery.get()).thenAnswer((_) async => mockSnapshot);
 
@@ -41,9 +41,14 @@ void main() {
       overrides: [
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         obUserIdProvider.overrideWithValue('user_123'),
-        obAuthStateProvider.overrideWith((ref) => Stream.value(
-          const AuthState(status: AuthStatus.authenticated, userId: 'user_123'),
-        )),
+        obAuthStateProvider.overrideWith(
+          (ref) => Stream.value(
+            const AuthState(
+              status: AuthStatus.authenticated,
+              userId: 'user_123',
+            ),
+          ),
+        ),
       ],
     );
   });
@@ -56,7 +61,10 @@ void main() {
     test('init sets state based on query result', () async {
       when(mockSnapshot.docs).thenReturn([_fakeDoc()]);
 
-      final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: null));
+      final provider = stockNotificationNotifierProvider((
+        productId: 'prod_123',
+        variantKey: null,
+      ));
       final sub = container.listen(provider, (_, _) {});
 
       int count = 0;
@@ -72,10 +80,14 @@ void main() {
 
     test('subscribe calls backend and updates state', () async {
       when(mockSnapshot.docs).thenReturn([]);
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'success': true});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'success': true});
 
-      final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: 'red'));
+      final provider = stockNotificationNotifierProvider((
+        productId: 'prod_123',
+        variantKey: 'red',
+      ));
       final sub = container.listen(provider, (_, _) {});
 
       while (container.read(provider).isLoading) {
@@ -87,16 +99,26 @@ void main() {
 
       final state = container.read(provider);
       expect(state.value, isTrue);
-      verify(mockOrignaBase.request('POST', '/api/products/stock-notify/subscribe', body: anyNamed('body'))).called(1);
+      verify(
+        mockOrignaBase.request(
+          'POST',
+          '/api/products/stock-notify/subscribe',
+          body: anyNamed('body'),
+        ),
+      ).called(1);
       sub.close();
     });
 
     test('unsubscribe calls backend and updates state', () async {
       when(mockSnapshot.docs).thenReturn([_fakeDoc()]);
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'success': true});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'success': true});
 
-      final provider = stockNotificationNotifierProvider((productId: 'prod_123', variantKey: null));
+      final provider = stockNotificationNotifierProvider((
+        productId: 'prod_123',
+        variantKey: null,
+      ));
       final sub = container.listen(provider, (_, _) {});
 
       while (container.read(provider).isLoading) {
@@ -108,7 +130,13 @@ void main() {
 
       final state = container.read(provider);
       expect(state.value, isFalse);
-      verify(mockOrignaBase.request('POST', '/api/products/stock-notify/unsubscribe', body: anyNamed('body'))).called(1);
+      verify(
+        mockOrignaBase.request(
+          'POST',
+          '/api/products/stock-notify/unsubscribe',
+          body: anyNamed('body'),
+        ),
+      ).called(1);
       sub.close();
     });
   });

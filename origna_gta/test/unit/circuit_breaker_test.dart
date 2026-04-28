@@ -149,33 +149,36 @@ void main() {
         expect(breaker.isClosed, isTrue);
       });
 
-      test('should close circuit after success threshold in half-open', () async {
-        final breaker = CircuitBreaker(
-          name: 'test',
-          config: const CircuitBreakerConfig(
-            failureThreshold: 1,
-            resetTimeout: Duration(milliseconds: 50),
-            halfOpenTimeout: Duration.zero,
-            successThreshold: 2,
-          ),
-        );
+      test(
+        'should close circuit after success threshold in half-open',
+        () async {
+          final breaker = CircuitBreaker(
+            name: 'test',
+            config: const CircuitBreakerConfig(
+              failureThreshold: 1,
+              resetTimeout: Duration(milliseconds: 50),
+              halfOpenTimeout: Duration.zero,
+              successThreshold: 2,
+            ),
+          );
 
-        // Open the circuit
-        try {
-          await breaker.execute(() async => throw Exception('fail'));
-        } catch (_) {}
+          // Open the circuit
+          try {
+            await breaker.execute(() async => throw Exception('fail'));
+          } catch (_) {}
 
-        // Wait for reset
-        await Future.delayed(const Duration(milliseconds: 100));
+          // Wait for reset
+          await Future.delayed(const Duration(milliseconds: 100));
 
-        // First success in half-open
-        await breaker.execute(() async => 'success1');
+          // First success in half-open
+          await breaker.execute(() async => 'success1');
 
-        // Second success should close the circuit
-        await breaker.execute(() async => 'success2');
+          // Second success should close the circuit
+          await breaker.execute(() async => 'success2');
 
-        expect(breaker.state, equals(CircuitState.closed));
-      });
+          expect(breaker.state, equals(CircuitState.closed));
+        },
+      );
 
       test('should reopen on failure in half-open state', () async {
         final breaker = CircuitBreaker(

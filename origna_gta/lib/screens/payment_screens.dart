@@ -376,11 +376,11 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                     ModernButton(
                       label: 'orders.view_my_orders'.tr(),
                       icon: Icons.receipt_long_outlined,
-                      onPressed: () =>
-                          appPushNamedAndRemoveUntil(context,
-                            AppRoutes.orders,
-                            (route) => route.isFirst,
-                          ),
+                      onPressed: () => appPushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.orders,
+                        (route) => route.isFirst,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     ModernButton(
@@ -388,11 +388,11 @@ class _OrderSuccessGateState extends ConsumerState<OrderSuccessGate> {
                       icon: Icons.home_outlined,
                       isPrimary: false,
                       isOutlined: true,
-                      onPressed: () =>
-                          appPushNamedAndRemoveUntil(context,
-                            AppRoutes.home,
-                            (route) => false,
-                          ),
+                      onPressed: () => appPushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      ),
                     ),
                   ],
                 ),

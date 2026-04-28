@@ -4,9 +4,7 @@ import 'package:mockito/mockito.dart';
 import 'package:origna_gta/features/qa/qa_repository.dart';
 import 'package:origna_gta/models/qa_model.dart';
 
-@GenerateNiceMocks([
-  MockSpec<QARepository>(),
-])
+@GenerateNiceMocks([MockSpec<QARepository>()])
 import 'qa_repository_test.mocks.dart';
 
 void main() {
@@ -19,17 +17,23 @@ void main() {
   group('QARepository', () {
     test('submitQuestion calls repository', () async {
       await mockRepository.submitQuestion('p1', 'Is this available?');
-      verify(mockRepository.submitQuestion('p1', 'Is this available?')).called(1);
+      verify(
+        mockRepository.submitQuestion('p1', 'Is this available?'),
+      ).called(1);
     });
 
     test('submitQuestion with different product ID', () async {
       await mockRepository.submitQuestion('p2', 'When will this ship?');
-      verify(mockRepository.submitQuestion('p2', 'When will this ship?')).called(1);
+      verify(
+        mockRepository.submitQuestion('p2', 'When will this ship?'),
+      ).called(1);
     });
 
     test('submitQuestion with different text', () async {
       await mockRepository.submitQuestion('p1', 'What is the warranty?');
-      verify(mockRepository.submitQuestion('p1', 'What is the warranty?')).called(1);
+      verify(
+        mockRepository.submitQuestion('p1', 'What is the warranty?'),
+      ).called(1);
     });
 
     test('submitAnswer calls repository', () async {
@@ -57,7 +61,9 @@ void main() {
         createdAt: DateTime.now(),
       );
 
-      when(mockRepository.watchQA('p1')).thenAnswer((_) => Stream.value([fakeQA]));
+      when(
+        mockRepository.watchQA('p1'),
+      ).thenAnswer((_) => Stream.value([fakeQA]));
 
       final stream = mockRepository.watchQA('p1');
       final questions = await stream.first;
@@ -87,7 +93,9 @@ void main() {
         createdAt: DateTime(2026, 1, 2),
       );
 
-      when(mockRepository.watchQA('p1')).thenAnswer((_) => Stream.value([qa1, qa2]));
+      when(
+        mockRepository.watchQA('p1'),
+      ).thenAnswer((_) => Stream.value([qa1, qa2]));
 
       final stream = mockRepository.watchQA('p1');
       final questions = await stream.first;
@@ -97,8 +105,9 @@ void main() {
     });
 
     test('submitQuestion throws exception on empty product ID', () async {
-      when(mockRepository.submitQuestion('', 'Question'))
-          .thenThrow(Exception('Product ID required'));
+      when(
+        mockRepository.submitQuestion('', 'Question'),
+      ).thenThrow(Exception('Product ID required'));
 
       expect(
         () => mockRepository.submitQuestion('', 'Question'),
@@ -107,38 +116,43 @@ void main() {
     });
 
     test('submitAnswer throws exception on empty QA ID', () async {
-      when(mockRepository.submitAnswer('', 'Answer'))
-          .thenThrow(Exception('QA ID required'));
+      when(
+        mockRepository.submitAnswer('', 'Answer'),
+      ).thenThrow(Exception('QA ID required'));
 
-      expect(
-        () => mockRepository.submitAnswer('', 'Answer'),
-        throwsException,
-      );
+      expect(() => mockRepository.submitAnswer('', 'Answer'), throwsException);
     });
 
-    test('watchQA with different product IDs returns different streams', () async {
-      final qa1 = QAModel(
-        id: 'qa1',
-        question: 'Q for p1',
-        authorId: 'u1',
-        createdAt: DateTime.now(),
-      );
-      final qa2 = QAModel(
-        id: 'qa2',
-        question: 'Q for p2',
-        authorId: 'u2',
-        createdAt: DateTime.now(),
-      );
+    test(
+      'watchQA with different product IDs returns different streams',
+      () async {
+        final qa1 = QAModel(
+          id: 'qa1',
+          question: 'Q for p1',
+          authorId: 'u1',
+          createdAt: DateTime.now(),
+        );
+        final qa2 = QAModel(
+          id: 'qa2',
+          question: 'Q for p2',
+          authorId: 'u2',
+          createdAt: DateTime.now(),
+        );
 
-      when(mockRepository.watchQA('p1')).thenAnswer((_) => Stream.value([qa1]));
-      when(mockRepository.watchQA('p2')).thenAnswer((_) => Stream.value([qa2]));
+        when(
+          mockRepository.watchQA('p1'),
+        ).thenAnswer((_) => Stream.value([qa1]));
+        when(
+          mockRepository.watchQA('p2'),
+        ).thenAnswer((_) => Stream.value([qa2]));
 
-      final stream1 = await mockRepository.watchQA('p1').first;
-      final stream2 = await mockRepository.watchQA('p2').first;
+        final stream1 = await mockRepository.watchQA('p1').first;
+        final stream2 = await mockRepository.watchQA('p2').first;
 
-      expect(stream1[0].question, 'Q for p1');
-      expect(stream2[0].question, 'Q for p2');
-    });
+        expect(stream1[0].question, 'Q for p1');
+        expect(stream2[0].question, 'Q for p2');
+      },
+    );
 
     test('QAModel has correct fields', () {
       final now = DateTime.now();
@@ -199,7 +213,9 @@ void main() {
         createdAt: DateTime.now(),
       );
 
-      when(mockRepository.watchQA('p1')).thenAnswer((_) => Stream.value([fakeQA]));
+      when(
+        mockRepository.watchQA('p1'),
+      ).thenAnswer((_) => Stream.value([fakeQA]));
 
       var receivedData = false;
       mockRepository.watchQA('p1').listen((_) {

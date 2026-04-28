@@ -44,7 +44,10 @@ class _TestAdminRepository implements AdminRepository {
   };
 
   @override
-  Future<void> refundOrder(String orderId, {String reason = 'Admin refund'}) async {}
+  Future<void> refundOrder(
+    String orderId, {
+    String reason = 'Admin refund',
+  }) async {}
 
   @override
   Future<void> rejectProduct(String productId, String reason) async {}

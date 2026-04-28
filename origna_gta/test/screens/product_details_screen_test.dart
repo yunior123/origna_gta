@@ -16,7 +16,8 @@ import 'package:origna_gta/models/models.dart' as app_models;
 import 'package:origna_gta/screens/widgets/product_detail/seller_products_section.dart';
 import '../test_utils.dart';
 
-class _SellerCarouselProductRepository extends Fake implements ProductRepository {
+class _SellerCarouselProductRepository extends Fake
+    implements ProductRepository {
   final List<Product> products;
 
   _SellerCarouselProductRepository(this.products);
@@ -51,11 +52,12 @@ void main() {
     emailVerified: true,
   );
 
-  setUp(() {
-  });
+  setUp(() {});
 
   group('ProductDetailScreen Smoke Test', () {
-    testWidgets('renders product details correctly', (WidgetTester tester) async {
+    testWidgets('renders product details correctly', (
+      WidgetTester tester,
+    ) async {
       // Use a very large size to avoid overflows in this complex screen
       tester.view.physicalSize = const Size(2000, 3000);
       tester.view.devicePixelRatio = 1.0;
@@ -82,14 +84,26 @@ void main() {
           overrides: [
             obUserIdProvider.overrideWithValue(null),
             obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
-            sellerMetricsProvider('seller_123').overrideWith((ref) => const Stream.empty()),
+            sellerMetricsProvider(
+              'seller_123',
+            ).overrideWith((ref) => const Stream.empty()),
             currentUserProvider.overrideWithValue(signedInUser),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
-            productByIdProvider('prod_123').overrideWith((ref) => Future.value(testProduct)),
-            productRatingsProvider('prod_123').overrideWith((ref) => const Stream.empty()),
-            qaListProvider('prod_123').overrideWith((ref) => const Stream.empty()),
-            subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
-            buyerOrdersProvider.overrideWith((ref) => Stream.value(const <Order>[])),
+            productByIdProvider(
+              'prod_123',
+            ).overrideWith((ref) => Future.value(testProduct)),
+            productRatingsProvider(
+              'prod_123',
+            ).overrideWith((ref) => const Stream.empty()),
+            qaListProvider(
+              'prod_123',
+            ).overrideWith((ref) => const Stream.empty()),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => const Stream.empty(),
+            ),
+            buyerOrdersProvider.overrideWith(
+              (ref) => Stream.value(const <Order>[]),
+            ),
             similarProductsProvider((
               excludeProductId: 'prod_123',
               categoryId: 1,
@@ -120,7 +134,7 @@ void main() {
 
       expect(find.text('Test Product'), findsOneWidget);
       expect(find.text('\$99.99'), findsOneWidget);
-      
+
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });

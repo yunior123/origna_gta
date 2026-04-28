@@ -80,6 +80,7 @@ class AppRoutes {
           : <String, String>{'name': sellerName},
     ).toString();
   }
+
   AppRoutes._(); // Prevent instantiation
 }
 

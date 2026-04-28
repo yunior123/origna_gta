@@ -578,6 +578,20 @@ mod tests {
     #[serial_test::serial]
     async fn test_handle_request_get_product() {
         let server = make_server().await;
+        server
+            .state
+            .db
+            .upsert_document(
+                "products",
+                "products:p1",
+                json!({
+                    "name": "Test Item",
+                    "stockQuantity": 10,
+                    "lifecycleStatus": "active"
+                }),
+            )
+            .await
+            .unwrap();
         let ctx = McpContext::new();
         let req = JsonRpcRequest {
             jsonrpc: "2.0".into(),

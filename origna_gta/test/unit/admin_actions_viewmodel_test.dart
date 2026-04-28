@@ -16,16 +16,14 @@ void main() {
   setUp(() {
     mockRepo = MockAdminRepository();
     container = ProviderContainer(
-      overrides: [
-        adminRepositoryProvider.overrideWithValue(mockRepo),
-      ],
+      overrides: [adminRepositoryProvider.overrideWithValue(mockRepo)],
     );
   });
 
   group('AdminActionsViewModel', () {
     test('approveProduct calls repository and succeeds', () async {
       when(mockRepo.approveProduct('p123')).thenAnswer((_) async => true);
-      
+
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.approveProduct('p123');
 
@@ -35,8 +33,10 @@ void main() {
     });
 
     test('rejectProduct calls repository and succeeds', () async {
-      when(mockRepo.rejectProduct('p123', 'Poor quality')).thenAnswer((_) async => true);
-      
+      when(
+        mockRepo.rejectProduct('p123', 'Poor quality'),
+      ).thenAnswer((_) async => true);
+
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       final result = await viewModel.rejectProduct('p123', 'Poor quality');
 
@@ -45,8 +45,10 @@ void main() {
     });
 
     test('setUserSuspended calls repository', () async {
-      when(mockRepo.setUserSuspended('u123', true)).thenAnswer((_) async => true);
-      
+      when(
+        mockRepo.setUserSuspended('u123', true),
+      ).thenAnswer((_) async => true);
+
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       await viewModel.setUserSuspended('u123', true);
 
@@ -54,12 +56,26 @@ void main() {
     });
 
     test('updateUserRoles calls repository', () async {
-      when(mockRepo.updateUserRoles('u123', add: ['admin'], remove: [], reason: anyNamed('reason'))).thenAnswer((_) async => true);
-      
+      when(
+        mockRepo.updateUserRoles(
+          'u123',
+          add: ['admin'],
+          remove: [],
+          reason: anyNamed('reason'),
+        ),
+      ).thenAnswer((_) async => true);
+
       final viewModel = container.read(adminActionsViewModelProvider.notifier);
       await viewModel.updateUserRoles('u123', add: ['admin']);
 
-      verify(mockRepo.updateUserRoles('u123', add: ['admin'], remove: [], reason: argThat(isNull, named: 'reason'))).called(1);
+      verify(
+        mockRepo.updateUserRoles(
+          'u123',
+          add: ['admin'],
+          remove: [],
+          reason: argThat(isNull, named: 'reason'),
+        ),
+      ).called(1);
     });
   });
 }

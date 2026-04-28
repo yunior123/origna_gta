@@ -6,7 +6,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import '../test_utils.dart';
 
-
 void main() {
   setUpAll(() {
     initTestMocks();
@@ -14,7 +13,10 @@ void main() {
   late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   group('Remaining Screens Batch 3 Smoke Tests', () {
@@ -23,7 +25,9 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(null),
+            ),
           ],
           child: const SubscriptionScreen(),
         ),
@@ -33,12 +37,12 @@ void main() {
       expect(find.byType(SubscriptionScreen), findsOneWidget);
     });
 
-    testWidgets('renders subscription success screen', (WidgetTester tester) async {
+    testWidgets('renders subscription success screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            currentUserProvider.overrideWithValue(mockUser),
-          ],
+          overrides: [currentUserProvider.overrideWithValue(mockUser)],
           child: const SubscriptionSuccessScreen(),
         ),
       );
@@ -47,12 +51,12 @@ void main() {
       expect(find.byType(SubscriptionSuccessScreen), findsOneWidget);
     });
 
-    testWidgets('renders subscription cancel screen', (WidgetTester tester) async {
+    testWidgets('renders subscription cancel screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            currentUserProvider.overrideWithValue(mockUser),
-          ],
+          overrides: [currentUserProvider.overrideWithValue(mockUser)],
           child: const SubscriptionCancelScreen(),
         ),
       );

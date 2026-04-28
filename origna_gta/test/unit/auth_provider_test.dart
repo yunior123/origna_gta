@@ -8,9 +8,7 @@ import 'package:origna_gta/core/repositories/auth_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
 
-@GenerateNiceMocks([
-  MockSpec<AuthRepository>(),
-])
+@GenerateNiceMocks([MockSpec<AuthRepository>()])
 import 'auth_provider_test.mocks.dart';
 
 void main() {
@@ -49,9 +47,11 @@ void main() {
         roles: [UserRole.buyer],
         createdAt: DateTime.now(),
       );
-      
-      when(mockRepo.watchProfile('user_123')).thenAnswer((_) => Stream.value(testUser));
-      
+
+      when(
+        mockRepo.watchProfile('user_123'),
+      ).thenAnswer((_) => Stream.value(testUser));
+
       final container = createContainer(userId: 'user_123');
       final profile = await container.read(userProfileProvider.future);
       expect(profile, testUser);
@@ -60,70 +60,71 @@ void main() {
 
   group('needsTermsUpdateProvider', () {
     test('returns false when loading', () {
-      final container = createContainer(
-        profileStream: const Stream.empty(),
-      );
-      
+      final container = createContainer(profileStream: const Stream.empty());
+
       final needsUpdate = container.read(needsTermsUpdateProvider);
       expect(needsUpdate, isFalse);
     });
 
     test('returns false when profile is null', () async {
-      final container = createContainer(
-        profileStream: Stream.value(null),
-      );
-      
+      final container = createContainer(profileStream: Stream.value(null));
+
       // Wait for stream
       await container.read(userProfileProvider.future);
-      
+
       final needsUpdate = container.read(needsTermsUpdateProvider);
       expect(needsUpdate, isFalse);
     });
 
     test('returns false when termsVersion is null (pre-versioning)', () async {
       final testUser = UserModel(
-        uid: 'u1', email: 'e', name: 'n', roles: [], createdAt: DateTime.now(),
+        uid: 'u1',
+        email: 'e',
+        name: 'n',
+        roles: [],
+        createdAt: DateTime.now(),
         termsVersion: null,
       );
-      final container = createContainer(
-        profileStream: Stream.value(testUser),
-      );
-      
+      final container = createContainer(profileStream: Stream.value(testUser));
+
       await container.read(userProfileProvider.future);
-      
+
       final needsUpdate = container.read(needsTermsUpdateProvider);
       expect(needsUpdate, isFalse);
     });
 
     test('returns false when termsVersion matches current', () async {
       final testUser = UserModel(
-        uid: 'u1', email: 'e', name: 'n', roles: [], createdAt: DateTime.now(),
+        uid: 'u1',
+        email: 'e',
+        name: 'n',
+        roles: [],
+        createdAt: DateTime.now(),
         termsVersion: PolicyVersionValues.defaultVersion,
       );
-      final container = createContainer(
-        profileStream: Stream.value(testUser),
-      );
-      
+      final container = createContainer(profileStream: Stream.value(testUser));
+
       await container.read(userProfileProvider.future);
-      
+
       final needsUpdate = container.read(needsTermsUpdateProvider);
       expect(needsUpdate, isFalse);
     });
 
     test('returns true when termsVersion is outdated', () async {
       final testUser = UserModel(
-        uid: 'u1', email: 'e', name: 'n', roles: [], createdAt: DateTime.now(),
+        uid: 'u1',
+        email: 'e',
+        name: 'n',
+        roles: [],
+        createdAt: DateTime.now(),
         termsVersion: '0.1',
       );
-      final container = createContainer(
-        profileStream: Stream.value(testUser),
-      );
-      
+      final container = createContainer(profileStream: Stream.value(testUser));
+
       await container.read(userProfileProvider.future);
-      
+
       final needsUpdate = container.read(needsTermsUpdateProvider);
       expect(needsUpdate, isTrue);
     });
   });
 }
-

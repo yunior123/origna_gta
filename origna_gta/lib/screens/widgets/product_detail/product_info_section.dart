@@ -81,7 +81,8 @@ class SellerInfoCard extends ConsumerWidget {
                         }
                         if (isOvSeller ||
                             SellerConstants.sellerOnboardingEnabled) {
-                          appPushNamed(context,
+                          appPushNamed(
+                            context,
                             AppRoutes.chat,
                             arguments: ChatArgs(
                               productId: product.productId,
@@ -91,7 +92,8 @@ class SellerInfoCard extends ConsumerWidget {
                           return;
                         }
                         if (isPremium) {
-                          appPushNamed(context,
+                          appPushNamed(
+                            context,
                             AppRoutes.chat,
                             arguments: ChatArgs(
                               productId: product.productId,

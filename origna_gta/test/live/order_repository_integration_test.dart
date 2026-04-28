@@ -5,7 +5,10 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/orignabase_order_repository.dart';
 
 void main() {
-  const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});

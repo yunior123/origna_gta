@@ -47,7 +47,11 @@ void main() {
           );
 
           expect(result, isA<Map<String, dynamic>>());
-          expect(result['success'], isTrue, reason: 'Should successfully subscribe');
+          expect(
+            result['success'],
+            isTrue,
+            reason: 'Should successfully subscribe',
+          );
         } on OrignaBaseException {
           // If endpoint not implemented, test passes
           return;
@@ -115,7 +119,11 @@ void main() {
           );
 
           expect(result, isA<Map<String, dynamic>>());
-          expect(result['success'], isTrue, reason: 'Should successfully unsubscribe');
+          expect(
+            result['success'],
+            isTrue,
+            reason: 'Should successfully unsubscribe',
+          );
         } on OrignaBaseException {
           // Endpoint not implemented
           return;
@@ -145,13 +153,15 @@ void main() {
             final subscriptionsResult = await ob.request(
               'POST',
               '/api/products/get_stock_subscriptions',
-              body: {
-                Fields.userId: ob.auth.currentUserId,
-              },
+              body: {Fields.userId: ob.auth.currentUserId},
             );
 
             final subscriptions = subscriptionsResult['subscriptions'] as List?;
-            expect(subscriptions, isNotEmpty, reason: 'Should have subscriptions');
+            expect(
+              subscriptions,
+              isNotEmpty,
+              reason: 'Should have subscriptions',
+            );
 
             // Unsubscribe
             await ob.request(
@@ -167,16 +177,19 @@ void main() {
             final updatedResult = await ob.request(
               'POST',
               '/api/products/get_stock_subscriptions',
-              body: {
-                Fields.userId: ob.auth.currentUserId,
-              },
+              body: {Fields.userId: ob.auth.currentUserId},
             );
 
-            final updatedSubscriptions = updatedResult['subscriptions'] as List?;
-            final stillSubscribed = (updatedSubscriptions ?? [])
-                .any((sub) => (sub as Map)[Fields.productId] == productId2);
-            expect(stillSubscribed, isFalse,
-                reason: 'Should not be subscribed after unsubscribe');
+            final updatedSubscriptions =
+                updatedResult['subscriptions'] as List?;
+            final stillSubscribed = (updatedSubscriptions ?? []).any(
+              (sub) => (sub as Map)[Fields.productId] == productId2,
+            );
+            expect(
+              stillSubscribed,
+              isFalse,
+              reason: 'Should not be subscribed after unsubscribe',
+            );
           } on OrignaBaseException {
             // get_stock_subscriptions endpoint may not exist
             return;

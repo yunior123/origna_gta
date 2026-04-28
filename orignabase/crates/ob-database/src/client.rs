@@ -15,40 +15,29 @@ pub struct DatabaseClient {
 
 impl DatabaseClient {
     /// Create a database client for testing.
-    /// On first call per process, truncates all tables for a clean slate.
-    /// Uses the local PostgreSQL instance.
+    /// Uses the local PostgreSQL instance with an isolated schema per client
+    /// so parallel tests can exercise the real DB layer without sharing state.
     pub async fn new_mem() -> Self {
         let url = std::env::var("OB_TEST_DATABASE_URL").unwrap_or_else(|_| {
             "postgres://orignabase:orignabase_dev@127.0.0.1:5432/orignabase".to_string()
         });
-        let inner = PgDatabaseStore::connect(&url).await.unwrap();
+        let schema = format!("test_{}", uuid::Uuid::new_v4().simple());
+        let admin_pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .min_connections(0)
+            .connect(&url)
+            .await
+            .unwrap();
 
-        // Truncate all tables once per test process to clear stale data.
-        // This runs exactly once (the first new_mem() call), not per-test.
-        // Uses a separate thread+runtime because call_once is synchronous
-        // but we need to await async database operations.
-        {
-            use std::sync::atomic::{AtomicBool, Ordering};
-            static DID_TRUNCATE: AtomicBool = AtomicBool::new(false);
-            if !DID_TRUNCATE.swap(true, Ordering::SeqCst) {
-                // First call — truncate all tables
-                let tables_result = sqlx::query_as::<_, (String,)>(
-                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename NOT LIKE 'pg_%' AND tablename NOT LIKE '_sqlx%'"
-                )
-                .fetch_all(inner.pool())
-                .await;
+        sqlx::query(&format!("CREATE SCHEMA \"{schema}\""))
+            .execute(&admin_pool)
+            .await
+            .unwrap();
+        admin_pool.close().await;
 
-                if let Ok(rows) = tables_result {
-                    for (table,) in &rows {
-                        let sql = format!("TRUNCATE TABLE \"{}\" CASCADE", table);
-                        let _ = sqlx::query(&sql).execute(inner.pool()).await;
-                    }
-                    eprintln!("[test-setup] Truncated {} tables", rows.len());
-                } else {
-                    eprintln!("[test-setup] Failed to list tables for truncation");
-                }
-            }
-        }
+        let inner = PgDatabaseStore::connect_to_schema(&url, &schema)
+            .await
+            .unwrap();
 
         Self { inner }
     }

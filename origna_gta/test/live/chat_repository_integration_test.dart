@@ -5,7 +5,10 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/features/chat/orignabase_chat_repository.dart';
 
 void main() {
-  const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});
@@ -60,7 +63,8 @@ void main() {
           // In the dev environment these preconditions may not be met — that is
           // acceptable; the gate itself is exercised.
           final msg = e.toString().toLowerCase();
-          final isExpectedGate = msg.contains('premium') ||
+          final isExpectedGate =
+              msg.contains('premium') ||
               msg.contains('delivered') ||
               msg.contains('eligible') ||
               msg.contains('active') ||
@@ -68,8 +72,7 @@ void main() {
               msg.contains('400') ||
               msg.contains('request failed') ||
               msg.contains('bad request');
-          expect(isExpectedGate, isTrue,
-              reason: 'Unexpected error: $e');
+          expect(isExpectedGate, isTrue, reason: 'Unexpected error: $e');
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),

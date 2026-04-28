@@ -6,7 +6,6 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import '../test_utils.dart';
 
-
 void main() {
   setUpAll(() {
     initTestMocks();
@@ -14,20 +13,21 @@ void main() {
   late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   group('Remaining Screens Batch 1 Smoke Tests', () {
     testWidgets('renders notifications screen', (WidgetTester tester) async {
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            currentUserProvider.overrideWithValue(mockUser),
-          ],
+          overrides: [currentUserProvider.overrideWithValue(mockUser)],
           child: const NotificationsScreen(),
         ),
       );
-      
+
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(NotificationsScreen), findsOneWidget);

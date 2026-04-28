@@ -10,17 +10,26 @@ void main() {
 
     test('resume transition is false when next state is not resumed', () {
       expect(
-        isResumeTransition(AppLifecycleState.paused, AppLifecycleState.inactive),
+        isResumeTransition(
+          AppLifecycleState.paused,
+          AppLifecycleState.inactive,
+        ),
         isFalse,
       );
     });
 
-    test('resume transition is false when previous state is already resumed', () {
-      expect(
-        isResumeTransition(AppLifecycleState.resumed, AppLifecycleState.resumed),
-        isFalse,
-      );
-    });
+    test(
+      'resume transition is false when previous state is already resumed',
+      () {
+        expect(
+          isResumeTransition(
+            AppLifecycleState.resumed,
+            AppLifecycleState.resumed,
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('resume transition is true when returning from paused', () {
       expect(
@@ -38,7 +47,10 @@ void main() {
 
     test('resume transition is true when returning from detached', () {
       expect(
-        isResumeTransition(AppLifecycleState.detached, AppLifecycleState.resumed),
+        isResumeTransition(
+          AppLifecycleState.detached,
+          AppLifecycleState.resumed,
+        ),
         isTrue,
       );
     });

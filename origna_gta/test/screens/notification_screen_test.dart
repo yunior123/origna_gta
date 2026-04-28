@@ -42,10 +42,7 @@ void main() {
       TestWrapper(
         overrides: [
           currentUserProvider.overrideWithValue(
-            const AppAuthUser(
-              uid: 'user_123',
-              email: 'test@example.com',
-            ),
+            const AppAuthUser(uid: 'user_123', email: 'test@example.com'),
           ),
           notificationRepositoryProvider.overrideWithValue(
             _TestNotificationRepository(),

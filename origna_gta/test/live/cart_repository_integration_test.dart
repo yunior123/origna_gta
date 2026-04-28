@@ -5,7 +5,10 @@ import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/orignabase_cart_repository.dart';
 
 void main() {
-  const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});
@@ -70,7 +73,10 @@ void main() {
         await repo.addToCart(buyerId, productId, quantity);
 
         // Verify it's in the cart (fresh stream each time — async* is single-listen)
-        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
+        final cartItems = await repo
+            .watchCart(buyerId)
+            .first
+            .timeout(const Duration(seconds: 10));
         expect(cartItems, isNotEmpty);
         expect(
           cartItems.any((item) => item.productId == productId),
@@ -95,15 +101,23 @@ void main() {
         await repo.addToCart(buyerId, productId, quantity);
 
         // Get the cart item ID (same as productId for products without variants)
-        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
-        final cartItem = cartItems.firstWhere((item) => item.productId == productId);
+        final cartItems = await repo
+            .watchCart(buyerId)
+            .first
+            .timeout(const Duration(seconds: 10));
+        final cartItem = cartItems.firstWhere(
+          (item) => item.productId == productId,
+        );
         final cartItemId = cartItem.productId;
 
         // Remove from cart
         await repo.removeFromCart(buyerId, cartItemId);
 
         // Verify it's removed (fresh stream)
-        final updatedItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
+        final updatedItems = await repo
+            .watchCart(buyerId)
+            .first
+            .timeout(const Duration(seconds: 10));
         expect(
           updatedItems.any((item) => item.productId == productId),
           isFalse,
@@ -126,16 +140,26 @@ void main() {
         await repo.addToCart(buyerId, productId, 1);
 
         // Get the cart item ID (fresh stream)
-        final cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
-        final cartItem = cartItems.firstWhere((item) => item.productId == productId);
+        final cartItems = await repo
+            .watchCart(buyerId)
+            .first
+            .timeout(const Duration(seconds: 10));
+        final cartItem = cartItems.firstWhere(
+          (item) => item.productId == productId,
+        );
         final cartItemId = cartItem.productId;
 
         // Update quantity to 3
         await repo.updateQuantity(buyerId, cartItemId, 3);
 
         // Verify quantity changed (fresh stream)
-        final updatedItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
-        final updated = updatedItems.firstWhere((item) => item.productId == productId);
+        final updatedItems = await repo
+            .watchCart(buyerId)
+            .first
+            .timeout(const Duration(seconds: 10));
+        final updated = updatedItems.firstWhere(
+          (item) => item.productId == productId,
+        );
         expect(updated.quantity, equals(3));
 
         // Clean up
@@ -144,35 +168,40 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'clearCart removes all items',
-      () async {
-        if (!runLive) return;
-        final productId = 'e2e_product_test_seller';
+    test('clearCart removes all items', () async {
+      if (!runLive) return;
+      final productId = 'e2e_product_test_seller';
 
-        // Add to cart
-        await repo.addToCart(buyerId, productId, 1);
+      // Add to cart
+      await repo.addToCart(buyerId, productId, 1);
 
-        // Verify it's there (fresh stream)
-        var cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
-        expect(cartItems, isNotEmpty);
+      // Verify it's there (fresh stream)
+      var cartItems = await repo
+          .watchCart(buyerId)
+          .first
+          .timeout(const Duration(seconds: 10));
+      expect(cartItems, isNotEmpty);
 
-        // Clear cart
-        await repo.clearCart(buyerId);
+      // Clear cart
+      await repo.clearCart(buyerId);
 
-        // Verify it's empty (fresh stream)
-        cartItems = await repo.watchCart(buyerId).first.timeout(const Duration(seconds: 10));
-        expect(cartItems, isEmpty);
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      // Verify it's empty (fresh stream)
+      cartItems = await repo
+          .watchCart(buyerId)
+          .first
+          .timeout(const Duration(seconds: 10));
+      expect(cartItems, isEmpty);
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'isVariantValid returns false for nonexistent variant',
       () async {
         if (!runLive) return;
         final productId = 'e2e_product_test_seller';
-        final isValid = await repo.isVariantValid(productId, 'nonexistent_variant_xyz');
+        final isValid = await repo.isVariantValid(
+          productId,
+          'nonexistent_variant_xyz',
+        );
         expect(isValid, isFalse);
       },
       timeout: const Timeout(Duration(minutes: 2)),

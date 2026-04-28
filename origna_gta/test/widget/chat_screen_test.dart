@@ -13,9 +13,7 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import '../mock_asset_loader.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<ChatRepository>(),
-])
+@GenerateNiceMocks([MockSpec<ChatRepository>()])
 import 'chat_screen_test.mocks.dart';
 
 void main() {
@@ -83,14 +81,19 @@ void main() {
       when(mockRepo.getOrCreateChat(any)).thenAnswer((_) async => 'chat_123');
       when(mockRepo.messagesStream(any)).thenAnswer((_) => Stream.value([]));
 
-      await tester.pumpWidget(createTestApp(
-        overrides: [
-          userIdProvider.overrideWithValue('my_uid'),
-          chatRepositoryProvider.overrideWithValue(mockRepo),
-          premiumOverride(),
-        ],
-        child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
-      ));
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            userIdProvider.overrideWithValue('my_uid'),
+            chatRepositoryProvider.overrideWithValue(mockRepo),
+            premiumOverride(),
+          ],
+          child: const ChatScreen(
+            productId: 'prod_123',
+            productTitle: 'Test Product',
+          ),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -99,20 +102,22 @@ void main() {
 
     testWidgets('renders own product message', (tester) async {
       when(mockRepo.getOrCreateChat(any)).thenThrow(
-        OrignaBaseException(
-          'You cannot chat with yourself',
-          statusCode: 403,
-        ),
+        OrignaBaseException('You cannot chat with yourself', statusCode: 403),
       );
 
-      await tester.pumpWidget(createTestApp(
-        overrides: [
-          userIdProvider.overrideWithValue('my_uid'),
-          chatRepositoryProvider.overrideWithValue(mockRepo),
-          premiumOverride(),
-        ],
-        child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
-      ));
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            userIdProvider.overrideWithValue('my_uid'),
+            chatRepositoryProvider.overrideWithValue(mockRepo),
+            premiumOverride(),
+          ],
+          child: const ChatScreen(
+            productId: 'prod_123',
+            productTitle: 'Test Product',
+          ),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
@@ -122,17 +127,24 @@ void main() {
 
     testWidgets('renders list of messages', (tester) async {
       when(mockRepo.getOrCreateChat(any)).thenAnswer((_) async => 'chat_123');
-      when(mockRepo.messagesStream('chat_123')).thenAnswer((_) => Stream.value([testMessage, myMessage]));
-      
-      await tester.pumpWidget(createTestApp(
-        overrides: [
-          userIdProvider.overrideWithValue('my_uid'),
-          chatRepositoryProvider.overrideWithValue(mockRepo),
-          premiumOverride(),
-        ],
-        child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
-      ));
-      
+      when(
+        mockRepo.messagesStream('chat_123'),
+      ).thenAnswer((_) => Stream.value([testMessage, myMessage]));
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            userIdProvider.overrideWithValue('my_uid'),
+            chatRepositoryProvider.overrideWithValue(mockRepo),
+            premiumOverride(),
+          ],
+          child: const ChatScreen(
+            productId: 'prod_123',
+            productTitle: 'Test Product',
+          ),
+        ),
+      );
+
       await tester.pump();
       await tester.pump(const Duration(seconds: 1)); // Wait for openChat
       await tester.pump(const Duration(seconds: 1)); // Wait for messages
@@ -143,30 +155,37 @@ void main() {
 
     testWidgets('can send a message', (tester) async {
       when(mockRepo.getOrCreateChat(any)).thenAnswer((_) async => 'chat_123');
-      when(mockRepo.messagesStream('chat_123')).thenAnswer((_) => Stream.value([]));
-      
-      await tester.pumpWidget(createTestApp(
-        overrides: [
-          userIdProvider.overrideWithValue('my_uid'),
-          chatRepositoryProvider.overrideWithValue(mockRepo),
-          premiumOverride(),
-        ],
-        child: const ChatScreen(productId: 'prod_123', productTitle: 'Test Product'),
-      ));
+      when(
+        mockRepo.messagesStream('chat_123'),
+      ).thenAnswer((_) => Stream.value([]));
+
+      await tester.pumpWidget(
+        createTestApp(
+          overrides: [
+            userIdProvider.overrideWithValue('my_uid'),
+            chatRepositoryProvider.overrideWithValue(mockRepo),
+            premiumOverride(),
+          ],
+          child: const ChatScreen(
+            productId: 'prod_123',
+            productTitle: 'Test Product',
+          ),
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1)); // Wait for openChat
 
       final textField = find.byType(TextField);
       await tester.enterText(textField, 'New message');
       await tester.pump(); // Update UI with text
-      
+
       final sendBtn = find.byKey(const Key('chat_send_button'));
       expect(sendBtn, findsOneWidget);
-      
+
       await tester.tap(sendBtn);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
-      
+
       verify(mockRepo.sendMessage('chat_123', 'New message')).called(1);
     });
   });

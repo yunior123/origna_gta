@@ -105,9 +105,7 @@ class AddressViewModel extends StateNotifier<AddressState> {
     // CUBA SHIPPING: Maritime to Havana only.
     if (state.selectedCountry == CountryValues.cuba &&
         city.trim().toLowerCase() != "havana") {
-      state = state.copyWith(
-        errorMessage: 'address.cuba_havana_only',
-      );
+      state = state.copyWith(errorMessage: 'address.cuba_havana_only');
       return;
     }
     state = state.copyWith(isLoading: true, errorMessage: null);

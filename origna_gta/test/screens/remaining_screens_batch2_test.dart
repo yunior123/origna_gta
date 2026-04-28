@@ -8,7 +8,6 @@ import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/models.dart';
 import '../test_utils.dart';
 
-
 void main() {
   setUpAll(() {
     initTestMocks();
@@ -16,17 +15,24 @@ void main() {
   late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   group('Remaining Screens Batch 2 Smoke Tests', () {
-    testWidgets('renders chat conversations screen', (WidgetTester tester) async {
+    testWidgets('renders chat conversations screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
             myAllChatsProvider.overrideWith((ref) => Stream.value([])),
-            subscriptionStreamProvider.overrideWith((ref) => Stream.value(null)),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => Stream.value(null),
+            ),
           ],
           child: const ChatConversationsScreen(),
         ),
@@ -36,7 +42,9 @@ void main() {
       expect(find.byType(ChatConversationsScreen), findsOneWidget);
     });
 
-    testWidgets('renders address management screen', (WidgetTester tester) async {
+    testWidgets('renders address management screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
@@ -62,9 +70,7 @@ void main() {
 
       await tester.pumpWidget(
         TestWrapper(
-          overrides: [
-            currentUserProvider.overrideWithValue(mockUser),
-          ],
+          overrides: [currentUserProvider.overrideWithValue(mockUser)],
           child: AddEditAddressScreen(address: testAddress),
         ),
       );

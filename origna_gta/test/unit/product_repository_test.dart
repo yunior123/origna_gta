@@ -18,7 +18,12 @@ void main() {
 
   group('ProductRepository Comprehensive Tests', () {
     test('sanitizeProductData strips server-controlled fields', () {
-      final raw = {Fields.productId: 'p1', Fields.rating: 5.0, Fields.sellerId: 's1', 'name': 'Test'};
+      final raw = {
+        Fields.productId: 'p1',
+        Fields.rating: 5.0,
+        Fields.sellerId: 's1',
+        'name': 'Test',
+      };
 
       final sanitized = sanitizeProductData(raw);
       expect(sanitized.containsKey(Fields.productId), isFalse);
@@ -48,7 +53,9 @@ void main() {
     });
 
     test('watchFavorites returns set of IDs', () async {
-      when(mockRepository.watchFavorites('u1')).thenAnswer((_) => Stream.value({'p1'}));
+      when(
+        mockRepository.watchFavorites('u1'),
+      ).thenAnswer((_) => Stream.value({'p1'}));
 
       final stream = mockRepository.watchFavorites('u1');
       final first = await stream.first;
@@ -56,7 +63,9 @@ void main() {
     });
 
     test('watchUnansweredQuestionsCount returns count', () async {
-      when(mockRepository.watchUnansweredQuestionsCount('s1')).thenAnswer((_) => Stream.value(1));
+      when(
+        mockRepository.watchUnansweredQuestionsCount('s1'),
+      ).thenAnswer((_) => Stream.value(1));
 
       final stream = mockRepository.watchUnansweredQuestionsCount('s1');
       final count = await stream.first;

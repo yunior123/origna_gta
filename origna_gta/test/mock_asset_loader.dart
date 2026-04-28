@@ -1036,7 +1036,8 @@ class MockAssetLoader extends AssetLoader {
         "valid_phone": "Enter a valid phone number",
         "valid_phone_cuba": "Enter a valid Cuban phone number (+53 prefix)",
         "maritime_shipping": "Maritime shipping",
-        "cuba_maritime_notice": "Shipping to Cuba is via maritime freight (21-45 business days). Weight-based rates apply.",
+        "cuba_maritime_notice":
+            "Shipping to Cuba is via maritime freight (21-45 business days). Weight-based rates apply.",
         "is_default": "Set as default",
         "save": "Save Address",
         "delete": "Delete",

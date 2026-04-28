@@ -14,7 +14,8 @@ class ResponsiveBreakpoints {
   static const double desktop = 1024; // 1024px (desktops, large tablets)
   static const double desktopLg = 1280; // 1280px (large desktop monitors)
   static const double desktopXl = 1440; // 1440px (wide/ultrawide displays)
-  static const double contentMaxWidth = 1200; // max content width on web/desktop
+  static const double contentMaxWidth =
+      1200; // max content width on web/desktop
   static const double sidebarWidth = 280; // sidebar for desktop layouts
 
   // Product card aspect ratios (width ÷ height). Lower value = taller card.
@@ -87,10 +88,20 @@ class ResponsiveBreakpoints {
 
     // Reduce padding on small devices
     if (width < mobilePlus) {
-      return EdgeInsets.fromLTRB(mediaQuery.padding.left + 8, mediaQuery.padding.top + 8, mediaQuery.padding.right + 8, mediaQuery.padding.bottom + 8);
+      return EdgeInsets.fromLTRB(
+        mediaQuery.padding.left + 8,
+        mediaQuery.padding.top + 8,
+        mediaQuery.padding.right + 8,
+        mediaQuery.padding.bottom + 8,
+      );
     }
 
-    return EdgeInsets.fromLTRB(mediaQuery.padding.left + 16, mediaQuery.padding.top + 16, mediaQuery.padding.right + 16, mediaQuery.padding.bottom + 16);
+    return EdgeInsets.fromLTRB(
+      mediaQuery.padding.left + 16,
+      mediaQuery.padding.top + 16,
+      mediaQuery.padding.right + 16,
+      mediaQuery.padding.bottom + 16,
+    );
   }
 
   /// Get spacing value based on screen size
@@ -129,8 +140,12 @@ class ResponsiveBreakpoints {
     if (width < ResponsiveBreakpoints.mobilePlus) return mobile;
     if (width < ResponsiveBreakpoints.tablet) return mobilePlus;
     if (width < ResponsiveBreakpoints.desktop) return tablet;
-    if (desktopXl != null && width >= ResponsiveBreakpoints.desktopXl) return desktopXl;
-    if (desktopLg != null && width >= ResponsiveBreakpoints.desktopLg) return desktopLg;
+    if (desktopXl != null && width >= ResponsiveBreakpoints.desktopXl) {
+      return desktopXl;
+    }
+    if (desktopLg != null && width >= ResponsiveBreakpoints.desktopLg) {
+      return desktopLg;
+    }
     return desktop;
   }
 
@@ -201,12 +216,19 @@ class ResponsiveContainer extends StatelessWidget {
   final double maxWidth;
   final EdgeInsets padding;
 
-  const ResponsiveContainer({super.key, required this.child, this.maxWidth = 1200, this.padding = const EdgeInsets.all(16)});
+  const ResponsiveContainer({
+    super.key,
+    required this.child,
+    this.maxWidth = 1200,
+    this.padding = const EdgeInsets.all(16),
+  });
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final constraints = BoxConstraints(maxWidth: width < maxWidth ? width : maxWidth);
+    final constraints = BoxConstraints(
+      maxWidth: width < maxWidth ? width : maxWidth,
+    );
 
     return Center(
       child: Padding(
@@ -223,7 +245,12 @@ class ResponsiveGridView extends StatelessWidget {
   final EdgeInsets padding;
   final double spacing;
 
-  const ResponsiveGridView({super.key, required this.children, this.padding = const EdgeInsets.all(16), this.spacing = 12});
+  const ResponsiveGridView({
+    super.key,
+    required this.children,
+    this.padding = const EdgeInsets.all(16),
+    this.spacing = 12,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +259,11 @@ class ResponsiveGridView extends StatelessWidget {
     return Padding(
       padding: padding,
       child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: columns, mainAxisSpacing: spacing, crossAxisSpacing: spacing),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          mainAxisSpacing: spacing,
+          crossAxisSpacing: spacing,
+        ),
         itemCount: children.length,
         itemBuilder: (context, index) => children[index],
       ),
@@ -254,7 +285,12 @@ class ResponsiveLayout extends StatelessWidget {
   final Widget tablet; // 768–1023px
   final Widget desktop; // 1024px+ (web, desktop, large displays)
 
-  const ResponsiveLayout({super.key, required this.mobilePlus, required this.tablet, required this.desktop});
+  const ResponsiveLayout({
+    super.key,
+    required this.mobilePlus,
+    required this.tablet,
+    required this.desktop,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -274,27 +310,47 @@ class ResponsiveLayout extends StatelessWidget {
 class ResponsiveText {
   static TextStyle body(BuildContext context) {
     final scale = ResponsiveBreakpoints.getFontScale(context);
-    return TextStyle(fontSize: 14 * scale, fontWeight: FontWeight.normal, height: 1.5);
+    return TextStyle(
+      fontSize: 14 * scale,
+      fontWeight: FontWeight.normal,
+      height: 1.5,
+    );
   }
 
   static TextStyle caption(BuildContext context) {
     final scale = ResponsiveBreakpoints.getFontScale(context);
-    return TextStyle(fontSize: 12 * scale, fontWeight: FontWeight.normal, height: 1.4);
+    return TextStyle(
+      fontSize: 12 * scale,
+      fontWeight: FontWeight.normal,
+      height: 1.4,
+    );
   }
 
   static TextStyle heading1(BuildContext context) {
     final scale = ResponsiveBreakpoints.getFontScale(context);
-    return TextStyle(fontSize: 28 * scale, fontWeight: FontWeight.bold, height: 1.2);
+    return TextStyle(
+      fontSize: 28 * scale,
+      fontWeight: FontWeight.bold,
+      height: 1.2,
+    );
   }
 
   static TextStyle heading2(BuildContext context) {
     final scale = ResponsiveBreakpoints.getFontScale(context);
-    return TextStyle(fontSize: 24 * scale, fontWeight: FontWeight.bold, height: 1.3);
+    return TextStyle(
+      fontSize: 24 * scale,
+      fontWeight: FontWeight.bold,
+      height: 1.3,
+    );
   }
 
   static TextStyle heading3(BuildContext context) {
     final scale = ResponsiveBreakpoints.getFontScale(context);
-    return TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600, height: 1.4);
+    return TextStyle(
+      fontSize: 20 * scale,
+      fontWeight: FontWeight.w600,
+      height: 1.4,
+    );
   }
 }
 

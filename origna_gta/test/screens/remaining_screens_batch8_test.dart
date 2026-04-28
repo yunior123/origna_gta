@@ -11,10 +11,7 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<ProductRepository>(),
-  MockSpec<OrderRepository>(),
-])
+@GenerateNiceMocks([MockSpec<ProductRepository>(), MockSpec<OrderRepository>()])
 import 'remaining_screens_batch8_test.mocks.dart';
 
 void main() {
@@ -27,7 +24,10 @@ void main() {
   });
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
     mockProductRepo = MockProductRepository();
     mockOrderRepo = MockOrderRepository();
   });

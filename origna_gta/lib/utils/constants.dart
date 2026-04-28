@@ -260,7 +260,8 @@ class ShippingQuantityDiscount {
   factory ShippingQuantityDiscount.fromMap(Map<String, dynamic> map) {
     return ShippingQuantityDiscount(
       minQuantity: (map[Fields.minQuantity] as num?)?.toInt() ?? 0,
-      discountType: map[Fields.discountType] as String? ?? DiscountTypeValues.percent,
+      discountType:
+          map[Fields.discountType] as String? ?? DiscountTypeValues.percent,
       discountValue: (map[Fields.discountValue] as num?)?.toDouble() ?? 0.0,
       label: map[Fields.label] as String?,
     );
@@ -329,7 +330,8 @@ class SellerDeliveryOption {
     final isEnabled = map[Fields.isEnabled] as bool? ?? false;
     if (!isEnabled) return null;
 
-    final altSpeed = map[Fields.speed] as String? ?? DeliverySpeed.standard.value;
+    final altSpeed =
+        map[Fields.speed] as String? ?? DeliverySpeed.standard.value;
     final altDays = (map[Fields.estimatedDays] as num?)?.toInt() ?? 5;
     final altPriceCents = map.containsKey(Fields.priceCents)
         ? (map[Fields.priceCents] as num?)?.toInt() ?? 0

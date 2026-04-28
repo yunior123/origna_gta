@@ -21,22 +21,34 @@ void main() {
     container = ProviderContainer(
       overrides: [
         chatRepositoryProvider.overrideWithValue(mockRepo),
-        subscriptionStreamProvider.overrideWith((ref) => Stream.value(
-          const SubscriptionInfo(status: 'active', isPremium: true),
-        )),
+        subscriptionStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            const SubscriptionInfo(status: 'active', isPremium: true),
+          ),
+        ),
       ],
     );
   });
 
   group('ChatViewModel', () {
     test('openChat sets chatId on success', () async {
-      when(mockRepo.getOrCreateChat(productId)).thenAnswer((_) async => 'chat_456');
-      
-      final viewModel = container.read(chatViewModelProvider(productId).notifier);
+      when(
+        mockRepo.getOrCreateChat(productId),
+      ).thenAnswer((_) async => 'chat_456');
+
+      final viewModel = container.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
-      expect(container.read(chatViewModelProvider(productId)).chatId, 'chat_456');
-      expect(container.read(chatViewModelProvider(productId)).isLoading, isFalse);
+      expect(
+        container.read(chatViewModelProvider(productId)).chatId,
+        'chat_456',
+      );
+      expect(
+        container.read(chatViewModelProvider(productId)).isLoading,
+        isFalse,
+      );
     });
 
     test('openChat sets isPremiumRequired when not premium', () async {
@@ -44,17 +56,29 @@ void main() {
       final nonPremiumContainer = ProviderContainer(
         overrides: [
           chatRepositoryProvider.overrideWithValue(mockRepo),
-          subscriptionStreamProvider.overrideWith((ref) => Stream.value(
-            const SubscriptionInfo(status: 'inactive', isPremium: false),
-          )),
+          subscriptionStreamProvider.overrideWith(
+            (ref) => Stream.value(
+              const SubscriptionInfo(status: 'inactive', isPremium: false),
+            ),
+          ),
         ],
       );
-      
-      final viewModel = nonPremiumContainer.read(chatViewModelProvider(productId).notifier);
+
+      final viewModel = nonPremiumContainer.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
-      expect(nonPremiumContainer.read(chatViewModelProvider(productId)).isPremiumRequired, isTrue);
-      expect(nonPremiumContainer.read(chatViewModelProvider(productId)).chatId, isNull);
+      expect(
+        nonPremiumContainer
+            .read(chatViewModelProvider(productId))
+            .isPremiumRequired,
+        isTrue,
+      );
+      expect(
+        nonPremiumContainer.read(chatViewModelProvider(productId)).chatId,
+        isNull,
+      );
       verifyNever(mockRepo.getOrCreateChat(any));
     });
 
@@ -62,17 +86,29 @@ void main() {
       when(mockRepo.getOrCreateChat(productId)).thenThrow(
         OrignaBaseException('cannot chat with yourself', statusCode: 403),
       );
-      
-      final viewModel = container.read(chatViewModelProvider(productId).notifier);
+
+      final viewModel = container.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
-      expect(container.read(chatViewModelProvider(productId)).isOwnProduct, isTrue);
-      expect(container.read(chatViewModelProvider(productId)).errorMessage, isNull);
+      expect(
+        container.read(chatViewModelProvider(productId)).isOwnProduct,
+        isTrue,
+      );
+      expect(
+        container.read(chatViewModelProvider(productId)).errorMessage,
+        isNull,
+      );
     });
 
     test('sendMessage calls repository with trimmed text', () async {
-      when(mockRepo.getOrCreateChat(productId)).thenAnswer((_) async => 'chat_456');
-      final viewModel = container.read(chatViewModelProvider(productId).notifier);
+      when(
+        mockRepo.getOrCreateChat(productId),
+      ).thenAnswer((_) async => 'chat_456');
+      final viewModel = container.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
       await viewModel.sendMessage('  Hello World  ');
@@ -81,19 +117,30 @@ void main() {
     });
 
     test('sendMessage validates min length', () async {
-      when(mockRepo.getOrCreateChat(productId)).thenAnswer((_) async => 'chat_456');
-      final viewModel = container.read(chatViewModelProvider(productId).notifier);
+      when(
+        mockRepo.getOrCreateChat(productId),
+      ).thenAnswer((_) async => 'chat_456');
+      final viewModel = container.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
       await viewModel.sendMessage('a'); // Assuming min is > 1
 
-      expect(container.read(chatViewModelProvider(productId)).errorMessage, contains('too short'));
+      expect(
+        container.read(chatViewModelProvider(productId)).errorMessage,
+        contains('too short'),
+      );
       verifyNever(mockRepo.sendMessage(any, any));
     });
 
     test('markRead calls repository', () async {
-      when(mockRepo.getOrCreateChat(productId)).thenAnswer((_) async => 'chat_456');
-      final viewModel = container.read(chatViewModelProvider(productId).notifier);
+      when(
+        mockRepo.getOrCreateChat(productId),
+      ).thenAnswer((_) async => 'chat_456');
+      final viewModel = container.read(
+        chatViewModelProvider(productId).notifier,
+      );
       await viewModel.openChat();
 
       await viewModel.markRead();

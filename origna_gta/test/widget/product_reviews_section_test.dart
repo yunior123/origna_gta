@@ -6,7 +6,6 @@ import 'package:origna_gta/features/products/review_eligibility_provider.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/screens/widgets/product_detail/product_reviews_section.dart';
 
-
 import '../test_utils.dart';
 
 void main() {

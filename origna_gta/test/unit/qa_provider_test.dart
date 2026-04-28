@@ -8,9 +8,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import 'package:origna_gta/models/qa_model.dart';
 
-@GenerateNiceMocks([
-  MockSpec<QARepository>(),
-])
+@GenerateNiceMocks([MockSpec<QARepository>()])
 import 'qa_provider_test.mocks.dart';
 
 void main() {
@@ -23,12 +21,14 @@ void main() {
       overrides: [
         qaRepositoryProvider.overrideWithValue(mockRepo),
         userIdProvider.overrideWith((ref) => 'user_123'),
-        subscriptionStreamProvider.overrideWith((ref) => Stream.value(
-          const SubscriptionInfo(isPremium: true, status: 'active')
-        )),
+        subscriptionStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            const SubscriptionInfo(isPremium: true, status: 'active'),
+          ),
+        ),
       ],
     );
-    
+
     when(mockRepo.submitQuestion(any, any)).thenAnswer((_) async => {});
     when(mockRepo.submitAnswer(any, any)).thenAnswer((_) async => {});
   });
@@ -37,9 +37,11 @@ void main() {
     test('askQuestion calls repository when premium', () async {
       // Wait for subscription state to load
       await container.read(subscriptionStreamProvider.future);
-      
-      await container.read(qaControllerProvider.notifier).askQuestion('p1', 'What is this?');
-      
+
+      await container
+          .read(qaControllerProvider.notifier)
+          .askQuestion('p1', 'What is this?');
+
       verify(mockRepo.submitQuestion('p1', 'What is this?')).called(1);
       expect(container.read(qaControllerProvider).hasError, isFalse);
     });
@@ -49,23 +51,32 @@ void main() {
         overrides: [
           qaRepositoryProvider.overrideWithValue(mockRepo),
           userIdProvider.overrideWith((ref) => 'user_123'),
-          subscriptionStreamProvider.overrideWith((ref) => Stream.value(
-            const SubscriptionInfo(isPremium: false, status: 'none')
-          )),
+          subscriptionStreamProvider.overrideWith(
+            (ref) => Stream.value(
+              const SubscriptionInfo(isPremium: false, status: 'none'),
+            ),
+          ),
         ],
       );
-      
+
       await container.read(subscriptionStreamProvider.future);
-      await container.read(qaControllerProvider.notifier).askQuestion('p1', 'What is this?');
-      
+      await container
+          .read(qaControllerProvider.notifier)
+          .askQuestion('p1', 'What is this?');
+
       expect(container.read(qaControllerProvider).hasError, isTrue);
-      expect(container.read(qaControllerProvider).error, isA<PremiumRequiredException>());
+      expect(
+        container.read(qaControllerProvider).error,
+        isA<PremiumRequiredException>(),
+      );
       verifyNever(mockRepo.submitQuestion(any, any));
     });
 
     test('answerQuestion calls repository', () async {
-      await container.read(qaControllerProvider.notifier).answerQuestion(qaId: 'q1', answer: 'Ans');
-      
+      await container
+          .read(qaControllerProvider.notifier)
+          .answerQuestion(qaId: 'q1', answer: 'Ans');
+
       verify(mockRepo.submitAnswer('q1', 'Ans')).called(1);
     });
 
@@ -92,8 +103,9 @@ void main() {
     });
 
     test('askQuestion stores repository errors', () async {
-      when(mockRepo.submitQuestion(any, any))
-          .thenThrow(Exception('backend down'));
+      when(
+        mockRepo.submitQuestion(any, any),
+      ).thenThrow(Exception('backend down'));
       await container.read(subscriptionStreamProvider.future);
 
       await container
@@ -101,10 +113,7 @@ void main() {
           .askQuestion('p1', 'What broke?');
 
       expect(container.read(qaControllerProvider).hasError, isTrue);
-      expect(
-        container.read(qaControllerProvider).error,
-        isA<Exception>(),
-      );
+      expect(container.read(qaControllerProvider).error, isA<Exception>());
     });
   });
 
@@ -147,7 +156,9 @@ void main() {
       ];
       when(mockRepo.watchQA('p1')).thenAnswer((_) => Stream.value(questions));
 
-      final count = await container.read(unansweredQaCountProvider('p1').future);
+      final count = await container.read(
+        unansweredQaCountProvider('p1').future,
+      );
       expect(count, 2);
     });
   });

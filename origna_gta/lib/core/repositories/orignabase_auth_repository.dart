@@ -258,7 +258,10 @@ class OrignaBaseAuthRepository implements AuthRepository {
         // See: https://pub.dev/packages/google_sign_in_web — "authenticate is not supported on the web"
         bool? googleEnabledOnBackend;
         try {
-          final providers = await _ob.request('GET', ApiEndpoints.authProviders);
+          final providers = await _ob.request(
+            'GET',
+            ApiEndpoints.authProviders,
+          );
           final google = providers['google'];
           googleEnabledOnBackend = google is Map && google['enabled'] == true;
         } on OrignaBaseAuthException {

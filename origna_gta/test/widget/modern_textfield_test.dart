@@ -4,7 +4,9 @@ import 'package:origna_gta/widgets/modern_textfield.dart';
 
 void main() {
   group('ModernTextField Widget Tests', () {
-    testWidgets('renders text field with label and hint', (WidgetTester tester) async {
+    testWidgets('renders text field with label and hint', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -21,7 +23,9 @@ void main() {
       expect(find.byType(TextFormField), findsOneWidget);
     });
 
-    testWidgets('accepts user input and triggers onChanged', (WidgetTester tester) async {
+    testWidgets('accepts user input and triggers onChanged', (
+      WidgetTester tester,
+    ) async {
       String inputValue = '';
 
       await tester.pumpWidget(
@@ -40,7 +44,9 @@ void main() {
       expect(inputValue, 'HelloWorld');
     });
 
-    testWidgets('renders password field and toggles visibility', (WidgetTester tester) async {
+    testWidgets('renders password field and toggles visibility', (
+      WidgetTester tester,
+    ) async {
       bool isPasswordVisible = false;
 
       await tester.pumpWidget(
@@ -50,7 +56,9 @@ void main() {
               home: Scaffold(
                 body: ModernTextField(
                   isPassword: !isPasswordVisible,
-                  suffixIcon: isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                  suffixIcon: isPasswordVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
                   onSuffixTap: () {
                     setState(() {
                       isPasswordVisible = !isPasswordVisible;
@@ -75,18 +83,16 @@ void main() {
     testWidgets('renders prefix icon', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: ModernTextField(
-              prefixIcon: Icons.email,
-            ),
-          ),
+          home: Scaffold(body: ModernTextField(prefixIcon: Icons.email)),
         ),
       );
 
       expect(find.byIcon(Icons.email), findsOneWidget);
     });
 
-    testWidgets('displays error when validation fails', (WidgetTester tester) async {
+    testWidgets('displays error when validation fails', (
+      WidgetTester tester,
+    ) async {
       final formKey = GlobalKey<FormState>();
 
       await tester.pumpWidget(
@@ -95,7 +101,8 @@ void main() {
             body: Form(
               key: formKey,
               child: ModernTextField(
-                validator: (val) => val == null || val.isEmpty ? 'Field required' : null,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Field required' : null,
               ),
             ),
           ),
@@ -115,11 +122,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark(),
-          home: Scaffold(
-            body: ModernTextField(
-              label: 'Dark Mode Label',
-            ),
-          ),
+          home: Scaffold(body: ModernTextField(label: 'Dark Mode Label')),
         ),
       );
 

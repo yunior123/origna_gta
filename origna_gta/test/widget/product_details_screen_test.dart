@@ -19,9 +19,7 @@ import 'package:origna_gta/screens/productdetails_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../test_utils.dart';
-@GenerateNiceMocks([
-  MockSpec<CartController>(),
-])
+@GenerateNiceMocks([MockSpec<CartController>()])
 import 'product_details_screen_test.mocks.dart';
 
 class FakeAuthRepository implements AuthRepository {
@@ -94,7 +92,13 @@ void main() {
     rating: 4.5,
     ratingCount: 10,
     isLocalDeliveryOnly: false,
-    sellerAddress: const Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M 1M1', country: 'CA'),
+    sellerAddress: const Address(
+      street: 'S',
+      city: 'C',
+      state: 'ON',
+      postalCode: 'M1M 1M1',
+      country: 'CA',
+    ),
   );
   const signedInUser = AppAuthUser(
     uid: 'u1',
@@ -103,14 +107,21 @@ void main() {
   );
   final fakeAuthRepository = FakeAuthRepository();
 
-  Widget createTestApp({required Widget child, List<Override> overrides = const []}) {
+  Widget createTestApp({
+    required Widget child,
+    List<Override> overrides = const [],
+  }) {
     return TestWrapper(
       overrides: [
         obUserIdProvider.overrideWithValue(null),
         obAuthStateProvider.overrideWith((ref) => const Stream.empty()),
         sellerMetricsProvider('s1').overrideWith((ref) => const Stream.empty()),
-        sellerMetricsProvider('seller_123').overrideWith((ref) => const Stream.empty()),
-        buyerOrdersProvider.overrideWith((ref) => Stream.value(const <Order>[])),
+        sellerMetricsProvider(
+          'seller_123',
+        ).overrideWith((ref) => const Stream.empty()),
+        buyerOrdersProvider.overrideWith(
+          (ref) => Stream.value(const <Order>[]),
+        ),
         similarProductsProvider((
           excludeProductId: 'p1',
           categoryId: 1,
@@ -133,14 +144,26 @@ void main() {
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => testProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
+              (ref) => Stream.value(
+                models.UserModel(
+                  uid: 'u1',
+                  name: 'User',
+                  email: 'e',
+                  roles: const [UserRole.buyer],
+                  createdAt: DateTime.now(),
+                ),
+              ),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),
             authRepositoryProvider.overrideWithValue(fakeAuthRepository),
-            subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => const Stream.empty(),
+            ),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
+            productRatingsProvider(
+              'p1',
+            ).overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -163,8 +186,20 @@ void main() {
           VariantOption(name: 'Size', values: ['Small', 'Large']),
         ],
         variants: [
-          const ProductVariant(variantId: 'v1', optionValues: {'Size': 'Small'}, priceCents: 1000, stockQuantity: 5, sku: 'S1'),
-          const ProductVariant(variantId: 'v2', optionValues: {'Size': 'Large'}, priceCents: 1500, stockQuantity: 2, sku: 'L1'),
+          const ProductVariant(
+            variantId: 'v1',
+            optionValues: {'Size': 'Small'},
+            priceCents: 1000,
+            stockQuantity: 5,
+            sku: 'S1',
+          ),
+          const ProductVariant(
+            variantId: 'v2',
+            optionValues: {'Size': 'Large'},
+            priceCents: 1500,
+            stockQuantity: 2,
+            sku: 'L1',
+          ),
         ],
       );
 
@@ -173,14 +208,26 @@ void main() {
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => variantProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
+              (ref) => Stream.value(
+                models.UserModel(
+                  uid: 'u1',
+                  name: 'User',
+                  email: 'e',
+                  roles: const [UserRole.buyer],
+                  createdAt: DateTime.now(),
+                ),
+              ),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),
             authRepositoryProvider.overrideWithValue(fakeAuthRepository),
-            subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => const Stream.empty(),
+            ),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
+            productRatingsProvider(
+              'p1',
+            ).overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -201,21 +248,39 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      when(mockCartController.addToCart(any, any, variantId: anyNamed('variantId'))).thenAnswer((_) async => true);
+      when(
+        mockCartController.addToCart(
+          any,
+          any,
+          variantId: anyNamed('variantId'),
+        ),
+      ).thenAnswer((_) async => true);
 
       await tester.pumpWidget(
         createTestApp(
           overrides: [
             productByIdProvider('p1').overrideWith((ref) => testProduct),
             userProfileProvider.overrideWith(
-              (ref) => Stream.value(models.UserModel(uid: 'u1', name: 'User', email: 'e', roles: const [UserRole.buyer], createdAt: DateTime.now())),
+              (ref) => Stream.value(
+                models.UserModel(
+                  uid: 'u1',
+                  name: 'User',
+                  email: 'e',
+                  roles: const [UserRole.buyer],
+                  createdAt: DateTime.now(),
+                ),
+              ),
             ),
             authStateProvider.overrideWith((ref) => Stream.value(signedInUser)),
             currentUserProvider.overrideWithValue(signedInUser),
             authRepositoryProvider.overrideWithValue(fakeAuthRepository),
-            subscriptionStreamProvider.overrideWith((ref) => const Stream.empty()),
+            subscriptionStreamProvider.overrideWith(
+              (ref) => const Stream.empty(),
+            ),
             qaListProvider('p1').overrideWith((ref) => const Stream.empty()),
-            productRatingsProvider('p1').overrideWith((ref) => const Stream.empty()),
+            productRatingsProvider(
+              'p1',
+            ).overrideWith((ref) => const Stream.empty()),
             cartControllerProvider.overrideWithValue(mockCartController),
           ],
           child: const ProductDetailScreen(productId: 'p1'),
@@ -230,6 +295,5 @@ void main() {
 
       verify(mockCartController.addToCart('p1', 1, variantId: null)).called(1);
     });
-
   });
 }

@@ -37,7 +37,14 @@ void main() {
     });
 
     test('formattedAddress and fullAddress', () {
-      final address = Address(street: '123 Main St', apartment: 'Apt 4', city: 'Toronto', state: 'ON', postalCode: 'M5V', country: 'Canada');
+      final address = Address(
+        street: '123 Main St',
+        apartment: 'Apt 4',
+        city: 'Toronto',
+        state: 'ON',
+        postalCode: 'M5V',
+        country: 'Canada',
+      );
 
       final formatted = address.formattedAddress;
       expect(formatted.contains('123 Main St'), true);
@@ -97,7 +104,13 @@ void main() {
   group('CartItemModel Tests', () {
     test('fromMap and toMap', () {
       final ts = Timestamp.now();
-      final map = {Fields.cartItemId: 'cart_1', Fields.quantity: 3, Fields.productId: 'prod_1', Fields.createdAt: ts, Fields.buyerNote: 'Note'};
+      final map = {
+        Fields.cartItemId: 'cart_1',
+        Fields.quantity: 3,
+        Fields.productId: 'prod_1',
+        Fields.createdAt: ts,
+        Fields.buyerNote: 'Note',
+      };
 
       final item = CartItemModel.fromMap(map, docId: 'cart_1');
       expect(item.cartItemId, 'cart_1');
@@ -113,7 +126,13 @@ void main() {
   group('CartModel Tests', () {
     test('fromMap and toMap', () {
       final ts = Timestamp.now();
-      final map = {Fields.cartItemId: 'cart_item_1', Fields.productId: 'prod_1', Fields.quantity: 5, Fields.createdAt: ts, Fields.priceSnapshot: 1500};
+      final map = {
+        Fields.cartItemId: 'cart_item_1',
+        Fields.productId: 'prod_1',
+        Fields.quantity: 5,
+        Fields.createdAt: ts,
+        Fields.priceSnapshot: 1500,
+      };
 
       final model = CartModel.fromMap(map);
       expect(model.quantity, 5);
@@ -175,7 +194,10 @@ void main() {
       expect(order.allSellersPaid, false);
 
       final toMap = order.toMap();
-      expect(toMap[Fields.orderId], null); // Order ID is usually not in toMap directly if it's the doc key, but let's check totalAmountCents
+      expect(
+        toMap[Fields.orderId],
+        null,
+      ); // Order ID is usually not in toMap directly if it's the doc key, but let's check totalAmountCents
       expect(toMap[Fields.totalAmountCents], 1000);
     });
   });
@@ -262,7 +284,10 @@ void main() {
       expect(user.uid, 'user_1');
       expect(user.email, 'user@test.com');
       expect(user.isPremium, true);
-      expect(user.canReceivePayouts, false); // because payoutsEnabled is hardcoded false locally
+      expect(
+        user.canReceivePayouts,
+        false,
+      ); // because payoutsEnabled is hardcoded false locally
       expect(user.canSell, false);
 
       final toMapMap = user.toMap();
@@ -271,7 +296,13 @@ void main() {
     });
 
     test('copyWith', () {
-      final user = UserModel(uid: 'user_1', email: 'user@test.com', name: 'User', roles: [], createdAt: DateTime.now());
+      final user = UserModel(
+        uid: 'user_1',
+        email: 'user@test.com',
+        name: 'User',
+        roles: [],
+        createdAt: DateTime.now(),
+      );
 
       final copied = user.copyWith(name: 'New Name', isPremium: true);
       expect(copied.name, 'New Name');

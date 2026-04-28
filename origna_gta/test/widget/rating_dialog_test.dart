@@ -9,9 +9,7 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/features/subscription/subscription_provider.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<ProductRepository>(),
-])
+@GenerateNiceMocks([MockSpec<ProductRepository>()])
 import 'rating_dialog_test.mocks.dart';
 
 void main() {
@@ -22,16 +20,18 @@ void main() {
     initTestMocks();
   });
 
-  Widget createTestWidget({
-    bool isPremium = false,
-  }) {
+  Widget createTestWidget({bool isPremium = false}) {
     return TestWrapper(
       overrides: [
         productRepositoryProvider.overrideWithValue(mockRepo),
-        subscriptionStreamProvider.overrideWith((ref) => Stream.value(SubscriptionInfo(
-          isPremium: isPremium, 
-          status: isPremium ? 'active' : 'inactive',
-        ))),
+        subscriptionStreamProvider.overrideWith(
+          (ref) => Stream.value(
+            SubscriptionInfo(
+              isPremium: isPremium,
+              status: isPremium ? 'active' : 'inactive',
+            ),
+          ),
+        ),
       ],
       child: const Scaffold(
         body: RatingDialog(
@@ -67,7 +67,9 @@ void main() {
       expect(find.byIcon(Icons.star), findsNWidgets(4));
     });
 
-    testWidgets('shows premium label for photos when not premium', (tester) async {
+    testWidgets('shows premium label for photos when not premium', (
+      tester,
+    ) async {
       await tester.pumpWidget(createTestWidget(isPremium: false));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
@@ -77,8 +79,15 @@ void main() {
     });
 
     testWidgets('can submit rating', (tester) async {
-      when(mockRepo.submitRatingAtomic(any, any, any, reviewImages: anyNamed('reviewImages'), reviewText: anyNamed('reviewText')))
-          .thenAnswer((_) async => Future.value());
+      when(
+        mockRepo.submitRatingAtomic(
+          any,
+          any,
+          any,
+          reviewImages: anyNamed('reviewImages'),
+          reviewText: anyNamed('reviewText'),
+        ),
+      ).thenAnswer((_) async => Future.value());
 
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
@@ -97,12 +106,27 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      verify(mockRepo.submitRatingAtomic('order_123', 'prod_123', 5, reviewText: 'Great product!', reviewImages: null)).called(1);
+      verify(
+        mockRepo.submitRatingAtomic(
+          'order_123',
+          'prod_123',
+          5,
+          reviewText: 'Great product!',
+          reviewImages: null,
+        ),
+      ).called(1);
     });
 
     testWidgets('shows error on submission failure', (tester) async {
-      when(mockRepo.submitRatingAtomic(any, any, any, reviewImages: anyNamed('reviewImages'), reviewText: anyNamed('reviewText')))
-          .thenThrow(Exception('Failed to submit'));
+      when(
+        mockRepo.submitRatingAtomic(
+          any,
+          any,
+          any,
+          reviewImages: anyNamed('reviewImages'),
+          reviewText: anyNamed('reviewText'),
+        ),
+      ).thenThrow(Exception('Failed to submit'));
 
       await tester.pumpWidget(createTestWidget());
       await tester.pump();
@@ -119,15 +143,15 @@ void main() {
 
       expect(find.text('Failed to submit rating'), findsOneWidget);
     });
-   group('RatingDialog Photo Picker (Premium)', () {
-    testWidgets('shows photo picker when premium', (tester) async {
-      await tester.pumpWidget(createTestWidget(isPremium: true));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+    group('RatingDialog Photo Picker (Premium)', () {
+      testWidgets('shows photo picker when premium', (tester) async {
+        await tester.pumpWidget(createTestWidget(isPremium: true));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
 
-      expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
-      expect(find.text('(0/3)'), findsOneWidget);
+        expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
+        expect(find.text('(0/3)'), findsOneWidget);
+      });
     });
-  });
   });
 }

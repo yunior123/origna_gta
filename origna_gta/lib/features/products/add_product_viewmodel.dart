@@ -197,7 +197,11 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   void updateSpec(int index, String key, String value) {
     final entries = List<Map<String, String>>.from(state.specEntries);
     if (index >= 0 && index < entries.length) {
-      entries[index] = {...entries[index], Fields.specKey: key, Fields.specValue: value};
+      entries[index] = {
+        ...entries[index],
+        Fields.specKey: key,
+        Fields.specValue: value,
+      };
       state = state.copyWith(specEntries: entries);
     }
   }
@@ -645,6 +649,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   void removeImage(int index) => state = state.copyWith(
     imageModels: List<ImageModel>.from(state.imageModels)..removeAt(index),
   );
+
   /// Removes the variant option at [index] and regenerates variant combinations.
   void removeVariantOption(int index) {
     final options = List<VariantOption>.from(state.variantOptions);
@@ -761,15 +766,18 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     sameDayEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+
   /// Sets the seller SKU, trimming whitespace and treating empty as null.
   void setSellerSku(String? sku) => state = state.copyWith(
     sellerSku: sku?.trim().isEmpty == true ? null : sku?.trim(),
   );
+
   /// Toggles standard delivery; disables local-only when enabled.
   void setStandardEnabled(bool value) => state = state.copyWith(
     standardEnabled: value,
     isLocalDeliveryOnly: value ? false : state.isLocalDeliveryOnly,
   );
+
   /// Sets the selected subcategory for the product.
   void setSubcategory(String? sub) =>
       state = state.copyWith(selectedSubcategory: sub);

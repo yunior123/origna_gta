@@ -11,18 +11,36 @@ void main() {
   group('Definitions Coverage', () {
     test('access all providers to get coverage', () {
       final container = ProviderContainer();
-      
+
       // Accessing providers (some will throw if not mocked, but that's okay for coverage if we catch or if they are lazy)
       // Actually, just reading them triggers the factory function.
-      try { container.read(envConfigProvider); } catch (_) {}
-      try { container.read(userRepositoryProvider); } catch (_) {}
-      try { container.read(productRepositoryProvider); } catch (_) {}
-      try { container.read(orderRepositoryProvider); } catch (_) {}
-      try { container.read(cartRepositoryProvider); } catch (_) {}
-      try { container.read(locationRepositoryProvider); } catch (_) {}
-      try { container.read(notificationRepositoryProvider); } catch (_) {}
-      try { container.read(orignabaseProvider); } catch (_) {}
-      try { container.read(userIdProvider); } catch (_) {}
+      try {
+        container.read(envConfigProvider);
+      } catch (_) {}
+      try {
+        container.read(userRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(productRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(orderRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(cartRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(locationRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(notificationRepositoryProvider);
+      } catch (_) {}
+      try {
+        container.read(orignabaseProvider);
+      } catch (_) {}
+      try {
+        container.read(userIdProvider);
+      } catch (_) {}
     });
 
     test('access constants to get coverage', () {

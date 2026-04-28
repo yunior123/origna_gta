@@ -8,11 +8,7 @@ void main() {
     testWidgets('renders card with child', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: ModernCard(
-              child: const Text('Card Content'),
-            ),
-          ),
+          home: Scaffold(body: ModernCard(child: const Text('Card Content'))),
         ),
       );
 
@@ -42,7 +38,9 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    testWidgets('handles hover effects when enabled and tap is provided', (WidgetTester tester) async {
+    testWidgets('handles hover effects when enabled and tap is provided', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -61,7 +59,9 @@ void main() {
       );
 
       // Create a pointer to simulate mouse hover
-      final TestGesture gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      final TestGesture gesture = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
       await gesture.addPointer(location: Offset.zero);
       await tester.pump();
 
@@ -69,7 +69,7 @@ void main() {
       await gesture.moveTo(tester.getCenter(mouseRegionFinder));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50)); // Advance animation
-      
+
       // Move mouse away
       await gesture.moveTo(const Offset(1000, 1000));
       await tester.pump();
@@ -89,7 +89,8 @@ void main() {
       );
 
       final semanticsFinder = find.byWidgetPredicate(
-        (widget) => widget is Semantics && widget.properties.label == 'Special Card',
+        (widget) =>
+            widget is Semantics && widget.properties.label == 'Special Card',
       );
       expect(semanticsFinder, findsOneWidget);
     });
@@ -98,21 +99,21 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark(),
-          home: Scaffold(
-            body: ModernCard(
-              child: const Text('Dark Card'),
-            ),
-          ),
+          home: Scaffold(body: ModernCard(child: const Text('Dark Card'))),
         ),
       );
 
       expect(find.text('Dark Card'), findsOneWidget);
-      
-      final container = tester.widget<Container>(find.descendant(
-        of: find.byType(ModernCard),
-        matching: find.byType(Container),
-      ).first);
-      
+
+      final container = tester.widget<Container>(
+        find
+            .descendant(
+              of: find.byType(ModernCard),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, isNotNull);
     });

@@ -169,10 +169,8 @@ abstract final class ErrorEventService {
     }
     if (value is Map) {
       return value.map(
-        (key, nestedValue) => MapEntry(
-          key.toString(),
-          _normalizeJsonValue(nestedValue),
-        ),
+        (key, nestedValue) =>
+            MapEntry(key.toString(), _normalizeJsonValue(nestedValue)),
       );
     }
     if (value is Iterable) {

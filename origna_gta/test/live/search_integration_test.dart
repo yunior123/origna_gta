@@ -38,10 +38,15 @@ void main() {
           Collections.products,
           'product',
           limit: 10,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
 
-        expect(result, isA<Map<String, dynamic>>(), reason: 'Search should return a map');
+        expect(
+          result,
+          isA<Map<String, dynamic>>(),
+          reason: 'Search should return a map',
+        );
         final hits = (result['hits'] as List<dynamic>?) ?? [];
         if (hits.isEmpty && EnvConfig().isEmulator) {
           final fallback = await ob
@@ -55,7 +60,11 @@ void main() {
           expect(fallback.docs, isNotEmpty);
           return;
         }
-        expect(hits, isNotEmpty, reason: 'Search should return at least one hit for "product"');
+        expect(
+          hits,
+          isNotEmpty,
+          reason: 'Search should return at least one hit for "product"',
+        );
 
         // Verify hits contain expected product structure
         for (final hit in hits.take(3)) {
@@ -79,7 +88,8 @@ void main() {
           Collections.products,
           '',
           limit: 20,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
 
         expect(result, isA<Map<String, dynamic>>());
@@ -108,12 +118,17 @@ void main() {
           Collections.products,
           'zzznomatch99xyz_shouldneverexist',
           limit: 10,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
 
         expect(result, isA<Map<String, dynamic>>());
         final hits = (result['hits'] as List<dynamic>?) ?? [];
-        expect(hits, isEmpty, reason: 'No-match query should return empty list');
+        expect(
+          hits,
+          isEmpty,
+          reason: 'No-match query should return empty list',
+        );
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
@@ -126,7 +141,8 @@ void main() {
           Collections.products,
           '',
           limit: 5,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
 
         final hits = (allResult['hits'] as List<dynamic>?) ?? [];
@@ -150,13 +166,20 @@ void main() {
         );
 
         final filteredHits = (filteredResult['hits'] as List<dynamic>?) ?? [];
-        expect(filteredHits, isNotEmpty, reason: 'Should find products in category');
+        expect(
+          filteredHits,
+          isNotEmpty,
+          reason: 'Should find products in category',
+        );
 
         // Verify all results have matching category
         for (final hit in filteredHits) {
           final hitMap = hit as Map<String, dynamic>;
-          expect(hitMap[Fields.categoryId], equals(categoryId),
-              reason: 'All results should have matching categoryId');
+          expect(
+            hitMap[Fields.categoryId],
+            equals(categoryId),
+            reason: 'All results should have matching categoryId',
+          );
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),
@@ -170,7 +193,8 @@ void main() {
           Collections.products,
           '',
           limit: 5,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
         final page1Hits = (page1Result['hits'] as List<dynamic>?) ?? [];
 
@@ -184,12 +208,14 @@ void main() {
           Collections.products,
           'electronics',
           limit: 5,
-          filter: '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
+          filter:
+              '${Fields.lifecycleStatus} = ${ProductLifecycleStatusValues.active}',
         );
         final page2Hits = (page2Result['hits'] as List<dynamic>?) ?? [];
 
         // At least verify we can get results
-        if ((page1Hits.isEmpty || page2Hits.isEmpty) && EnvConfig().isEmulator) {
+        if ((page1Hits.isEmpty || page2Hits.isEmpty) &&
+            EnvConfig().isEmulator) {
           return;
         }
         expect(page1Hits, isNotEmpty);

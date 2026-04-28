@@ -4,9 +4,7 @@ import 'package:mockito/annotations.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/models/models.dart';
 
-@GenerateNiceMocks([
-  MockSpec<UserRepository>(),
-])
+@GenerateNiceMocks([MockSpec<UserRepository>()])
 import 'user_repository_test.mocks.dart';
 
 void main() {
@@ -18,13 +16,15 @@ void main() {
 
   group('UserRepository Comprehensive Tests', () {
     test('getUserProfile returns user model', () async {
-      when(mockRepository.getUserProfile('u1')).thenAnswer((_) async => UserModel(
-        uid: 'u1',
-        email: 'u1@e.com',
-        name: 'U1',
-        roles: [UserRole.buyer],
-        createdAt: DateTime.now(),
-      ));
+      when(mockRepository.getUserProfile('u1')).thenAnswer(
+        (_) async => UserModel(
+          uid: 'u1',
+          email: 'u1@e.com',
+          name: 'U1',
+          roles: [UserRole.buyer],
+          createdAt: DateTime.now(),
+        ),
+      );
 
       final profile = await mockRepository.getUserProfile('u1');
       expect(profile, isNotNull);
@@ -34,7 +34,13 @@ void main() {
     test('addBuyerAddress calls repository', () async {
       when(mockRepository.addBuyerAddress(any)).thenAnswer((_) async => 'a1');
 
-      final address = Address(street: 'S', city: 'C', state: 'P', postalCode: 'Z', country: 'CA');
+      final address = Address(
+        street: 'S',
+        city: 'C',
+        state: 'P',
+        postalCode: 'Z',
+        country: 'CA',
+      );
       final addressId = await mockRepository.addBuyerAddress(address);
 
       expect(addressId, 'a1');
@@ -48,7 +54,15 @@ void main() {
 
     test('watchAddresses returns list', () async {
       when(mockRepository.watchAddresses('u1')).thenAnswer(
-        (_) => Stream.value([Address(street: 'S1', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA')]),
+        (_) => Stream.value([
+          Address(
+            street: 'S1',
+            city: 'C',
+            state: 'ON',
+            postalCode: 'M1M',
+            country: 'CA',
+          ),
+        ]),
       );
 
       final stream = mockRepository.watchAddresses('u1');

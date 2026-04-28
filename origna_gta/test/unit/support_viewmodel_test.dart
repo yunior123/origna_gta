@@ -31,12 +31,7 @@ class _FakeOb implements OrignaBase {
   }) async {
     requestBodies.add(body);
     if (responder != null) {
-      return responder!(
-        method,
-        path,
-        body: body,
-        headers: headers,
-      );
+      return responder!(method, path, body: body, headers: headers);
     }
     return {'reply': 'I can help you with that!', 'escalated': false};
   }
@@ -73,24 +68,28 @@ void main() {
       expect(state.errorMessage, isNull);
     });
 
-    test('sendMessage with empty string returns without changing state', () async {
-      await container
-          .read(supportViewModelProvider.notifier)
-          .sendMessage('');
+    test(
+      'sendMessage with empty string returns without changing state',
+      () async {
+        await container.read(supportViewModelProvider.notifier).sendMessage('');
 
-      final state = container.read(supportViewModelProvider);
-      expect(state.messages, isEmpty);
-      expect(state.isLoading, isFalse);
-    });
+        final state = container.read(supportViewModelProvider);
+        expect(state.messages, isEmpty);
+        expect(state.isLoading, isFalse);
+      },
+    );
 
-    test('sendMessage with whitespace-only returns without changing state', () async {
-      await container
-          .read(supportViewModelProvider.notifier)
-          .sendMessage('   ');
+    test(
+      'sendMessage with whitespace-only returns without changing state',
+      () async {
+        await container
+            .read(supportViewModelProvider.notifier)
+            .sendMessage('   ');
 
-      final state = container.read(supportViewModelProvider);
-      expect(state.messages, isEmpty);
-    });
+        final state = container.read(supportViewModelProvider);
+        expect(state.messages, isEmpty);
+      },
+    );
 
     test('sendMessage with tabs and newlines returns early', () async {
       await container
@@ -110,7 +109,9 @@ void main() {
 
       final state = container.read(supportViewModelProvider);
       expect(
-        state.messages.any((m) => m.role == MessageRole.user && m.text == 'Hello!'),
+        state.messages.any(
+          (m) => m.role == MessageRole.user && m.text == 'Hello!',
+        ),
         isTrue,
       );
     });
@@ -134,7 +135,9 @@ void main() {
           .sendMessage('Second message');
 
       final state = container.read(supportViewModelProvider);
-      final userMessages = state.messages.where((m) => m.role == MessageRole.user).toList();
+      final userMessages = state.messages
+          .where((m) => m.role == MessageRole.user)
+          .toList();
       expect(userMessages.length, greaterThanOrEqualTo(2));
     });
 
@@ -159,9 +162,17 @@ void main() {
       final after = DateTime.now();
 
       final state = container.read(supportViewModelProvider);
-      final userMsg = state.messages.firstWhere((m) => m.role == MessageRole.user);
-      expect(userMsg.timestamp.isAfter(before.subtract(Duration(seconds: 1))), isTrue);
-      expect(userMsg.timestamp.isBefore(after.add(Duration(seconds: 1))), isTrue);
+      final userMsg = state.messages.firstWhere(
+        (m) => m.role == MessageRole.user,
+      );
+      expect(
+        userMsg.timestamp.isAfter(before.subtract(Duration(seconds: 1))),
+        isTrue,
+      );
+      expect(
+        userMsg.timestamp.isBefore(after.add(Duration(seconds: 1))),
+        isTrue,
+      );
     });
 
     test('SupportState.copyWith preserves fields not updated', () {
@@ -358,13 +369,16 @@ void main() {
       await container
           .read(supportViewModelProvider.notifier)
           .sendMessage('First');
-      
+
       await container
           .read(supportViewModelProvider.notifier)
           .sendMessage('Second');
 
       final state = container.read(supportViewModelProvider);
-      expect(state.messages.where((m) => m.role == MessageRole.user).length, greaterThanOrEqualTo(2));
+      expect(
+        state.messages.where((m) => m.role == MessageRole.user).length,
+        greaterThanOrEqualTo(2),
+      );
     });
 
     test('SupportState copyWith clears errorMessage with flag', () {
@@ -373,121 +387,121 @@ void main() {
       expect(cleared.errorMessage, isNull);
     });
 
-    test('startConversation maps each category to the expected opening label', () async {
-      final labels = <SupportCategory, String>{
-        SupportCategory.orderStatus: 'order status',
-        SupportCategory.refundRequest: 'refund request',
-        SupportCategory.accountIssue: 'account issue',
-        SupportCategory.billingDispute: 'billing dispute',
-        SupportCategory.other: 'general inquiry',
-      };
+    test(
+      'startConversation maps each category to the expected opening label',
+      () async {
+        final labels = <SupportCategory, String>{
+          SupportCategory.orderStatus: 'order status',
+          SupportCategory.refundRequest: 'refund request',
+          SupportCategory.accountIssue: 'account issue',
+          SupportCategory.billingDispute: 'billing dispute',
+          SupportCategory.other: 'general inquiry',
+        };
 
-      for (final entry in labels.entries) {
-        fakeOb.requestBodies.clear();
+        for (final entry in labels.entries) {
+          fakeOb.requestBodies.clear();
 
-        await container
+          await container
+              .read(supportViewModelProvider.notifier)
+              .startConversation(entry.key);
+
+          expect(
+            fakeOb.requestBodies.single?['messages'][0]['content'],
+            'I need help with: ${entry.value}',
+          );
+          expect(
+            container.read(supportViewModelProvider).messages.single.role,
+            MessageRole.agent,
+          );
+        }
+      },
+    );
+
+    test(
+      'sendMessage marks state escalated when backend flags escalation',
+      () async {
+        final escalatedContainer = ProviderContainer(
+          overrides: [
+            orignabaseProvider.overrideWithValue(
+              _FakeOb(
+                responder: (method, path, {body, headers}) async => {
+                  'reply': 'A human will contact you shortly.',
+                  'escalated': true,
+                },
+              ),
+            ),
+            currentUserProvider.overrideWithValue(
+              const AppAuthUser(uid: 'u1', email: 'user@example.com'),
+            ),
+          ],
+        );
+        addTearDown(escalatedContainer.dispose);
+
+        await escalatedContainer
             .read(supportViewModelProvider.notifier)
-            .startConversation(entry.key);
+            .sendMessage('Please escalate');
 
-        expect(
-          fakeOb.requestBodies.single?['messages'][0]['content'],
-          'I need help with: ${entry.value}',
+        final state = escalatedContainer.read(supportViewModelProvider);
+        expect(state.isEscalated, isTrue);
+        expect(state.messages.last.text, contains('human'));
+      },
+    );
+
+    test(
+      'sendMessage keeps only the user message when backend reply is empty',
+      () async {
+        final emptyReplyContainer = ProviderContainer(
+          overrides: [
+            orignabaseProvider.overrideWithValue(
+              _FakeOb(
+                responder: (method, path, {body, headers}) async => {
+                  'reply': '   ',
+                  'escalated': false,
+                },
+              ),
+            ),
+            currentUserProvider.overrideWithValue(null),
+          ],
         );
-        expect(
-          container.read(supportViewModelProvider).messages.single.role,
-          MessageRole.agent,
+        addTearDown(emptyReplyContainer.dispose);
+
+        await emptyReplyContainer
+            .read(supportViewModelProvider.notifier)
+            .sendMessage('Hello');
+
+        final state = emptyReplyContainer.read(supportViewModelProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.messages.length, 1);
+        expect(state.messages.single.role, MessageRole.user);
+      },
+    );
+
+    test(
+      'startConversation stores an error message when backend call fails',
+      () async {
+        final failingContainer = ProviderContainer(
+          overrides: [
+            orignabaseProvider.overrideWithValue(
+              _FakeOb(
+                responder: (method, path, {body, headers}) async {
+                  throw Exception('support backend down');
+                },
+              ),
+            ),
+            currentUserProvider.overrideWithValue(null),
+          ],
         );
-      }
-    });
+        addTearDown(failingContainer.dispose);
 
-    test('sendMessage marks state escalated when backend flags escalation', () async {
-      final escalatedContainer = ProviderContainer(
-        overrides: [
-          orignabaseProvider.overrideWithValue(
-            _FakeOb(
-              responder: (
-                method,
-                path, {
-                body,
-                headers,
-              }) async => {
-                'reply': 'A human will contact you shortly.',
-                'escalated': true,
-              },
-            ),
-          ),
-          currentUserProvider.overrideWithValue(
-            const AppAuthUser(uid: 'u1', email: 'user@example.com'),
-          ),
-        ],
-      );
-      addTearDown(escalatedContainer.dispose);
+        await failingContainer
+            .read(supportViewModelProvider.notifier)
+            .startConversation(SupportCategory.other);
 
-      await escalatedContainer
-          .read(supportViewModelProvider.notifier)
-          .sendMessage('Please escalate');
-
-      final state = escalatedContainer.read(supportViewModelProvider);
-      expect(state.isEscalated, isTrue);
-      expect(state.messages.last.text, contains('human'));
-    });
-
-    test('sendMessage keeps only the user message when backend reply is empty', () async {
-      final emptyReplyContainer = ProviderContainer(
-        overrides: [
-          orignabaseProvider.overrideWithValue(
-            _FakeOb(
-              responder: (
-                method,
-                path, {
-                body,
-                headers,
-              }) async => {'reply': '   ', 'escalated': false},
-            ),
-          ),
-          currentUserProvider.overrideWithValue(null),
-        ],
-      );
-      addTearDown(emptyReplyContainer.dispose);
-
-      await emptyReplyContainer
-          .read(supportViewModelProvider.notifier)
-          .sendMessage('Hello');
-
-      final state = emptyReplyContainer.read(supportViewModelProvider);
-      expect(state.isLoading, isFalse);
-      expect(state.messages.length, 1);
-      expect(state.messages.single.role, MessageRole.user);
-    });
-
-    test('startConversation stores an error message when backend call fails', () async {
-      final failingContainer = ProviderContainer(
-        overrides: [
-          orignabaseProvider.overrideWithValue(
-            _FakeOb(
-              responder: (
-                method,
-                path, {
-                body,
-                headers,
-              }) async {
-                throw Exception('support backend down');
-              },
-            ),
-          ),
-          currentUserProvider.overrideWithValue(null),
-        ],
-      );
-      addTearDown(failingContainer.dispose);
-
-      await failingContainer
-          .read(supportViewModelProvider.notifier)
-          .startConversation(SupportCategory.other);
-
-      final state = failingContainer.read(supportViewModelProvider);
-      expect(state.isLoading, isFalse);
-      expect(state.errorMessage, isNotNull);
-    });
+        final state = failingContainer.read(supportViewModelProvider);
+        expect(state.isLoading, isFalse);
+        expect(state.errorMessage, isNotNull);
+      },
+    );
   });
 
   group('Extended state tests', () {

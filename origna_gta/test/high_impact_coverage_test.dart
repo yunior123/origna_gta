@@ -39,7 +39,9 @@ void main() {
     mockUserRepo = MockUserRepository();
 
     when(mockAdminVM.state).thenReturn(const AdminActionsState());
-    when(mockUserRepo.updatePreferredLanguage(any, any)).thenAnswer((_) async {});
+    when(
+      mockUserRepo.updatePreferredLanguage(any, any),
+    ).thenAnswer((_) async {});
   });
 
   Widget testWrapper(Widget child, {List<Override> overrides = const []}) {
@@ -56,15 +58,37 @@ void main() {
 
   group('AdminPanelScreen Coverage', () {
     testWidgets('renders loading state', (tester) async {
-      await tester.pumpWidget(testWrapper(const AdminPanelScreen(), overrides: [userProfileProvider.overrideWith((ref) => const Stream.empty())]));
+      await tester.pumpWidget(
+        testWrapper(
+          const AdminPanelScreen(),
+          overrides: [
+            userProfileProvider.overrideWith((ref) => const Stream.empty()),
+          ],
+        ),
+      );
       await tester.pump();
       expect(find.textContaining('Loading'), findsOneWidget);
     });
 
     testWidgets('renders access denied for non-admin', (tester) async {
-      final nonAdminProfile = UserModel(uid: 'user1', name: 'User', email: 'u@e.com', roles: const [UserRole.buyer], createdAt: DateTime.now());
+      final nonAdminProfile = UserModel(
+        uid: 'user1',
+        name: 'User',
+        email: 'u@e.com',
+        roles: const [UserRole.buyer],
+        createdAt: DateTime.now(),
+      );
 
-      await tester.pumpWidget(testWrapper(const AdminPanelScreen(), overrides: [userProfileProvider.overrideWith((ref) => Stream.value(nonAdminProfile))]));
+      await tester.pumpWidget(
+        testWrapper(
+          const AdminPanelScreen(),
+          overrides: [
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(nonAdminProfile),
+            ),
+          ],
+        ),
+      );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
@@ -73,18 +97,30 @@ void main() {
     });
 
     testWidgets('renders tabs for admin and allows switching', (tester) async {
-      final adminProfile = UserModel(uid: 'admin1', name: 'Admin', email: 'a@e.com', roles: const [UserRole.admin], createdAt: DateTime.now());
+      final adminProfile = UserModel(
+        uid: 'admin1',
+        name: 'Admin',
+        email: 'a@e.com',
+        roles: const [UserRole.admin],
+        createdAt: DateTime.now(),
+      );
 
       await tester.pumpWidget(
         testWrapper(
           const AdminPanelScreen(),
           overrides: [
-            userProfileProvider.overrideWith((ref) => Stream.value(adminProfile)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(adminProfile),
+            ),
             adminSellersProvider.overrideWith((ref) => Stream.value([])),
             adminUsersProvider.overrideWith((ref) => Stream.value([])),
             adminOrdersProvider.overrideWith((ref, status) => Stream.value([])),
-            adminProductsProvider.overrideWith((ref, sellerId) => Stream.value([])),
-            adminReviewsProvider.overrideWith((ref, filters) => Stream.value([])),
+            adminProductsProvider.overrideWith(
+              (ref, sellerId) => Stream.value([]),
+            ),
+            adminReviewsProvider.overrideWith(
+              (ref, filters) => Stream.value([]),
+            ),
           ],
         ),
       );
@@ -139,9 +175,16 @@ void main() {
     });
 
     testWidgets('OrderSuccessGate renders and timeouts', (tester) async {
-      when(mockOrderRepo.watchPaidOrderBySession(any)).thenAnswer((_) => const Stream.empty());
+      when(
+        mockOrderRepo.watchPaidOrderBySession(any),
+      ).thenAnswer((_) => const Stream.empty());
 
-      await tester.pumpWidget(testWrapper(const OrderSuccessGate(sessionId: 's1'), overrides: [orderRepositoryProvider.overrideWithValue(mockOrderRepo)]));
+      await tester.pumpWidget(
+        testWrapper(
+          const OrderSuccessGate(sessionId: 's1'),
+          overrides: [orderRepositoryProvider.overrideWithValue(mockOrderRepo)],
+        ),
+      );
       await tester.pump();
 
       expect(find.textContaining('confirming'), findsWidgets);

@@ -6,9 +6,7 @@ import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/features/orders/shipping_approval_viewmodel.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrderRepository>(),
-])
+@GenerateNiceMocks([MockSpec<OrderRepository>()])
 import 'shipping_approval_viewmodel_test.mocks.dart';
 
 void main() {
@@ -18,9 +16,7 @@ void main() {
   setUp(() {
     mockOrderRepo = MockOrderRepository();
     container = ProviderContainer(
-      overrides: [
-        orderRepositoryProvider.overrideWithValue(mockOrderRepo),
-      ],
+      overrides: [orderRepositoryProvider.overrideWithValue(mockOrderRepo)],
     );
   });
 
@@ -33,8 +29,12 @@ void main() {
     });
 
     test('approveShippingCost success', () async {
-      final viewModel = container.read(shippingApprovalViewModelProvider.notifier);
-      when(mockOrderRepo.approveShippingCost('order_123', true)).thenAnswer((_) async => {});
+      final viewModel = container.read(
+        shippingApprovalViewModelProvider.notifier,
+      );
+      when(
+        mockOrderRepo.approveShippingCost('order_123', true),
+      ).thenAnswer((_) async => {});
 
       final result = await viewModel.approveShippingCost('order_123', true);
 
@@ -46,8 +46,12 @@ void main() {
     });
 
     test('approveShippingCost failure', () async {
-      final viewModel = container.read(shippingApprovalViewModelProvider.notifier);
-      when(mockOrderRepo.approveShippingCost('order_123', false)).thenThrow(Exception('Failed'));
+      final viewModel = container.read(
+        shippingApprovalViewModelProvider.notifier,
+      );
+      when(
+        mockOrderRepo.approveShippingCost('order_123', false),
+      ).thenThrow(Exception('Failed'));
 
       final result = await viewModel.approveShippingCost('order_123', false);
 

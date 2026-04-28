@@ -63,13 +63,18 @@ void main() {
       () async {
         const testProductId = 'e2e_product_test_seller';
         const uuid = Uuid();
-        final testQuestion = 'What is the quality? ${uuid.v4().substring(0, 8)}';
+        final testQuestion =
+            'What is the quality? ${uuid.v4().substring(0, 8)}';
 
         // Submit a question — may return 400 if product/endpoint validation fails in dev
         try {
           await qaRepo.submitQuestion(testProductId, testQuestion);
         } on OrignaBaseException catch (e) {
-          if (e.statusCode == 400 || e.statusCode == 404 || e.statusCode == 422) return;
+          if (e.statusCode == 400 ||
+              e.statusCode == 404 ||
+              e.statusCode == 422) {
+            return;
+          }
           rethrow;
         }
 
@@ -138,7 +143,8 @@ void main() {
           );
 
           const uuid = Uuid();
-          final testAnswer = 'This is a test answer ${uuid.v4().substring(0, 8)}';
+          final testAnswer =
+              'This is a test answer ${uuid.v4().substring(0, 8)}';
 
           // Should not throw; 403 is acceptable if seller isn't the product owner
           try {

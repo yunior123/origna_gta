@@ -14,9 +14,7 @@ import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 import 'package:orignabase/orignabase.dart';
 import '../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrignaBase>(),
-])
+@GenerateNiceMocks([MockSpec<OrignaBase>()])
 import 'seller_registration_screen_test.mocks.dart';
 
 void main() {
@@ -26,8 +24,9 @@ void main() {
     mockOrignaBase = MockOrignaBase();
     initTestMocks();
 
-    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-        .thenAnswer((_) async => <String, dynamic>{});
+    when(
+      mockOrignaBase.request(any, any, body: anyNamed('body')),
+    ).thenAnswer((_) async => <String, dynamic>{});
   });
 
   final testUser = UserModel(
@@ -40,7 +39,10 @@ void main() {
 
   Widget createTestWidget({
     UserModel? user,
-    SellerAccountStatus status = const SellerAccountStatus(isSeller: false, chargesEnabled: false),
+    SellerAccountStatus status = const SellerAccountStatus(
+      isSeller: false,
+      chargesEnabled: false,
+    ),
   }) {
     return TestWrapper(
       overrides: [
@@ -56,13 +58,15 @@ void main() {
 
   group('SellerRegistrationScreen Widget Tests', () {
     testWidgets('renders loading state', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          userProfileProvider.overrideWith((ref) => const Stream.empty()),
-          obUserIdProvider.overrideWithValue(null),
-        ],
-        child: const SellerRegistrationScreen(),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            userProfileProvider.overrideWith((ref) => const Stream.empty()),
+            obUserIdProvider.overrideWithValue(null),
+          ],
+          child: const SellerRegistrationScreen(),
+        ),
+      );
       await tester.pump();
 
       expect(find.byType(ModernLoadingIndicator), findsWidgets);
@@ -100,18 +104,22 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      verify(mockOrignaBase.request(any, any, body: anyNamed('body'))).called(greaterThan(0));
+      verify(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).called(greaterThan(0));
     });
 
     testWidgets('shows verification pending status', (tester) async {
       final userWithAccount = testUser.copyWith(stripeAccountId: 'acct_123');
       const pendingStatus = SellerAccountStatus(
-        isSeller: true, 
-        chargesEnabled: false, 
+        isSeller: true,
+        chargesEnabled: false,
         detailsSubmitted: true,
       );
 
-      await tester.pumpWidget(createTestWidget(user: userWithAccount, status: pendingStatus));
+      await tester.pumpWidget(
+        createTestWidget(user: userWithAccount, status: pendingStatus),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));
@@ -123,12 +131,14 @@ void main() {
     testWidgets('shows completed status and manage button', (tester) async {
       final userWithAccount = testUser.copyWith(stripeAccountId: 'acct_123');
       const completeStatus = SellerAccountStatus(
-        isSeller: true, 
-        chargesEnabled: true, 
+        isSeller: true,
+        chargesEnabled: true,
         detailsSubmitted: true,
       );
 
-      await tester.pumpWidget(createTestWidget(user: userWithAccount, status: completeStatus));
+      await tester.pumpWidget(
+        createTestWidget(user: userWithAccount, status: completeStatus),
+      );
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
       await tester.pump(const Duration(seconds: 1));

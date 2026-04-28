@@ -261,8 +261,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-seller-analytics',
             title: 'profile.seller_analytics'.tr(),
             subtitle: 'profile.view_sales_insights'.tr(),
-            onTap: () =>
-                appPushNamed(context, AppRoutes.sellerAnalytics),
+            onTap: () => appPushNamed(context, AppRoutes.sellerAnalytics),
           ),
         ] else if (FeatureFlags.kSellerOnboardingEnabled)
           ProfileMenuItem(
@@ -271,8 +270,7 @@ class ProfileScreenLayout extends StatelessWidget {
             semanticLabel: 'menu-become-seller',
             title: 'profile.become_seller'.tr(),
             subtitle: 'profile.start_selling'.tr(),
-            onTap: () =>
-                appPushNamed(context, AppRoutes.sellerRegistration),
+            onTap: () => appPushNamed(context, AppRoutes.sellerRegistration),
           ),
         if (isAdmin)
           ProfileMenuItem(
@@ -323,8 +321,7 @@ class ProfileScreenLayout extends StatelessWidget {
           semanticLabel: 'menu-address',
           title: 'profile.address'.tr(),
           subtitle: 'profile.manage_delivery_address'.tr(),
-          onTap: () =>
-              appPushNamed(context, AppRoutes.addressManagement),
+          onTap: () => appPushNamed(context, AppRoutes.addressManagement),
         ),
         ProfileMenuItem(
           key: const Key('profile_terms_button'),
@@ -350,15 +347,15 @@ class ProfileScreenLayout extends StatelessWidget {
           subtitle: context.locale.languageCode == 'fr'
               ? 'language.french'.tr()
               : context.locale.languageCode == 'es'
-                  ? 'language.spanish'.tr()
-                  : 'language.english'.tr(),
+              ? 'language.spanish'.tr()
+              : 'language.english'.tr(),
           onTap: () {
             final current = context.locale.languageCode;
             final next = current == 'en'
                 ? 'fr'
                 : current == 'fr'
-                    ? 'es'
-                    : 'en';
+                ? 'es'
+                : 'en';
             onLanguageChange(next);
           },
         ),

@@ -101,21 +101,23 @@ void main() {
     });
 
     testWidgets('paints without crash via CustomPaint', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: CustomPaint(
-            size: const Size(100, 100),
-            painter: MascotPainter(
-              idleValue: 0.3,
-              jumpValue: 0.0,
-              blinkValue: 0.5,
-              breathingValue: 0.2,
-              lookTarget: const Offset(10, 10),
-              excitement: 0.7,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CustomPaint(
+              size: const Size(100, 100),
+              painter: MascotPainter(
+                idleValue: 0.3,
+                jumpValue: 0.0,
+                blinkValue: 0.5,
+                breathingValue: 0.2,
+                lookTarget: const Offset(10, 10),
+                excitement: 0.7,
+              ),
             ),
           ),
         ),
-      ));
+      );
       await tester.pump();
       expect(find.byType(CustomPaint), findsWidgets);
     });
@@ -124,9 +126,11 @@ void main() {
   group('ShopMascot widget', () {
     testWidgets('renders with speech bubble', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller, showSpeechBubble: true),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          child: ShopMascot(controller: controller, showSpeechBubble: true),
+        ),
+      );
       // Don't use pumpAndSettle - mascot has continuous animations
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
@@ -136,9 +140,11 @@ void main() {
 
     testWidgets('renders without speech bubble', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller, showSpeechBubble: false),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          child: ShopMascot(controller: controller, showSpeechBubble: false),
+        ),
+      );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(ShopMascot), findsOneWidget);
@@ -147,9 +153,9 @@ void main() {
 
     testWidgets('custom size', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller, size: 120),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(child: ShopMascot(controller: controller, size: 120)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.byType(ShopMascot), findsOneWidget);
@@ -158,9 +164,9 @@ void main() {
 
     testWidgets('responds to excitement changes', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(child: ShopMascot(controller: controller)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
 
       controller.setExcitement(0.8);
@@ -171,9 +177,9 @@ void main() {
 
     testWidgets('responds to lookAt', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(child: ShopMascot(controller: controller)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
 
       controller.lookAt(const Offset(50, 50));
@@ -184,9 +190,9 @@ void main() {
 
     testWidgets('jump animation', (tester) async {
       final controller = MascotController();
-      await tester.pumpWidget(TestWrapper(
-        child: ShopMascot(controller: controller),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(child: ShopMascot(controller: controller)),
+      );
       await tester.pump(const Duration(milliseconds: 500));
 
       controller.jump();

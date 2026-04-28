@@ -10,10 +10,7 @@ import 'package:origna_gta/models/models.dart';
 
 import '../../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<CartRepository>(),
-  MockSpec<ProductRepository>(),
-])
+@GenerateNiceMocks([MockSpec<CartRepository>(), MockSpec<ProductRepository>()])
 import 'cart_provider_test.mocks.dart';
 
 void main() {
@@ -50,11 +47,13 @@ void main() {
 
   group('cartItemsProvider', () {
     test('returns stream of cart items', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([testCartItem]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([testCartItem]));
 
-      when(mockProductRepo.fetchProductsByIds([testProductId]))
-          .thenAnswer((_) async => []);
+      when(
+        mockProductRepo.fetchProductsByIds([testProductId]),
+      ).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -74,8 +73,9 @@ void main() {
     });
 
     test('returns empty list when user is not logged in', () {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
       final emptyContainer = ProviderContainer(
         overrides: [
@@ -97,11 +97,13 @@ void main() {
 
   group('cartItemCountProvider', () {
     test('calculates total item count correctly', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([testCartItem]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([testCartItem]));
 
-      when(mockProductRepo.fetchProductsByIds([testProductId]))
-          .thenAnswer((_) async => []);
+      when(
+        mockProductRepo.fetchProductsByIds([testProductId]),
+      ).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -121,8 +123,9 @@ void main() {
     });
 
     test('returns 0 when cart is empty', () {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
       final emptyContainer = ProviderContainer(
         overrides: [
@@ -180,8 +183,9 @@ void main() {
     });
 
     test('returns 0 when cart is empty', () {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
       final emptyContainer = ProviderContainer(
         overrides: [
@@ -217,14 +221,15 @@ void main() {
     });
 
     test('addToCart returns false when user is the seller', () async {
-      when(mockCartRepo.getProductSellerId(testProductId))
-          .thenAnswer((_) async => testUserId);
+      when(
+        mockCartRepo.getProductSellerId(testProductId),
+      ).thenAnswer((_) async => testUserId);
 
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -243,11 +248,11 @@ void main() {
     });
 
     test('removeFromCart calls repository', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -259,8 +264,9 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepo.removeFromCart(testUserId, testProductId))
-          .thenAnswer((_) async {});
+      when(
+        mockCartRepo.removeFromCart(testUserId, testProductId),
+      ).thenAnswer((_) async {});
 
       await controller.removeFromCart(testProductId);
 
@@ -270,11 +276,11 @@ void main() {
     });
 
     test('updateQuantity calls repository', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -286,24 +292,26 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepo.updateQuantity(testUserId, testProductId, 5))
-          .thenAnswer((_) async {});
+      when(
+        mockCartRepo.updateQuantity(testUserId, testProductId, 5),
+      ).thenAnswer((_) async {});
 
       final result = await controller.updateQuantity(testProductId, 5);
 
       expect(result, true);
-      verify(mockCartRepo.updateQuantity(testUserId, testProductId, 5))
-          .called(1);
+      verify(
+        mockCartRepo.updateQuantity(testUserId, testProductId, 5),
+      ).called(1);
 
       container.dispose();
     });
 
     test('clearCart calls repository', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -325,11 +333,11 @@ void main() {
     });
 
     test('canAddToCart returns false for own product', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -341,8 +349,9 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepo.getProductSellerId(testProductId))
-          .thenAnswer((_) async => testUserId);
+      when(
+        mockCartRepo.getProductSellerId(testProductId),
+      ).thenAnswer((_) async => testUserId);
 
       final result = await controller.canAddToCart(testProductId);
 
@@ -352,11 +361,11 @@ void main() {
     });
 
     test('canAddToCart returns true for other seller product', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -368,8 +377,9 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepo.getProductSellerId(testProductId))
-          .thenAnswer((_) async => 'other_seller');
+      when(
+        mockCartRepo.getProductSellerId(testProductId),
+      ).thenAnswer((_) async => 'other_seller');
 
       final result = await controller.canAddToCart(testProductId);
 
@@ -379,11 +389,11 @@ void main() {
     });
 
     test('saveForLater toggles favorite and removes from cart', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -395,26 +405,34 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockProductRepo.toggleFavorite(testUserId, testProductId))
-          .thenAnswer((_) async {});
-      when(mockCartRepo.removeFromCart(testUserId, testProductId))
-          .thenAnswer((_) async {});
+      when(
+        mockProductRepo.toggleFavorite(testUserId, testProductId),
+      ).thenAnswer((_) async {});
+      when(
+        mockCartRepo.removeFromCart(testUserId, testProductId),
+      ).thenAnswer((_) async {});
 
-      final result = await controller.saveForLater(testProductId, testProductId);
+      final result = await controller.saveForLater(
+        testProductId,
+        testProductId,
+      );
 
       expect(result, true);
-      verify(mockProductRepo.toggleFavorite(testUserId, testProductId))
-          .called(1);
+      verify(
+        mockProductRepo.toggleFavorite(testUserId, testProductId),
+      ).called(1);
       verify(mockCartRepo.removeFromCart(testUserId, testProductId)).called(1);
 
       container.dispose();
     });
 
     test('addToCart invalidates cart stream for badge refresh', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([testCartItem]));
-      when(mockCartRepo.getProductSellerId(testProductId))
-          .thenAnswer((_) async => 'seller_456');
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([testCartItem]));
+      when(
+        mockCartRepo.getProductSellerId(testProductId),
+      ).thenAnswer((_) async => 'seller_456');
       when(
         mockCartRepo.addToCart(
           testUserId,
@@ -424,8 +442,9 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      when(mockProductRepo.fetchProductsByIds([testProductId]))
-          .thenAnswer((_) async => []);
+      when(
+        mockProductRepo.fetchProductsByIds([testProductId]),
+      ).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -450,11 +469,11 @@ void main() {
     });
 
     test('updateBuyerNote calls repository', () async {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -466,13 +485,15 @@ void main() {
 
       final controller = container.read(cartControllerProvider);
 
-      when(mockCartRepo.updateBuyerNote(testUserId, testProductId, 'Test note'))
-          .thenAnswer((_) async {});
+      when(
+        mockCartRepo.updateBuyerNote(testUserId, testProductId, 'Test note'),
+      ).thenAnswer((_) async {});
 
       await controller.updateBuyerNote(testProductId, 'Test note');
 
-      verify(mockCartRepo.updateBuyerNote(testUserId, testProductId, 'Test note'))
-          .called(1);
+      verify(
+        mockCartRepo.updateBuyerNote(testUserId, testProductId, 'Test note'),
+      ).called(1);
 
       container.dispose();
     });
@@ -480,11 +501,11 @@ void main() {
 
   group('deliveryInstructionsProvider', () {
     test('has default empty value', () {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -502,11 +523,11 @@ void main() {
     });
 
     test('can be updated', () {
-      when(mockCartRepo.watchCart(testUserId))
-          .thenAnswer((_) => Stream.value([]));
+      when(
+        mockCartRepo.watchCart(testUserId),
+      ).thenAnswer((_) => Stream.value([]));
 
-      when(mockProductRepo.fetchProductsByIds(any))
-          .thenAnswer((_) async => []);
+      when(mockProductRepo.fetchProductsByIds(any)).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [

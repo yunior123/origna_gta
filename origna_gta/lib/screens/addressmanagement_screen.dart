@@ -70,9 +70,7 @@ class AddressManagementScreen extends ConsumerWidget {
                     : 'address.add_address'.tr(),
                 onPressed: atAddressLimit
                     ? null
-                    : () => appPushNamed(context,
-                        AppRoutes.addEditAddress,
-                      ),
+                    : () => appPushNamed(context, AppRoutes.addEditAddress),
               ),
             ),
           ],
@@ -127,9 +125,7 @@ class AddressManagementScreen extends ConsumerWidget {
                           label: 'address.add_address'.tr(),
                           icon: Icons.add_location_alt_outlined,
                           onPressed: () {
-                            appPushNamed(context,
-                              AppRoutes.addEditAddress,
-                            );
+                            appPushNamed(context, AppRoutes.addEditAddress);
                           },
                         ),
                       ),
@@ -299,7 +295,8 @@ class AddressManagementScreen extends ConsumerWidget {
                 onSelected: (value) async {
                   HapticFeedback.lightImpact();
                   if (value == 'edit') {
-                    appPushNamed(context,
+                    appPushNamed(
+                      context,
                       AppRoutes.addEditAddress,
                       arguments: address,
                     );

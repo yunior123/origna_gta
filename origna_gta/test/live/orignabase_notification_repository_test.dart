@@ -37,7 +37,10 @@ void main() {
       notificationRepo = OrignaBaseNotificationRepository(ob);
       final authRepo = OrignaBaseAuthRepository(ob);
 
-      await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-admin@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Admin sign-in failed');
       userId = uid!;
@@ -51,7 +54,10 @@ void main() {
       'markRead marks notification as read',
       () async {
         try {
-          await notificationRepo.markRead(userId, 'nonexistent_notification_id');
+          await notificationRepo.markRead(
+            userId,
+            'nonexistent_notification_id',
+          );
         } on OrignaBaseException {
           // Expected for nonexistent notification
         }

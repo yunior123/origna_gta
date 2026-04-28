@@ -43,8 +43,9 @@ void main() {
     });
 
     test('returns favorite IDs when logged in', () async {
-      when(mockProductRepo.watchFavorites(testUserId))
-          .thenAnswer((_) => Stream.value({testProductId}));
+      when(
+        mockProductRepo.watchFavorites(testUserId),
+      ).thenAnswer((_) => Stream.value({testProductId}));
 
       container = ProviderContainer(
         overrides: [
@@ -63,8 +64,9 @@ void main() {
 
   group('favoritedProductsProvider', () {
     test('returns empty list when no favorites', () async {
-      when(mockProductRepo.watchFavorites(testUserId))
-          .thenAnswer((_) => Stream.value({}));
+      when(
+        mockProductRepo.watchFavorites(testUserId),
+      ).thenAnswer((_) => Stream.value({}));
 
       container = ProviderContainer(
         overrides: [
@@ -86,11 +88,13 @@ void main() {
     });
 
     test('fetches products for favorite IDs', () async {
-      when(mockProductRepo.watchFavorites(testUserId))
-          .thenAnswer((_) => Stream.value({testProductId}));
+      when(
+        mockProductRepo.watchFavorites(testUserId),
+      ).thenAnswer((_) => Stream.value({testProductId}));
 
-      when(mockProductRepo.fetchProductsByIds([testProductId]))
-          .thenAnswer((_) async => []);
+      when(
+        mockProductRepo.fetchProductsByIds([testProductId]),
+      ).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -117,12 +121,15 @@ void main() {
       final chunk1 = idsList.sublist(0, 30);
       final chunk2 = idsList.sublist(30);
 
-      when(mockProductRepo.watchFavorites(testUserId))
-          .thenAnswer((_) => Stream.value(manyIds));
-      when(mockProductRepo.fetchProductsByIds(chunk1))
-          .thenAnswer((_) async => []);
-      when(mockProductRepo.fetchProductsByIds(chunk2))
-          .thenAnswer((_) async => []);
+      when(
+        mockProductRepo.watchFavorites(testUserId),
+      ).thenAnswer((_) => Stream.value(manyIds));
+      when(
+        mockProductRepo.fetchProductsByIds(chunk1),
+      ).thenAnswer((_) async => []);
+      when(
+        mockProductRepo.fetchProductsByIds(chunk2),
+      ).thenAnswer((_) async => []);
 
       container = ProviderContainer(
         overrides: [
@@ -149,8 +156,9 @@ void main() {
     late FavoritesController controller;
 
     setUp(() async {
-      when(mockProductRepo.watchFavorites(testUserId))
-          .thenAnswer((_) => Stream.value({testProductId}));
+      when(
+        mockProductRepo.watchFavorites(testUserId),
+      ).thenAnswer((_) => Stream.value({testProductId}));
 
       container = ProviderContainer(
         overrides: [
@@ -180,13 +188,15 @@ void main() {
     });
 
     test('toggleFavorite calls repository', () async {
-      when(mockProductRepo.toggleFavorite(testUserId, testProductId))
-          .thenAnswer((_) async {});
+      when(
+        mockProductRepo.toggleFavorite(testUserId, testProductId),
+      ).thenAnswer((_) async {});
 
       await controller.toggleFavorite(testProductId);
 
-      verify(mockProductRepo.toggleFavorite(testUserId, testProductId))
-          .called(1);
+      verify(
+        mockProductRepo.toggleFavorite(testUserId, testProductId),
+      ).called(1);
     });
 
     test('toggleFavorite does nothing when user not logged in', () async {
@@ -209,14 +219,15 @@ void main() {
 
   group('productsProvider', () {
     test('fetches products with category filter', () async {
-      when(mockProductRepo.fetchProducts(
-        categoryId: testCategoryId,
-        searchQuery: anyNamed('searchQuery'),
-        pageSize: anyNamed('pageSize'),
-      )).thenAnswer((_) async => ProductQueryResult(
-            products: [],
-            hasMore: false,
-          ));
+      when(
+        mockProductRepo.fetchProducts(
+          categoryId: testCategoryId,
+          searchQuery: anyNamed('searchQuery'),
+          pageSize: anyNamed('pageSize'),
+        ),
+      ).thenAnswer(
+        (_) async => ProductQueryResult(products: [], hasMore: false),
+      );
 
       container = ProviderContainer(
         overrides: [
@@ -228,11 +239,13 @@ void main() {
       final products = await container.read(productsProvider(query).future);
 
       expect(products, hasLength(0));
-      verify(mockProductRepo.fetchProducts(
-        categoryId: testCategoryId,
-        searchQuery: '',
-        pageSize: 20,
-      )).called(1);
+      verify(
+        mockProductRepo.fetchProducts(
+          categoryId: testCategoryId,
+          searchQuery: '',
+          pageSize: 20,
+        ),
+      ).called(1);
 
       container.dispose();
     });
@@ -304,17 +317,37 @@ void main() {
 
   group('ProductQuery', () {
     test('equality works correctly', () {
-      const query1 = ProductQuery(categoryId: 1, searchQuery: 'test', limit: 20);
-      const query2 = ProductQuery(categoryId: 1, searchQuery: 'test', limit: 20);
-      const query3 = ProductQuery(categoryId: 2, searchQuery: 'test', limit: 20);
+      const query1 = ProductQuery(
+        categoryId: 1,
+        searchQuery: 'test',
+        limit: 20,
+      );
+      const query2 = ProductQuery(
+        categoryId: 1,
+        searchQuery: 'test',
+        limit: 20,
+      );
+      const query3 = ProductQuery(
+        categoryId: 2,
+        searchQuery: 'test',
+        limit: 20,
+      );
 
       expect(query1 == query2, true);
       expect(query1 == query3, false);
     });
 
     test('hashCode is consistent', () {
-      const query1 = ProductQuery(categoryId: 1, searchQuery: 'test', limit: 20);
-      const query2 = ProductQuery(categoryId: 1, searchQuery: 'test', limit: 20);
+      const query1 = ProductQuery(
+        categoryId: 1,
+        searchQuery: 'test',
+        limit: 20,
+      );
+      const query2 = ProductQuery(
+        categoryId: 1,
+        searchQuery: 'test',
+        limit: 20,
+      );
 
       expect(query1.hashCode, equals(query2.hashCode));
     });

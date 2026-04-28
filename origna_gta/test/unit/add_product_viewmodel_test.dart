@@ -14,7 +14,12 @@ import 'package:origna_gta/features/products/add_product_viewmodel.dart';
 import 'package:origna_gta/utils/env_config.dart';
 import 'package:origna_gta/utils/utils.dart';
 
-@GenerateNiceMocks([MockSpec<ProductRepository>(), MockSpec<LocationRepository>(), MockSpec<XFile>(), MockSpec<EnvConfig>()])
+@GenerateNiceMocks([
+  MockSpec<ProductRepository>(),
+  MockSpec<LocationRepository>(),
+  MockSpec<XFile>(),
+  MockSpec<EnvConfig>(),
+])
 import 'add_product_viewmodel_test.mocks.dart';
 
 void main() {
@@ -42,7 +47,8 @@ void main() {
     container.listen(addProductViewModelProvider, (prev, next) {});
   });
 
-  AddProductViewModel getViewModel() => container.read(addProductViewModelProvider.notifier);
+  AddProductViewModel getViewModel() =>
+      container.read(addProductViewModelProvider.notifier);
   AddProductState getState() => container.read(addProductViewModelProvider);
 
   void setupBasicValidState(AddProductViewModel vm) {
@@ -140,9 +146,16 @@ void main() {
       when(mockVideo.length()).thenAnswer((_) async => 100);
       vm.setVideo(mockVideo, 5);
 
-      when(mockRepo.uploadProductVideo(any, any)).thenAnswer((_) async => 'v_url');
       when(
-        mockRepo.createProductAtomic(any, any, testImageUrls: anyNamed('testImageUrls'), bookSourceUrl: anyNamed('bookSourceUrl')),
+        mockRepo.uploadProductVideo(any, any),
+      ).thenAnswer((_) async => 'v_url');
+      when(
+        mockRepo.createProductAtomic(
+          any,
+          any,
+          testImageUrls: anyNamed('testImageUrls'),
+          bookSourceUrl: anyNamed('bookSourceUrl'),
+        ),
       ).thenAnswer((_) async => 'p1');
 
       await vm.addProduct(
@@ -165,7 +178,12 @@ void main() {
       setupBasicValidState(vm); // Adds image with bytes
 
       when(
-        mockRepo.createProductAtomic(any, any, testImageUrls: anyNamed('testImageUrls'), bookSourceUrl: anyNamed('bookSourceUrl')),
+        mockRepo.createProductAtomic(
+          any,
+          any,
+          testImageUrls: anyNamed('testImageUrls'),
+          bookSourceUrl: anyNamed('bookSourceUrl'),
+        ),
       ).thenAnswer((_) async => 'p1');
 
       await vm.addProduct(
@@ -207,7 +225,12 @@ void main() {
     test('Success Paths - Digital and Variants', () async {
       final vm = getViewModel();
       when(
-        mockRepo.createProductAtomic(any, any, testImageUrls: anyNamed('testImageUrls'), bookSourceUrl: anyNamed('bookSourceUrl')),
+        mockRepo.createProductAtomic(
+          any,
+          any,
+          testImageUrls: anyNamed('testImageUrls'),
+          bookSourceUrl: anyNamed('bookSourceUrl'),
+        ),
       ).thenAnswer((_) async => 'p1');
 
       // Digital software
@@ -290,7 +313,9 @@ void main() {
       vm.toggleWarehouseSelection('w1');
       vm.setWarehouseStock('w1', 10);
 
-      when(mockLocationRepo.getAddressSuggestions('123')).thenAnswer((_) async => []);
+      when(
+        mockLocationRepo.getAddressSuggestions('123'),
+      ).thenAnswer((_) async => []);
       await vm.onStreetChanged('123');
 
       vm.toggleHasVariants(true);

@@ -45,7 +45,10 @@ void main() {
       userRepo = OrignaBaseUserRepository(ob);
       final authRepo = OrignaBaseAuthRepository(ob);
 
-      await authRepo.signInWithEmail('e2e-admin@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-admin@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Admin sign-in failed');
       adminUserId = uid!;
@@ -130,7 +133,9 @@ void main() {
       final authRepo = OrignaBaseAuthRepository(ob);
 
       await authRepo.signInWithEmail(
-          'e2e-seller@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+        'e2e-seller@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
       final uid = ob.auth.currentUserId;
       expect(uid, isNotNull, reason: 'Seller sign-in failed');
       sellerUserId = uid!;

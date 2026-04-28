@@ -21,10 +21,7 @@ void main() {
     });
 
     test('fromMap handles old price format', () {
-      final oldMap = {
-        'optionValues': {},
-        'price': 10.5,
-      };
+      final oldMap = {'optionValues': {}, 'price': 10.5};
       final entry = ProductVariantEntry.fromMap(oldMap);
       expect(entry.priceCents, 1050);
     });

@@ -3,7 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 
 void main() {
-  Widget buildFrame({required Size size, required Widget child, EdgeInsets padding = EdgeInsets.zero}) {
+  Widget buildFrame({
+    required Size size,
+    required Widget child,
+    EdgeInsets padding = EdgeInsets.zero,
+  }) {
     return MaterialApp(
       home: Scaffold(
         body: MediaQuery(
@@ -15,7 +19,9 @@ void main() {
   }
 
   group('ResponsiveBreakpoints', () {
-    testWidgets('dropdownMaxHeight returns 40% of viewport height', (tester) async {
+    testWidgets('dropdownMaxHeight returns 40% of viewport height', (
+      tester,
+    ) async {
       double? height;
       await tester.pumpWidget(
         buildFrame(
@@ -31,7 +37,9 @@ void main() {
       expect(height, 400.0);
     });
 
-    testWidgets('getFontScale returns correct scale for screen widths', (tester) async {
+    testWidgets('getFontScale returns correct scale for screen widths', (
+      tester,
+    ) async {
       final testCases = {
         300.0: 0.9,
         500.0: 1.0,
@@ -58,7 +66,9 @@ void main() {
       }
     });
 
-    testWidgets('getGridColumns returns correct columns for screen widths', (tester) async {
+    testWidgets('getGridColumns returns correct columns for screen widths', (
+      tester,
+    ) async {
       final testCases = {
         300.0: 1,
         400.0: 2,
@@ -85,37 +95,54 @@ void main() {
       }
     });
 
-    testWidgets('isDesktop, isTablet, isMobile correctly identify screen types', (tester) async {
-      final testCases = [
-        {'width': 400.0, 'mobile': true, 'tablet': false, 'desktop': false},
-        {'width': 800.0, 'mobile': false, 'tablet': true, 'desktop': false},
-        {'width': 1200.0, 'mobile': false, 'tablet': false, 'desktop': true},
-      ];
+    testWidgets(
+      'isDesktop, isTablet, isMobile correctly identify screen types',
+      (tester) async {
+        final testCases = [
+          {'width': 400.0, 'mobile': true, 'tablet': false, 'desktop': false},
+          {'width': 800.0, 'mobile': false, 'tablet': true, 'desktop': false},
+          {'width': 1200.0, 'mobile': false, 'tablet': false, 'desktop': true},
+        ];
 
-      for (final tc in testCases) {
-        bool? mobile, tablet, desktop;
-        await tester.pumpWidget(
-          buildFrame(
-            size: Size(tc['width'] as double, 800),
-            child: Builder(
-              builder: (context) {
-                mobile = ResponsiveBreakpoints.isMobile(context);
-                tablet = ResponsiveBreakpoints.isTablet(context);
-                desktop = ResponsiveBreakpoints.isDesktop(context);
-                return const SizedBox();
-              },
+        for (final tc in testCases) {
+          bool? mobile, tablet, desktop;
+          await tester.pumpWidget(
+            buildFrame(
+              size: Size(tc['width'] as double, 800),
+              child: Builder(
+                builder: (context) {
+                  mobile = ResponsiveBreakpoints.isMobile(context);
+                  tablet = ResponsiveBreakpoints.isTablet(context);
+                  desktop = ResponsiveBreakpoints.isDesktop(context);
+                  return const SizedBox();
+                },
+              ),
             ),
-          ),
-        );
-        expect(mobile, tc['mobile'], reason: 'isMobile failed for ${tc['width']}');
-        expect(tablet, tc['tablet'], reason: 'isTablet failed for ${tc['width']}');
-        expect(desktop, tc['desktop'], reason: 'isDesktop failed for ${tc['width']}');
-      }
-    });
+          );
+          expect(
+            mobile,
+            tc['mobile'],
+            reason: 'isMobile failed for ${tc['width']}',
+          );
+          expect(
+            tablet,
+            tc['tablet'],
+            reason: 'isTablet failed for ${tc['width']}',
+          );
+          expect(
+            desktop,
+            tc['desktop'],
+            reason: 'isDesktop failed for ${tc['width']}',
+          );
+        }
+      },
+    );
 
-    testWidgets('getSafePadding adds correct padding based on width', (tester) async {
+    testWidgets('getSafePadding adds correct padding based on width', (
+      tester,
+    ) async {
       const padding = EdgeInsets.all(10);
-      
+
       // Width < 480: padding + 8
       EdgeInsets? smallPadding;
       await tester.pumpWidget(
@@ -149,7 +176,9 @@ void main() {
       expect(largePadding, const EdgeInsets.all(26));
     });
 
-    testWidgets('getSpacing returns correct spacing sizes for screen widths', (tester) async {
+    testWidgets('getSpacing returns correct spacing sizes for screen widths', (
+      tester,
+    ) async {
       final testCases = {
         // < mobilePlus (480) -> tiny spacing
         400.0: {
@@ -193,18 +222,27 @@ void main() {
               size: Size(entry.key, 800),
               child: Builder(
                 builder: (context) {
-                  spacing = ResponsiveBreakpoints.getSpacing(context, sizeEntry.key);
+                  spacing = ResponsiveBreakpoints.getSpacing(
+                    context,
+                    sizeEntry.key,
+                  );
                   return const SizedBox();
                 },
               ),
             ),
           );
-          expect(spacing, sizeEntry.value, reason: 'Failed for width ${entry.key}, size ${sizeEntry.key}');
+          expect(
+            spacing,
+            sizeEntry.value,
+            reason: 'Failed for width ${entry.key}, size ${sizeEntry.key}',
+          );
         }
       }
     });
 
-    testWidgets('getValue returns correct generic values based on width', (tester) async {
+    testWidgets('getValue returns correct generic values based on width', (
+      tester,
+    ) async {
       String? result;
 
       // Mobile
@@ -375,12 +413,17 @@ void main() {
           ),
         ),
       );
-      
+
       final constrainedBox = tester.widget<ConstrainedBox>(
-        find.descendant(of: find.byKey(key), matching: find.byType(ConstrainedBox)).first
+        find
+            .descendant(
+              of: find.byKey(key),
+              matching: find.byType(ConstrainedBox),
+            )
+            .first,
       );
       expect(constrainedBox.constraints.maxWidth, 1000);
-      
+
       // When width < maxWidth
       final smallKey = GlobalKey();
       await tester.pumpWidget(
@@ -394,27 +437,33 @@ void main() {
           ),
         ),
       );
-      
+
       final constrainedBoxSmall = tester.widget<ConstrainedBox>(
-        find.descendant(of: find.byKey(smallKey), matching: find.byType(ConstrainedBox)).first
+        find
+            .descendant(
+              of: find.byKey(smallKey),
+              matching: find.byType(ConstrainedBox),
+            )
+            .first,
       );
       expect(constrainedBoxSmall.constraints.maxWidth, 800);
     });
   });
 
   group('ResponsiveGridView', () {
-    testWidgets('builds a GridView with correct crossAxisCount', (tester) async {
+    testWidgets('builds a GridView with correct crossAxisCount', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         buildFrame(
           size: const Size(800, 800), // tablet width, expect 3 columns
-          child: const ResponsiveGridView(
-            children: [Text('1'), Text('2')],
-          ),
+          child: const ResponsiveGridView(children: [Text('1'), Text('2')]),
         ),
       );
 
       final gridView = tester.widget<GridView>(find.byType(GridView));
-      final delegate = gridView.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      final delegate =
+          gridView.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
       expect(delegate.crossAxisCount, 3);
     });
   });
@@ -467,30 +516,33 @@ void main() {
   });
 
   group('ResponsiveText', () {
-    testWidgets('returns TextStyle with correct scale for body, caption, headings', (tester) async {
-      TextStyle? bodyStyle, captionStyle, h1Style, h2Style, h3Style;
-      
-      await tester.pumpWidget(
-        buildFrame(
-          size: const Size(1200, 800), // font scale should be 1.2
-          child: Builder(
-            builder: (context) {
-              bodyStyle = ResponsiveText.body(context);
-              captionStyle = ResponsiveText.caption(context);
-              h1Style = ResponsiveText.heading1(context);
-              h2Style = ResponsiveText.heading2(context);
-              h3Style = ResponsiveText.heading3(context);
-              return const SizedBox();
-            },
-          ),
-        ),
-      );
+    testWidgets(
+      'returns TextStyle with correct scale for body, caption, headings',
+      (tester) async {
+        TextStyle? bodyStyle, captionStyle, h1Style, h2Style, h3Style;
 
-      expect(bodyStyle?.fontSize, 14 * 1.2);
-      expect(captionStyle?.fontSize, 12 * 1.2);
-      expect(h1Style?.fontSize, 28 * 1.2);
-      expect(h2Style?.fontSize, 24 * 1.2);
-      expect(h3Style?.fontSize, 20 * 1.2);
-    });
+        await tester.pumpWidget(
+          buildFrame(
+            size: const Size(1200, 800), // font scale should be 1.2
+            child: Builder(
+              builder: (context) {
+                bodyStyle = ResponsiveText.body(context);
+                captionStyle = ResponsiveText.caption(context);
+                h1Style = ResponsiveText.heading1(context);
+                h2Style = ResponsiveText.heading2(context);
+                h3Style = ResponsiveText.heading3(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        expect(bodyStyle?.fontSize, 14 * 1.2);
+        expect(captionStyle?.fontSize, 12 * 1.2);
+        expect(h1Style?.fontSize, 28 * 1.2);
+        expect(h2Style?.fontSize, 24 * 1.2);
+        expect(h3Style?.fontSize, 20 * 1.2);
+      },
+    );
   });
 }

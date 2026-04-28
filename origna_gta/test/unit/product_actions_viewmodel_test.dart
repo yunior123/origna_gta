@@ -39,18 +39,28 @@ void main() {
     });
 
     test('deleteProduct returns true and sets isSuccess on success', () async {
-      final result = await container.read(productActionsViewModelProvider.notifier).deleteProduct('prod_1');
+      final result = await container
+          .read(productActionsViewModelProvider.notifier)
+          .deleteProduct('prod_1');
       expect(result, isTrue);
       expect(container.read(productActionsViewModelProvider).isSuccess, isTrue);
       expect(fakeRepo.deleteCalls, 1);
     });
 
-    test('deleteProduct returns false and sets errorMessage on failure', () async {
-      fakeRepo.nextError = Exception('not found');
-      final result = await container.read(productActionsViewModelProvider.notifier).deleteProduct('prod_2');
-      expect(result, isFalse);
-      expect(container.read(productActionsViewModelProvider).errorMessage, isNotNull);
-    });
+    test(
+      'deleteProduct returns false and sets errorMessage on failure',
+      () async {
+        fakeRepo.nextError = Exception('not found');
+        final result = await container
+            .read(productActionsViewModelProvider.notifier)
+            .deleteProduct('prod_2');
+        expect(result, isFalse);
+        expect(
+          container.read(productActionsViewModelProvider).errorMessage,
+          isNotNull,
+        );
+      },
+    );
 
     test('deleteProduct returns false if already loading', () async {
       final notifier = container.read(productActionsViewModelProvider.notifier);

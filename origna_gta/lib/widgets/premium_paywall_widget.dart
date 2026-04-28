@@ -90,8 +90,7 @@ class PremiumPaywallWidget extends StatelessWidget {
             child: ModernButton(
               key: const Key('paywall_upgrade_button'),
               label: 'subscription.upgrade_to_premium'.tr(),
-              onPressed: () =>
-                  appPushNamed(context, AppRoutes.subscription),
+              onPressed: () => appPushNamed(context, AppRoutes.subscription),
               icon: Icons.workspace_premium,
               fullWidth: false,
               width: 260,

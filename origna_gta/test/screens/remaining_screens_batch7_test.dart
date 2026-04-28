@@ -34,7 +34,10 @@ void main() {
   });
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
     mockProductRepo = MockProductRepository();
     mockOrderRepo = MockOrderRepository();
     mockUserRepo = MockUserRepository();
@@ -45,9 +48,17 @@ void main() {
       TestWrapper(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
-          userProfileProvider.overrideWith((ref) => Stream.value(models.UserModel(
-            uid: 'test_user_123', name: 'Test', email: 't@e.com', roles: const [UserRole.seller], createdAt: DateTime.now()
-          ))),
+          userProfileProvider.overrideWith(
+            (ref) => Stream.value(
+              models.UserModel(
+                uid: 'test_user_123',
+                name: 'Test',
+                email: 't@e.com',
+                roles: const [UserRole.seller],
+                createdAt: DateTime.now(),
+              ),
+            ),
+          ),
           productRepositoryProvider.overrideWithValue(mockProductRepo),
           orderRepositoryProvider.overrideWithValue(mockOrderRepo),
           userRepositoryProvider.overrideWithValue(mockUserRepo),
@@ -70,7 +81,10 @@ void main() {
     });
 
     testWidgets('renders ChatScreen', (tester) async {
-      await pumpResilient(tester, const ChatScreen(productId: 'p1', productTitle: 'Title'));
+      await pumpResilient(
+        tester,
+        const ChatScreen(productId: 'p1', productTitle: 'Title'),
+      );
       expect(find.byType(ChatScreen), findsOneWidget);
     });
 

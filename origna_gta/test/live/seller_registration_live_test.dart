@@ -140,89 +140,81 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'should have default warehouse',
-      () async {
-        if (!runLive) return;
+    test('should have default warehouse', () async {
+      if (!runLive) return;
 
-        await authRepo.signInWithEmail(
-          'e2e-seller@test.origna.ca',
-          'REDACTED_TEST_PASSWORD',
+      await authRepo.signInWithEmail(
+        'e2e-seller@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
+
+      final sellerId = ob.auth.currentUserId;
+      expect(sellerId, isNotNull);
+
+      // Check warehouses
+      try {
+        final warehousesSnapshot = await ob
+            .collection(Collections.users)
+            .doc(sellerId!)
+            .subcollection(Collections.warehouses)
+            .get();
+
+        expect(warehousesSnapshot.docs.isNotEmpty, isTrue);
+
+        final hasDefaultWarehouse = warehousesSnapshot.docs.any(
+          (doc) => (doc.data['isDefault'] as bool?) ?? false,
         );
 
-        final sellerId = ob.auth.currentUserId;
-        expect(sellerId, isNotNull);
-
-        // Check warehouses
-        try {
-          final warehousesSnapshot = await ob
-              .collection(Collections.users)
-              .doc(sellerId!)
-              .subcollection(Collections.warehouses)
-              .get();
-
-          expect(warehousesSnapshot.docs.isNotEmpty, isTrue);
-
-          final hasDefaultWarehouse = warehousesSnapshot.docs.any(
-            (doc) => (doc.data['isDefault'] as bool?) ?? false,
-          );
-
-          expect(
-            hasDefaultWarehouse,
-            isTrue,
-            reason: 'Seller should have a default warehouse',
-          );
-        } catch (e) {
-          expect(
-            isExpectedPermissionError(e),
-            isTrue,
-            reason: 'Unexpected default warehouse lookup error: $e',
-          );
-        }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
-
-    test(
-      'should have seller role',
-      () async {
-        if (!runLive) return;
-
-        await authRepo.signInWithEmail(
-          'e2e-seller@test.origna.ca',
-          'REDACTED_TEST_PASSWORD',
+        expect(
+          hasDefaultWarehouse,
+          isTrue,
+          reason: 'Seller should have a default warehouse',
         );
+      } catch (e) {
+        expect(
+          isExpectedPermissionError(e),
+          isTrue,
+          reason: 'Unexpected default warehouse lookup error: $e',
+        );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
-        final sellerId = ob.auth.currentUserId;
-        expect(sellerId, isNotNull);
+    test('should have seller role', () async {
+      if (!runLive) return;
 
-        // Fetch user document
-        try {
-          final userDocQuery = await ob
-              .collection(Collections.users)
-              .doc(sellerId!)
-              .get();
+      await authRepo.signInWithEmail(
+        'e2e-seller@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
 
-          if (userDocQuery != null) {
-            final userData = userDocQuery.data;
-            expect(userData, isNotNull);
+      final sellerId = ob.auth.currentUserId;
+      expect(sellerId, isNotNull);
 
-            final userRole = userData['role'];
-            expect(
-              userRole,
-              equals('seller'),
-              reason: 'User should have seller role',
-            );
-          }
-        } catch (e) {
+      // Fetch user document
+      try {
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(sellerId!)
+            .get();
+
+        if (userDocQuery != null) {
+          final userData = userDocQuery.data;
+          expect(userData, isNotNull);
+
+          final userRole = userData['role'];
           expect(
-            isExpectedPermissionError(e),
-            isTrue,
-            reason: 'Unexpected seller role lookup error: $e',
+            userRole,
+            equals('seller'),
+            reason: 'User should have seller role',
           );
         }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      } catch (e) {
+        expect(
+          isExpectedPermissionError(e),
+          isTrue,
+          reason: 'Unexpected seller role lookup error: $e',
+        );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }

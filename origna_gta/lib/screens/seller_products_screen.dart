@@ -91,8 +91,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
               child: IconButton(
                 icon: const Icon(Icons.add_box_outlined),
                 tooltip: tr('seller.add_product'),
-                onPressed: () =>
-                    appPushNamed(context, AppRoutes.addProduct),
+                onPressed: () => appPushNamed(context, AppRoutes.addProduct),
               ),
             ),
           ],
@@ -121,8 +120,7 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                 action: ModernButton(
                   label: tr('seller.add_product'),
                   icon: Icons.add_box_outlined,
-                  onPressed: () =>
-                      appPushNamed(context, AppRoutes.addProduct),
+                  onPressed: () => appPushNamed(context, AppRoutes.addProduct),
                   fullWidth: false,
                   width: 260,
                 ),
@@ -187,7 +185,8 @@ class _SellerProductsScreenState extends ConsumerState<SellerProductsScreen> {
                                   HapticFeedback.mediumImpact();
                                   bulkVm.toggleSelection(product.productId);
                                 },
-                                onEdit: () => appPushNamed(context,
+                                onEdit: () => appPushNamed(
+                                  context,
                                   AppRoutes.editProduct,
                                   arguments: EditProductArgs(product: product),
                                 ),

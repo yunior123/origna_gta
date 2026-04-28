@@ -48,30 +48,29 @@ void main() {
       container.dispose();
     });
 
-    test(
-      'Can fetch seller profile',
-      () async {
-        final currentUserId = ob.auth.currentUserId;
-        expect(currentUserId, isNotNull);
+    test('Can fetch seller profile', () async {
+      final currentUserId = ob.auth.currentUserId;
+      expect(currentUserId, isNotNull);
 
-        try {
-          final userDoc = await ob.collection(Collections.users).doc(currentUserId!).get();
+      try {
+        final userDoc = await ob
+            .collection(Collections.users)
+            .doc(currentUserId!)
+            .get();
 
-          if (userDoc != null && userDoc.exists) {
-            expect(userDoc.data, isA<Map<String, dynamic>>());
-            final roles = userDoc.data[Fields.roles];
-            expect(roles, isNotNull);
-          }
-        } catch (e) {
-          expect(
-            isExpectedPermissionError(e),
-            isTrue,
-            reason: 'Unexpected seller profile lookup error: $e',
-          );
+        if (userDoc != null && userDoc.exists) {
+          expect(userDoc.data, isA<Map<String, dynamic>>());
+          final roles = userDoc.data[Fields.roles];
+          expect(roles, isNotNull);
         }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      } catch (e) {
+        expect(
+          isExpectedPermissionError(e),
+          isTrue,
+          reason: 'Unexpected seller profile lookup error: $e',
+        );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'Can query seller profile document',
@@ -98,37 +97,33 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'Can create warehouse',
-      () async {
-        const uuid = Uuid();
-        final warehouseLabel = 'Test Warehouse ${uuid.v4().substring(0, 8)}';
+    test('Can create warehouse', () async {
+      const uuid = Uuid();
+      final warehouseLabel = 'Test Warehouse ${uuid.v4().substring(0, 8)}';
 
-        try {
-          await ob.request(
-            'POST',
-            ApiEndpoints.warehousesCreate,
-            body: {
-              'label': warehouseLabel,
-              Fields.type: 'primary',
-              'address': {
-                Fields.street: '123 Test St',
-                Fields.city: 'Toronto',
-                Fields.state: 'ON',
-                Fields.postalCode: 'M5V 3A8',
-                Fields.country: 'Canada',
-              },
-              'isDefault': false,
+      try {
+        await ob.request(
+          'POST',
+          ApiEndpoints.warehousesCreate,
+          body: {
+            'label': warehouseLabel,
+            Fields.type: 'primary',
+            'address': {
+              Fields.street: '123 Test St',
+              Fields.city: 'Toronto',
+              Fields.state: 'ON',
+              Fields.postalCode: 'M5V 3A8',
+              Fields.country: 'Canada',
             },
-          );
-          expect(true, isTrue);
-        } catch (e) {
-          // May fail if warehouse limit reached
-          expect(e, isNotNull);
-        }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+            'isDefault': false,
+          },
+        );
+        expect(true, isTrue);
+      } catch (e) {
+        // May fail if warehouse limit reached
+        expect(e, isNotNull);
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'Can query warehouses collection',
@@ -172,10 +167,7 @@ void main() {
             await ob.request(
               'POST',
               ApiEndpoints.warehousesUpdate,
-              body: {
-                'warehouseId': warehouseId,
-                'label': 'Updated Warehouse',
-              },
+              body: {'warehouseId': warehouseId, 'label': 'Updated Warehouse'},
             );
             expect(true, isTrue);
           }
@@ -187,49 +179,41 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'Can query seller products',
-      () async {
-        final currentUserId = ob.auth.currentUserId;
-        expect(currentUserId, isNotNull);
+    test('Can query seller products', () async {
+      final currentUserId = ob.auth.currentUserId;
+      expect(currentUserId, isNotNull);
 
+      final snapshot = await ob
+          .collection(Collections.products)
+          .where(Fields.sellerId, isEqualTo: currentUserId!)
+          .limit(10)
+          .get();
+
+      expect(snapshot, isNotNull);
+      expect(snapshot.docs, isA<List<dynamic>>());
+    }, timeout: const Timeout(Duration(minutes: 2)));
+
+    test('Can query seller orders', () async {
+      final currentUserId = ob.auth.currentUserId;
+      expect(currentUserId, isNotNull);
+
+      try {
         final snapshot = await ob
-            .collection(Collections.products)
+            .collection(Collections.orders)
             .where(Fields.sellerId, isEqualTo: currentUserId!)
             .limit(10)
             .get();
 
         expect(snapshot, isNotNull);
         expect(snapshot.docs, isA<List<dynamic>>());
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
-
-    test(
-      'Can query seller orders',
-      () async {
-        final currentUserId = ob.auth.currentUserId;
-        expect(currentUserId, isNotNull);
-
-        try {
-          final snapshot = await ob
-              .collection(Collections.orders)
-              .where(Fields.sellerId, isEqualTo: currentUserId!)
-              .limit(10)
-              .get();
-
-          expect(snapshot, isNotNull);
-          expect(snapshot.docs, isA<List<dynamic>>());
-        } catch (e) {
-          expect(
-            isExpectedPermissionError(e),
-            isTrue,
-            reason: 'Unexpected seller orders lookup error: $e',
-          );
-        }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      } catch (e) {
+        expect(
+          isExpectedPermissionError(e),
+          isTrue,
+          reason: 'Unexpected seller orders lookup error: $e',
+        );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'deleteWarehouse endpoint is reachable',
@@ -239,9 +223,7 @@ void main() {
           await ob.request(
             'POST',
             ApiEndpoints.warehousesDelete,
-            body: {
-              'warehouseId': 'nonexistent_warehouse_id',
-            },
+            body: {'warehouseId': 'nonexistent_warehouse_id'},
           );
           // May succeed with no error or fail
         } catch (e) {
@@ -290,7 +272,10 @@ void main() {
         expect(currentUserId, isNotNull);
 
         try {
-          final userDoc = await ob.collection(Collections.users).doc(currentUserId!).get();
+          final userDoc = await ob
+              .collection(Collections.users)
+              .doc(currentUserId!)
+              .get();
 
           if (userDoc == null || !userDoc.exists) return;
 

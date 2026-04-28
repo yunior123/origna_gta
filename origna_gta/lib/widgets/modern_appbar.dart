@@ -61,8 +61,7 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded),
                 tooltip: 'Back',
                 onPressed:
-                    onBackPressed ??
-                    () => appPopOrGo(context, AppRoutes.home),
+                    onBackPressed ?? () => appPopOrGo(context, AppRoutes.home),
               )
             : leadingIcon,
         title: Text(

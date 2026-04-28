@@ -14,10 +14,7 @@ import 'package:origna_gta/utils/constants.dart';
 
 import '../../test_utils.dart';
 
-@GenerateNiceMocks([
-  MockSpec<OrderRepository>(),
-  MockSpec<UserRepository>(),
-])
+@GenerateNiceMocks([MockSpec<OrderRepository>(), MockSpec<UserRepository>()])
 import 'checkout_provider_test.mocks.dart';
 
 void main() {
@@ -180,11 +177,11 @@ void main() {
     });
 
     test('sets loading state while applying coupon', () async {
-      when(mockOrderRepo.createCheckoutSession(any))
-          .thenAnswer((_) async => {'checkoutUrl': 'https://example.com'});
+      when(
+        mockOrderRepo.createCheckoutSession(any),
+      ).thenAnswer((_) async => {'checkoutUrl': 'https://example.com'});
 
-      when(mockUserRepo.getUserProfile(any))
-          .thenAnswer((_) async => null);
+      when(mockUserRepo.getUserProfile(any)).thenAnswer((_) async => null);
 
       final notifier = container.read(checkoutStateProvider.notifier);
 
@@ -230,23 +227,26 @@ void main() {
       expect(result, isA<CheckoutError>());
     });
 
-    test('returns error when address required but not provided for physical items', () async {
-      final notifier = container.read(checkoutStateProvider.notifier);
+    test(
+      'returns error when address required but not provided for physical items',
+      () async {
+        final notifier = container.read(checkoutStateProvider.notifier);
 
-      final result = await notifier.startCheckout(
-        items: [testCartItem],
-        user: UserModel(
-          uid: testUserId,
-          email: 'test@example.com',
-          name: 'Test User',
-          roles: const [UserRole.buyer],
-          createdAt: DateTime.now(),
-        ),
-        subtotalCents: 5000,
-      );
+        final result = await notifier.startCheckout(
+          items: [testCartItem],
+          user: UserModel(
+            uid: testUserId,
+            email: 'test@example.com',
+            name: 'Test User',
+            roles: const [UserRole.buyer],
+            createdAt: DateTime.now(),
+          ),
+          subtotalCents: 5000,
+        );
 
-      expect(result, isA<CheckoutError>());
-    });
+        expect(result, isA<CheckoutError>());
+      },
+    );
 
     test('returns error for invalid subtotal', () async {
       final notifier = container.read(checkoutStateProvider.notifier);

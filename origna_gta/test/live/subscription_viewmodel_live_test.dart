@@ -80,42 +80,38 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'should verify user has role',
-      () async {
-        if (!runLive) return;
+    test('should verify user has role', () async {
+      if (!runLive) return;
 
-        await authRepo.signInWithEmail(
-          'e2e-buyer@test.origna.ca',
-          'REDACTED_TEST_PASSWORD',
-        );
+      await authRepo.signInWithEmail(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
 
-        final userId = ob.auth.currentUserId;
-        try {
-          final userDocQuery = await ob
-              .collection(Collections.users)
-              .doc(userId!)
-              .get();
+      final userId = ob.auth.currentUserId;
+      try {
+        final userDocQuery = await ob
+            .collection(Collections.users)
+            .doc(userId!)
+            .get();
 
-          if (userDocQuery != null) {
-            final data = userDocQuery.data;
-            expect(data, isNotNull);
-            expect(
-              data.containsKey('role'),
-              isTrue,
-              reason: 'User should have a role',
-            );
-          }
-        } catch (e) {
+        if (userDocQuery != null) {
+          final data = userDocQuery.data;
+          expect(data, isNotNull);
           expect(
-            isExpectedPermissionError(e),
+            data.containsKey('role'),
             isTrue,
-            reason: 'Unexpected role lookup error: $e',
+            reason: 'User should have a role',
           );
         }
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      } catch (e) {
+        expect(
+          isExpectedPermissionError(e),
+          isTrue,
+          reason: 'Unexpected role lookup error: $e',
+        );
+      }
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'should fetch subscription details for admin',

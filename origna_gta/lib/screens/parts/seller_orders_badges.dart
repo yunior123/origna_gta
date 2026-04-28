@@ -30,8 +30,7 @@ class _UnansweredQaBadge extends ConsumerWidget {
                       args: [count.toString()],
                     )
                   : 'seller.no_pending_questions'.tr(),
-              onPressed: () =>
-                  appPushNamed(context, AppRoutes.sellerProducts),
+              onPressed: () => appPushNamed(context, AppRoutes.sellerProducts),
             ),
           ),
           if (count > 0)

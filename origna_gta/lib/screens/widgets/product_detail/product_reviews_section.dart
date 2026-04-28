@@ -373,7 +373,8 @@ class _ReviewCardState extends ConsumerState<ReviewCard> {
                               label: 'btn-review-photos-premium',
                               button: true,
                               child: GestureDetector(
-                                onTap: () => appPushNamed(context,
+                                onTap: () => appPushNamed(
+                                  context,
                                   AppRoutes.subscription,
                                 ),
                                 child: Column(

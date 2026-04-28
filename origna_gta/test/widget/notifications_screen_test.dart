@@ -11,9 +11,7 @@ import 'package:origna_gta/screens/notifications_screen.dart';
 import '../test_utils.dart';
 import 'notifications_screen_test.mocks.dart';
 
-@GenerateNiceMocks([
-  MockSpec<NotificationRepository>(),
-])
+@GenerateNiceMocks([MockSpec<NotificationRepository>()])
 void main() {
   late MockNotificationRepository mockRepo;
   late AppAuthUser mockUser;
@@ -36,8 +34,9 @@ void main() {
 
   group('NotificationsScreen Widget Tests', () {
     testWidgets('renders empty state when no notifications', (tester) async {
-      when(mockRepo.watchNotifications('user_123'))
-          .thenAnswer((_) => Stream.value(const <Map<String, dynamic>>[]));
+      when(
+        mockRepo.watchNotifications('user_123'),
+      ).thenAnswer((_) => Stream.value(const <Map<String, dynamic>>[]));
 
       await tester.pumpWidget(createTestWidget());
       await tester.pump();

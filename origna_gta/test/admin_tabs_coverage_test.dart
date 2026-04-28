@@ -29,7 +29,10 @@ void main() {
 
   Widget testWrapper(Widget child, {List<Override> overrides = const []}) {
     return TestWrapper(
-      overrides: [adminRepositoryProvider.overrideWithValue(mockAdminRepo), ...overrides],
+      overrides: [
+        adminRepositoryProvider.overrideWithValue(mockAdminRepo),
+        ...overrides,
+      ],
       child: Scaffold(body: child),
     );
   }
@@ -41,9 +44,17 @@ void main() {
       addTearDown(() => tester.view.resetPhysicalSize());
 
       final sellers = [
-        UserModel(uid: 's1', name: 'Seller 1', email: 's1@e.com', roles: [UserRole.seller], createdAt: DateTime.now()),
+        UserModel(
+          uid: 's1',
+          name: 'Seller 1',
+          email: 's1@e.com',
+          roles: [UserRole.seller],
+          createdAt: DateTime.now(),
+        ),
       ];
-      when(mockAdminRepo.watchSellers()).thenAnswer((_) => Stream.value(sellers));
+      when(
+        mockAdminRepo.watchSellers(),
+      ).thenAnswer((_) => Stream.value(sellers));
 
       await tester.pumpWidget(testWrapper(const AdminSellersTab()));
       await tester.pumpAndSettle();
@@ -55,7 +66,13 @@ void main() {
   group('AdminUsersTab', () {
     testWidgets('renders users list', (tester) async {
       final users = [
-        UserModel(uid: 'u1', name: 'User 1', email: 'u1@e.com', roles: [UserRole.buyer], createdAt: DateTime.now()),
+        UserModel(
+          uid: 'u1',
+          name: 'User 1',
+          email: 'u1@e.com',
+          roles: [UserRole.buyer],
+          createdAt: DateTime.now(),
+        ),
       ];
       when(mockAdminRepo.watchUsers()).thenAnswer((_) => Stream.value(users));
 
@@ -90,7 +107,9 @@ void main() {
           stripeSessionId: 'ss1',
         ),
       ];
-      when(mockAdminRepo.watchOrders(status: anyNamed('status'))).thenAnswer((_) => Stream.value(<OrderModel>[...orders]));
+      when(
+        mockAdminRepo.watchOrders(status: anyNamed('status')),
+      ).thenAnswer((_) => Stream.value(<OrderModel>[...orders]));
 
       await tester.pumpWidget(testWrapper(const AdminOrdersTab()));
       await tester.pumpAndSettle();
@@ -119,7 +138,9 @@ void main() {
           keywords: ['k1'],
         ),
       ];
-      when(mockAdminRepo.watchProducts(sellerId: anyNamed('sellerId'))).thenAnswer((_) => Stream.value(<ProductModel>[...products]));
+      when(
+        mockAdminRepo.watchProducts(sellerId: anyNamed('sellerId')),
+      ).thenAnswer((_) => Stream.value(<ProductModel>[...products]));
 
       await tester.pumpWidget(testWrapper(const AdminProductsTab()));
       await tester.pumpAndSettle();
@@ -136,7 +157,9 @@ void main() {
         },
         'enabledProviders': ['stripe'],
       };
-      when(mockAdminRepo.getPaymentProviders()).thenAnswer((_) async => providersData);
+      when(
+        mockAdminRepo.getPaymentProviders(),
+      ).thenAnswer((_) async => providersData);
 
       await tester.pumpWidget(testWrapper(const AdminPaymentProvidersTab()));
       await tester.pump();

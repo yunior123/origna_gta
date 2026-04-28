@@ -7,7 +7,6 @@ import 'package:origna_gta/screens/ordersuccess_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import '../test_utils.dart';
 
-
 void main() {
   late AppAuthUser mockUser;
 
@@ -16,7 +15,10 @@ void main() {
   });
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   Future<void> pumpResilient(WidgetTester tester, Widget widget) async {

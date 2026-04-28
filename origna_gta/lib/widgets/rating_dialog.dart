@@ -264,7 +264,7 @@ class _RatingDialogState extends ConsumerState<RatingDialog> {
               child: GestureDetector(
                 onTap: () {
                   appPop(context);
-                  appPushNamed(context,AppRoutes.subscription);
+                  appPushNamed(context, AppRoutes.subscription);
                 },
                 child: Container(
                   width: double.infinity,

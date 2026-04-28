@@ -138,16 +138,16 @@ void main() {
 
       // Start runApp immediately so Flutter renders at the earliest possible moment.
       // Config and Sentry are initialized in background — the app handles "not ready" state.
-    runApp(
-      EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
-        path: 'assets/translations',
-        fallbackLocale: const Locale('en'),
-        startLocale: _detectBrowserLocale(),
-        saveLocale: true,
-        child: const ProviderScope(child: OrignaApp()),
-      ),
-    );
+      runApp(
+        EasyLocalization(
+          supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
+          path: 'assets/translations',
+          fallbackLocale: const Locale('en'),
+          startLocale: _detectBrowserLocale(),
+          saveLocale: true,
+          child: const ProviderScope(child: OrignaApp()),
+        ),
+      );
 
       // Background: fetch remote config (safe defaults already set).
       // 10s timeout — slow network should not block the rendered app.

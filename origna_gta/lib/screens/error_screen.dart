@@ -86,11 +86,11 @@ class ErrorScreen extends StatelessWidget {
                     child: ModernButton(
                       label: 'seller.go_home'.tr(),
                       icon: Icons.home_outlined,
-                      onPressed: () =>
-                          appPushNamedAndRemoveUntil(context,
-                            AppRoutes.home,
-                            (route) => false,
-                          ),
+                      onPressed: () => appPushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      ),
                     ),
                   ),
                 ],

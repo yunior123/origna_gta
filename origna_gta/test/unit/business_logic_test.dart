@@ -1,5 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:origna_gta/utils/utils.dart' hide Address, UserModel, ProductModel, CartModel, CartItemModel, SellerPayout;
+import 'package:origna_gta/utils/utils.dart'
+    hide
+        Address,
+        UserModel,
+        ProductModel,
+        CartModel,
+        CartItemModel,
+        SellerPayout;
 import 'package:origna_gta/models/models.dart';
 
 void main() {
@@ -21,7 +28,10 @@ void main() {
     });
 
     test('getTaxRate returns correct rate for Atlantic provinces (HST)', () {
-      expect(getTaxRate('NS'), 0.14);  // Changed from 15% to 14% on April 1, 2025 (CRA)
+      expect(
+        getTaxRate('NS'),
+        0.14,
+      ); // Changed from 15% to 14% on April 1, 2025 (CRA)
       expect(getTaxRate('NB'), 0.15);
       expect(getTaxRate('NL'), 0.15);
       expect(getTaxRate('PE'), 0.15);
@@ -51,55 +61,64 @@ void main() {
       expect(result['HST'], closeTo(13.0, 0.01));
     });
 
-    test('calculateDetailedTaxes returns correct breakdown for BC with GST+PST', () {
-      final address = Address(
-        street: '456 Oak Ave',
-        city: 'Vancouver',
-        state: 'BC',
-        postalCode: 'V6B 1A1',
-        country: 'Canada',
-      );
+    test(
+      'calculateDetailedTaxes returns correct breakdown for BC with GST+PST',
+      () {
+        final address = Address(
+          street: '456 Oak Ave',
+          city: 'Vancouver',
+          state: 'BC',
+          postalCode: 'V6B 1A1',
+          country: 'Canada',
+        );
 
-      final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 100.0);
 
-      expect(result.containsKey('GST'), true);
-      expect(result.containsKey('PST'), true);
-      expect(result['GST'], closeTo(5.0, 0.01));
-      expect(result['PST'], closeTo(7.0, 0.01));
-    });
+        expect(result.containsKey('GST'), true);
+        expect(result.containsKey('PST'), true);
+        expect(result['GST'], closeTo(5.0, 0.01));
+        expect(result['PST'], closeTo(7.0, 0.01));
+      },
+    );
 
-    test('calculateDetailedTaxes returns correct breakdown for Quebec with GST+QST', () {
-      final address = Address(
-        street: '789 Rue St',
-        city: 'Montreal',
-        state: 'QC',
-        postalCode: 'H2X 1A1',
-        country: 'Canada',
-      );
+    test(
+      'calculateDetailedTaxes returns correct breakdown for Quebec with GST+QST',
+      () {
+        final address = Address(
+          street: '789 Rue St',
+          city: 'Montreal',
+          state: 'QC',
+          postalCode: 'H2X 1A1',
+          country: 'Canada',
+        );
 
-      final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 100.0);
 
-      expect(result.containsKey('GST'), true);
-      expect(result.containsKey('QST'), true);
-      expect(result['GST'], closeTo(5.0, 0.01));
-      expect(result['QST'], closeTo(9.975, 0.01));
-    });
+        expect(result.containsKey('GST'), true);
+        expect(result.containsKey('QST'), true);
+        expect(result['GST'], closeTo(5.0, 0.01));
+        expect(result['QST'], closeTo(9.975, 0.01));
+      },
+    );
 
-    test('calculateDetailedTaxes returns correct breakdown for Alberta (GST only)', () {
-      final address = Address(
-        street: '100 Centre St',
-        city: 'Calgary',
-        state: 'AB',
-        postalCode: 'T2P 1A1',
-        country: 'Canada',
-      );
+    test(
+      'calculateDetailedTaxes returns correct breakdown for Alberta (GST only)',
+      () {
+        final address = Address(
+          street: '100 Centre St',
+          city: 'Calgary',
+          state: 'AB',
+          postalCode: 'T2P 1A1',
+          country: 'Canada',
+        );
 
-      final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 100.0);
 
-      expect(result.length, 1);
-      expect(result.containsKey('GST'), true);
-      expect(result['GST'], closeTo(5.0, 0.01));
-    });
+        expect(result.length, 1);
+        expect(result.containsKey('GST'), true);
+        expect(result['GST'], closeTo(5.0, 0.01));
+      },
+    );
   });
 
   group('Search Keywords Generation', () {
@@ -112,24 +131,27 @@ void main() {
       expect(keywords.contains('nike'), true);
     });
 
-    test('generateSearchKeywords creates prefix keywords for multiple words', () {
-      final keywords = generateSearchKeywords('Nike Shoe');
+    test(
+      'generateSearchKeywords creates prefix keywords for multiple words',
+      () {
+        final keywords = generateSearchKeywords('Nike Shoe');
 
-      // Nike prefixes
-      expect(keywords.contains('n'), true);
-      expect(keywords.contains('ni'), true);
-      expect(keywords.contains('nik'), true);
-      expect(keywords.contains('nike'), true);
+        // Nike prefixes
+        expect(keywords.contains('n'), true);
+        expect(keywords.contains('ni'), true);
+        expect(keywords.contains('nik'), true);
+        expect(keywords.contains('nike'), true);
 
-      // Shoe prefixes
-      expect(keywords.contains('s'), true);
-      expect(keywords.contains('sh'), true);
-      expect(keywords.contains('sho'), true);
-      expect(keywords.contains('shoe'), true);
+        // Shoe prefixes
+        expect(keywords.contains('s'), true);
+        expect(keywords.contains('sh'), true);
+        expect(keywords.contains('sho'), true);
+        expect(keywords.contains('shoe'), true);
 
-      // Full name
-      expect(keywords.contains('nike shoe'), true);
-    });
+        // Full name
+        expect(keywords.contains('nike shoe'), true);
+      },
+    );
 
     test('generateSearchKeywords converts to lowercase', () {
       final keywords = generateSearchKeywords('NIKE SHOE');

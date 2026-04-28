@@ -12,7 +12,6 @@ import 'package:origna_gta/models/models.dart' as models;
 import '../test_utils.dart';
 import 'package:origna_gta/models/generated/base_models.dart';
 
-
 void main() {
   setUpAll(() {
     initTestMocks();
@@ -20,7 +19,10 @@ void main() {
   late AppAuthUser mockUser;
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
   });
 
   group('Remaining Screens Batch 4 Smoke Tests', () {
@@ -29,7 +31,9 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            orderByIdProvider('order_123').overrideWith((ref) => Future.value(null)),
+            orderByIdProvider(
+              'order_123',
+            ).overrideWith((ref) => Future.value(null)),
           ],
           child: const OrderDetailScreen(orderId: 'order_123'),
         ),
@@ -52,9 +56,13 @@ void main() {
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            userProfileProvider.overrideWith((ref) => Stream.value(testUserModel)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(testUserModel),
+            ),
             sellerProductsProvider.overrideWith((ref) => Stream.value([])),
-            sellerUnansweredQaProvider('test_user_123').overrideWith((ref) => Stream.value(0)),
+            sellerUnansweredQaProvider(
+              'test_user_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
           child: const SellerProductsScreen(),
         ),
@@ -64,12 +72,16 @@ void main() {
       expect(find.byType(SellerProductsScreen), findsOneWidget);
     });
 
-    testWidgets('renders shipping approval screen', (WidgetTester tester) async {
+    testWidgets('renders shipping approval screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         TestWrapper(
           overrides: [
             currentUserProvider.overrideWithValue(mockUser),
-            pendingShippingApprovalsProvider.overrideWithValue(const AsyncValue.data([])),
+            pendingShippingApprovalsProvider.overrideWithValue(
+              const AsyncValue.data([]),
+            ),
           ],
           child: const ShippingApprovalScreen(),
         ),

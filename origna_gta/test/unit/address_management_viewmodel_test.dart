@@ -44,27 +44,47 @@ void main() {
     });
 
     test('deleteAddress succeeds', () async {
-      await container.read(addressManagementViewModelProvider.notifier).deleteAddress('addr_1');
-      expect(container.read(addressManagementViewModelProvider), isA<AsyncData<void>>());
+      await container
+          .read(addressManagementViewModelProvider.notifier)
+          .deleteAddress('addr_1');
+      expect(
+        container.read(addressManagementViewModelProvider),
+        isA<AsyncData<void>>(),
+      );
       expect(fakeRepo.deleteCalls, 1);
     });
 
     test('deleteAddress sets AsyncError on failure', () async {
       fakeRepo.nextError = Exception('network error');
-      await container.read(addressManagementViewModelProvider.notifier).deleteAddress('addr_1');
-      expect(container.read(addressManagementViewModelProvider), isA<AsyncError<void>>());
+      await container
+          .read(addressManagementViewModelProvider.notifier)
+          .deleteAddress('addr_1');
+      expect(
+        container.read(addressManagementViewModelProvider),
+        isA<AsyncError<void>>(),
+      );
     });
 
     test('setDefaultAddress succeeds', () async {
-      await container.read(addressManagementViewModelProvider.notifier).setDefaultAddress('addr_1');
-      expect(container.read(addressManagementViewModelProvider), isA<AsyncData<void>>());
+      await container
+          .read(addressManagementViewModelProvider.notifier)
+          .setDefaultAddress('addr_1');
+      expect(
+        container.read(addressManagementViewModelProvider),
+        isA<AsyncData<void>>(),
+      );
       expect(fakeRepo.setDefaultCalls, 1);
     });
 
     test('setDefaultAddress sets AsyncError on failure', () async {
       fakeRepo.nextError = Exception('server error');
-      await container.read(addressManagementViewModelProvider.notifier).setDefaultAddress('addr_2');
-      expect(container.read(addressManagementViewModelProvider), isA<AsyncError<void>>());
+      await container
+          .read(addressManagementViewModelProvider.notifier)
+          .setDefaultAddress('addr_2');
+      expect(
+        container.read(addressManagementViewModelProvider),
+        isA<AsyncError<void>>(),
+      );
     });
   });
 }

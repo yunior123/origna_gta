@@ -33,8 +33,9 @@ void main() {
     mockAuthRepo = MockAuthRepository();
     mockOrignaBase = MockOrignaBase();
 
-    when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-        .thenAnswer((_) async => <String, dynamic>{});
+    when(
+      mockOrignaBase.request(any, any, body: anyNamed('body')),
+    ).thenAnswer((_) async => <String, dynamic>{});
 
     container = ProviderContainer(
       overrides: [
@@ -60,27 +61,43 @@ void main() {
     });
 
     test('updateAddress updates state', () {
-      final address = Address(street: '123 St', city: 'City', state: 'ON', postalCode: 'M1M 1M1', country: 'CA');
+      final address = Address(
+        street: '123 St',
+        city: 'City',
+        state: 'ON',
+        postalCode: 'M1M 1M1',
+        country: 'CA',
+      );
       container.read(checkoutStateProvider.notifier).updateAddress(address);
 
       expect(container.read(checkoutStateProvider).address, address);
     });
 
     test('applyCoupon calls backend and updates state', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {Fields.discountAmountCents: 500});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {Fields.discountAmountCents: 500});
 
-      await container.read(checkoutStateProvider.notifier).applyCoupon('SAVE5', 2000);
+      await container
+          .read(checkoutStateProvider.notifier)
+          .applyCoupon('SAVE5', 2000);
 
       final state = container.read(checkoutStateProvider);
       expect(state.couponCode, 'SAVE5');
       expect(state.couponDiscountCents, 500);
-      verify(mockOrignaBase.request('POST', '/api/coupons/apply', body: anyNamed('body'))).called(1);
+      verify(
+        mockOrignaBase.request(
+          'POST',
+          '/api/coupons/apply',
+          body: anyNamed('body'),
+        ),
+      ).called(1);
     });
 
     test('removeCoupon clears coupon state', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {Fields.discountAmountCents: 500});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {Fields.discountAmountCents: 500});
 
       final notifier = container.read(checkoutStateProvider.notifier);
 
@@ -94,7 +111,15 @@ void main() {
 
     test('reset restores initial state', () {
       final notifier = container.read(checkoutStateProvider.notifier);
-      notifier.updateAddress(Address(street: '123', city: 'C', state: 'S', postalCode: 'P', country: 'C'));
+      notifier.updateAddress(
+        Address(
+          street: '123',
+          city: 'C',
+          state: 'S',
+          postalCode: 'P',
+          country: 'C',
+        ),
+      );
 
       notifier.reset();
       expect(container.read(checkoutStateProvider).address, isNull);

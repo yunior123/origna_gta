@@ -11,8 +11,14 @@ void main() {
 
   group('Regression Fixes Unit Tests', () {
     test('AppError.getMessage sanitizes backend errors', () {
-      final fakeOrignaBaseException = OrignaBaseException('FailedPrecondition: The query requires an index.', statusCode: 400);
-      final msg = AppError.getMessage(fakeOrignaBaseException, 'fallback error');
+      final fakeOrignaBaseException = OrignaBaseException(
+        'FailedPrecondition: The query requires an index.',
+        statusCode: 400,
+      );
+      final msg = AppError.getMessage(
+        fakeOrignaBaseException,
+        'fallback error',
+      );
       expect(msg, isNot(contains('FailedPrecondition')));
       expect(msg, isNot(contains('requires an index')));
     });
@@ -20,7 +26,11 @@ void main() {
     test('Subcategories cover all 21 categories', () {
       for (int i = 1; i <= 21; i++) {
         final subcategories = SubcategoryConstants.forCategoryId(i);
-        expect(subcategories, isNotEmpty, reason: 'Category ID $i should have subcategories defined');
+        expect(
+          subcategories,
+          isNotEmpty,
+          reason: 'Category ID $i should have subcategories defined',
+        );
       }
     });
   });

@@ -8,7 +8,7 @@ void main() {
     test('Verifies key presence in memory after loading', () async {
       // This is a unit test to check if we can simulate translation lookup
       // In a real app, this is handled by EasyLocalization widget.
-      
+
       // For now, let's just check if the string itself has the .tr() method available
       // (which we know it does because it's an extension)
       expect('auth.errors.registration_success'.tr(), isNotNull);

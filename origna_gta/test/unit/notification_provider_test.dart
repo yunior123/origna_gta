@@ -13,7 +13,7 @@ void main() {
       final container = ProviderContainer();
       container.read(notificationPermissionProvider.notifier).setGranted(true);
       expect(container.read(notificationPermissionProvider), isTrue);
-      
+
       container.read(notificationPermissionProvider.notifier).setGranted(false);
       expect(container.read(notificationPermissionProvider), isFalse);
     });

@@ -171,8 +171,14 @@ void main() {
         AppRoutes.productBySlugPath('solar-inverter'),
         '${AppRoutes.productBySlug}/solar-inverter',
       );
-      expect(AppRoutes.productByIdPattern, '${AppRoutes.productById}/:productId');
-      expect(AppRoutes.productBySlugPattern, '${AppRoutes.productBySlug}/:slug');
+      expect(
+        AppRoutes.productByIdPattern,
+        '${AppRoutes.productById}/:productId',
+      );
+      expect(
+        AppRoutes.productBySlugPattern,
+        '${AppRoutes.productBySlug}/:slug',
+      );
     });
 
     testWidgets('navigates to login route', (tester) async {

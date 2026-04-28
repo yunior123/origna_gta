@@ -8,7 +8,11 @@ void main() {
   group('QAModel serialization', () {
     test('fromMap parses question correctly', () {
       final now = Timestamp.fromDate(DateTime(2026, 3, 10, 8, 51, 30));
-      final map = {Fields.questionText: 'What is the color?', Fields.askerId: 'user1', Fields.createdAt: now};
+      final map = {
+        Fields.questionText: 'What is the color?',
+        Fields.askerId: 'user1',
+        Fields.createdAt: now,
+      };
 
       final model = QAModel.fromMap('doc1', map);
       expect(model.id, 'doc1');
@@ -40,7 +44,12 @@ void main() {
     });
 
     test('toMap writes basic fields', () {
-      final model = QAModel(id: 'doc3', question: 'How heavy?', authorId: 'user3', createdAt: DateTime(2023, 5, 5));
+      final model = QAModel(
+        id: 'doc3',
+        question: 'How heavy?',
+        authorId: 'user3',
+        createdAt: DateTime(2023, 5, 5),
+      );
 
       final map = model.toMap();
       expect(map[Fields.questionText], 'How heavy?');

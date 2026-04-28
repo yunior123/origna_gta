@@ -291,11 +291,16 @@ void main() {
   group('normalizedWebRedirectUri', () {
     test('removes fragment-only hash from login URL', () {
       final uri = Uri.parse('https://orignagta.ca/login#');
-      expect(normalizedWebRedirectUri(uri).toString(), 'https://orignagta.ca/login');
+      expect(
+        normalizedWebRedirectUri(uri).toString(),
+        'https://orignagta.ca/login',
+      );
     });
 
     test('preserves path and query while dropping fragment payload', () {
-      final uri = Uri.parse('https://orignagta.ca/login?ts=123#access_token=abc');
+      final uri = Uri.parse(
+        'https://orignagta.ca/login?ts=123#access_token=abc',
+      );
       expect(
         normalizedWebRedirectUri(uri).toString(),
         'https://orignagta.ca/login?ts=123',

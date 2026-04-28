@@ -81,11 +81,11 @@ class AdminRequiredGate extends ConsumerWidget {
                       icon: Icons.home_outlined,
                       isPrimary: false,
                       isOutlined: true,
-                      onPressed: () =>
-                          appPushNamedAndRemoveUntil(context,
-                            AppRoutes.home,
-                            (route) => false,
-                          ),
+                      onPressed: () => appPushNamedAndRemoveUntil(
+                        context,
+                        AppRoutes.home,
+                        (route) => false,
+                      ),
                     ),
                   ],
                 ),

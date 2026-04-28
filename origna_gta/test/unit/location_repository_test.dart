@@ -3,9 +3,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/repositories/location_repository.dart';
 
-@GenerateNiceMocks([
-  MockSpec<LocationRepository>(),
-])
+@GenerateNiceMocks([MockSpec<LocationRepository>()])
 import 'location_repository_test.mocks.dart';
 
 void main() {
@@ -18,10 +16,14 @@ void main() {
   group('LocationRepository', () {
     test('getAddressSuggestions returns list of features on success', () async {
       final mockData = [
-        {'properties': {'formatted': '123 Main St'}}
+        {
+          'properties': {'formatted': '123 Main St'},
+        },
       ];
 
-      when(repository.getAddressSuggestions('123 Main')).thenAnswer((_) async => mockData);
+      when(
+        repository.getAddressSuggestions('123 Main'),
+      ).thenAnswer((_) async => mockData);
 
       final results = await repository.getAddressSuggestions('123 Main');
 
@@ -31,7 +33,9 @@ void main() {
     });
 
     test('getAddressSuggestions returns empty list on failure', () async {
-      when(repository.getAddressSuggestions('123 Main')).thenAnswer((_) async => []);
+      when(
+        repository.getAddressSuggestions('123 Main'),
+      ).thenAnswer((_) async => []);
 
       final results = await repository.getAddressSuggestions('123 Main');
 
@@ -39,7 +43,9 @@ void main() {
     });
 
     test('getAddressSuggestions returns empty list when no results', () async {
-      when(repository.getAddressSuggestions('nonexistent')).thenAnswer((_) async => []);
+      when(
+        repository.getAddressSuggestions('nonexistent'),
+      ).thenAnswer((_) async => []);
 
       final results = await repository.getAddressSuggestions('nonexistent');
 

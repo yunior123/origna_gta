@@ -139,7 +139,8 @@ void main() {
         reason: 'Navigator context should not be null',
       );
       final nav = OrignaBaseNotificationService.navigatorKey.currentState!;
-      final navContext = OrignaBaseNotificationService.navigatorKey.currentContext!;
+      final navContext =
+          OrignaBaseNotificationService.navigatorKey.currentContext!;
 
       Future<void> pumpRobust() async {
         for (int i = 0; i < 5; i++) {
@@ -169,7 +170,10 @@ void main() {
       await pumpRobust();
 
       // 4. Product Slug
-      appPushNamed(navContext, AppRoutes.productBySlugPath('test-product-slug'));
+      appPushNamed(
+        navContext,
+        AppRoutes.productBySlugPath('test-product-slug'),
+      );
       await pumpRobust();
       expect(find.byType(ProductDetailScreen), findsOneWidget);
     });

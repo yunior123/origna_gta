@@ -1036,38 +1036,37 @@ class AppError {
     final userFacingMessage = getMessage(error, null, code);
 
     // Send to Sentry and persist the paired Sentry event ID for support/debugging.
-    unawaited(
-      () async {
-        final sentryId = await Sentry.captureException(
-          error,
-          stackTrace: stackTrace,
-          withScope: (scope) {
-            if (context != null) {
-              scope.setTag('context', context);
-            }
-            if (extras != null) {
-              scope.setContexts('extras', extras);
-            }
-            if (code != null) {
-              scope.setTag('error_code', code);
-            }
-          },
-        );
+    unawaited(() async {
+      final sentryId = await Sentry.captureException(
+        error,
+        stackTrace: stackTrace,
+        withScope: (scope) {
+          if (context != null) {
+            scope.setTag('context', context);
+          }
+          if (extras != null) {
+            scope.setContexts('extras', extras);
+          }
+          if (code != null) {
+            scope.setTag('error_code', code);
+          }
+        },
+      );
 
-        final normalizedSentryId =
-            sentryId == SentryId.empty() ? null : sentryId.toString();
+      final normalizedSentryId = sentryId == SentryId.empty()
+          ? null
+          : sentryId.toString();
 
-        await ErrorEventService.record(
-          error: error is Object ? error : Exception('$error'),
-          userFacingCode: code,
-          userFacingMessage: userFacingMessage,
-          sentryEventId: normalizedSentryId,
-          stackTrace: stackTrace,
-          context: context,
-          extras: extras,
-        );
-      }(),
-    );
+      await ErrorEventService.record(
+        error: error is Object ? error : Exception('$error'),
+        userFacingCode: code,
+        userFacingMessage: userFacingMessage,
+        sentryEventId: normalizedSentryId,
+        stackTrace: stackTrace,
+        context: context,
+        extras: extras,
+      );
+    }());
   }
 
   /// Show error to user via SnackBar and log it.

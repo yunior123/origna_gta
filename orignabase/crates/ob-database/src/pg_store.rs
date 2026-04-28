@@ -33,6 +33,30 @@ impl PgDatabaseStore {
         Ok(Self { pool })
     }
 
+    /// Connect to PostgreSQL and set an isolated schema search path on every
+    /// pooled connection. Used by integration tests that need real Postgres
+    /// semantics without sharing tables across parallel tests.
+    pub async fn connect_to_schema(database_url: &str, schema: &str) -> AppResult<Self> {
+        let search_path_sql = format!("SET search_path TO \"{schema}\", public");
+        let pool = PgPoolOptions::new()
+            .max_connections(4)
+            .min_connections(0)
+            .acquire_timeout(std::time::Duration::from_secs(10))
+            .after_connect(move |conn, _meta| {
+                let search_path_sql = search_path_sql.clone();
+                Box::pin(async move {
+                    sqlx::query(&search_path_sql).execute(conn).await?;
+                    Ok(())
+                })
+            })
+            .connect(database_url)
+            .await
+            .map_err(|e| ob_core::Error::Database(format!("PostgreSQL connection failed: {e}")))?;
+
+        tracing::info!("Connected to PostgreSQL test schema {}", schema);
+        Ok(Self { pool })
+    }
+
     /// Create from an existing pool (useful for testing).
     pub fn from_pool(pool: PgPool) -> Self {
         Self { pool }
@@ -913,7 +937,8 @@ fn rewrite_bare_fields_in_where(query: &str) -> String {
     format!("{before_where}{result}{after_clause}")
 }
 
-/// Extract the primary table name from a SQL query (FROM, DELETE FROM, UPDATE).
+/// Extract the primary table name from a SQL query (FROM, INSERT INTO,
+/// DELETE FROM, UPDATE).
 /// Returns None if no table name can be determined.
 /// Only matches keywords at word boundaries to avoid false matches in string literals.
 fn extract_table_name(query: &str) -> Option<String> {
@@ -922,6 +947,7 @@ fn extract_table_name(query: &str) -> Option<String> {
     // Try each keyword pattern, ensuring word boundaries
     let patterns: &[(&str, bool)] = &[
         ("delete from", true), // multi-word, look for FROM after DELETE
+        ("insert into", true), // multi-word, look for INTO after INSERT
         ("update", false),     // single keyword at statement start
         ("from", true),        // FROM in SELECT queries
     ];
@@ -1384,12 +1410,12 @@ impl DatabaseStore for PgDatabaseStore {
             return rows_to_values(rows);
         }
 
-        if let Some(table) = extract_table_name(query)
+        let (pg_query, bind_values) = translate_surreal_to_pg(query, binds)?;
+        if let Some(table) = extract_table_name(&pg_query)
             && let Err(e) = self.ensure_table(&table).await
         {
             tracing::warn!("Failed to ensure table {table}: {e}");
         }
-        let (pg_query, bind_values) = translate_surreal_to_pg(query, binds)?;
 
         let mut q = sqlx::query(&pg_query);
         for val in &bind_values {
@@ -1729,11 +1755,12 @@ mod tests {
     #[tokio::test]
     async fn test_pg_update_overrides_stale_timestamp_payload_values() {
         let store = test_store().await;
+        let collection = format!(
+            "test_update_timestamp_override_{}",
+            uuid::Uuid::new_v4().simple()
+        );
         let created = store
-            .create_document(
-                "test_update_timestamp_override",
-                serde_json::json!({"name": "Alice"}),
-            )
+            .create_document(&collection, serde_json::json!({"name": "Alice"}))
             .await
             .unwrap();
         let id = created["id"].as_str().unwrap().to_string();
@@ -1741,7 +1768,7 @@ mod tests {
 
         let updated = store
             .update_document(
-                "test_update_timestamp_override",
+                &collection,
                 &id,
                 serde_json::json!({
                     "createdAt": "2000-01-01T00:00:00Z",

@@ -257,7 +257,9 @@ void main() {
       debugPrint('🧪 Running final tracker validation...');
       debugPrint('📊 Test Statistics:');
       debugPrint('  Total checks performed: ${tracker.caseCount}');
-      debugPrint('  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}');
+      debugPrint(
+        '  ✅ Passed: ${tracker.caseCount - tracker.failedCases.length}',
+      );
       debugPrint('  ❌ Failed: ${tracker.failedCases.length}');
       if (tracker.failedCases.isNotEmpty) {
         debugPrint('  ⚠️  Failed cases:');
@@ -266,7 +268,9 @@ void main() {
         }
       }
       tracker.throwIfFailed();
-      debugPrint('🎉🎉🎉 ========== ADMIN FLOW TEST COMPLETE ========== 🎉🎉🎉');
+      debugPrint(
+        '🎉🎉🎉 ========== ADMIN FLOW TEST COMPLETE ========== 🎉🎉🎉',
+      );
     },
     timeout: const Timeout(Duration(minutes: 6)),
   );

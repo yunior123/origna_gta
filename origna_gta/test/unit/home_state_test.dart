@@ -41,21 +41,28 @@ void main() {
       ]);
     });
 
-    test('keeps Canada-made products and excludes imported or unknown origin', () {
-      final state = HomeState(
-        products: [
-          _product(id: 'made-ca', madeInCountry: 'CA', shipFromCountry: 'CN'),
-          _product(id: 'made-canada', madeInCountry: 'Canada', shipFromCountry: 'CA'),
-          _product(id: 'made-cn', madeInCountry: 'CN', shipFromCountry: 'CA'),
-          _product(id: 'unknown-origin', shipFromCountry: 'CA'),
-        ],
-        canadaOnly: true,
-      );
+    test(
+      'keeps Canada-made products and excludes imported or unknown origin',
+      () {
+        final state = HomeState(
+          products: [
+            _product(id: 'made-ca', madeInCountry: 'CA', shipFromCountry: 'CN'),
+            _product(
+              id: 'made-canada',
+              madeInCountry: 'Canada',
+              shipFromCountry: 'CA',
+            ),
+            _product(id: 'made-cn', madeInCountry: 'CN', shipFromCountry: 'CA'),
+            _product(id: 'unknown-origin', shipFromCountry: 'CA'),
+          ],
+          canadaOnly: true,
+        );
 
-      expect(
-        state.displayedProducts.map((p) => p.productId).toList(),
-        ['made-ca', 'made-canada'],
-      );
-    });
+        expect(state.displayedProducts.map((p) => p.productId).toList(), [
+          'made-ca',
+          'made-canada',
+        ]);
+      },
+    );
   });
 }

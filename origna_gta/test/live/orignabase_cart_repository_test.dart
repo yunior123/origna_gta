@@ -75,17 +75,13 @@ void main() {
       timeout: const Timeout(Duration(minutes: 2)),
     );
 
-    test(
-      'clearCart empties user cart',
-      () async {
-        await cartRepo.clearCart(userId);
+    test('clearCart empties user cart', () async {
+      await cartRepo.clearCart(userId);
 
-        final cartStream = cartRepo.watchCart(userId);
-        final cartItems = await cartStream.first;
-        expect(cartItems, isEmpty);
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      final cartStream = cartRepo.watchCart(userId);
+      final cartItems = await cartStream.first;
+      expect(cartItems, isEmpty);
+    }, timeout: const Timeout(Duration(minutes: 2)));
 
     test(
       'removeFromCart removes specific cart item',

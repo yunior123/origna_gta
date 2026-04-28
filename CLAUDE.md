@@ -173,6 +173,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
 - use get by label and get by role for testing e2e with either agent-browser cli or playwright
 - use at least this:use real yr62813@gmail.com for testing e2e ui interactions live.
 - we are a mixture of amazon + instacart
+- surreal is gone, mailjet is gone. make sure there are no references to those in whole repo
 
 ## Current Hot Path
 

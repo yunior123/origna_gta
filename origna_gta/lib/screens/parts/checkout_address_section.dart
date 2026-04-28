@@ -47,7 +47,8 @@ class _AddressSection extends StatelessWidget {
                 child: InkWell(
                   key: const Key('checkout_edit_address_button'),
                   onTap: () {
-                    appPushNamed(context,
+                    appPushNamed(
+                      context,
                       AppRoutes.addressManagement,
                     ).then((_) => onRefreshShipping());
                   },
@@ -191,7 +192,8 @@ class _NoAddressView extends StatelessWidget {
                 label: 'checkout.add_address'.tr(),
                 icon: Icons.add_location,
                 onPressed: () {
-                  appPushNamed(context,
+                  appPushNamed(
+                    context,
                     AppRoutes.addressManagement,
                   ).then((_) => onRefreshShipping());
                 },

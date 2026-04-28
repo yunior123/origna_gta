@@ -6,8 +6,10 @@ import 'package:origna_gta/core/repositories/orignabase_auth_repository.dart';
 import 'package:origna_gta/features/support/support_provider.dart';
 
 void main() {
-  const runLive =
-      bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});
@@ -36,7 +38,10 @@ void main() {
       authRepo = OrignaBaseAuthRepository(ob);
 
       // Sign in as buyer for support tests
-      await authRepo.signInWithEmail('e2e-buyer@test.origna.ca', 'REDACTED_TEST_PASSWORD');
+      await authRepo.signInWithEmail(
+        'e2e-buyer@test.origna.ca',
+        'REDACTED_TEST_PASSWORD',
+      );
     });
 
     tearDownAll(() async {
@@ -55,8 +60,9 @@ void main() {
           (previous, next) {},
           fireImmediately: true,
         );
-        final viewModelNotifier =
-            container.read(supportViewModelProvider.notifier);
+        final viewModelNotifier = container.read(
+          supportViewModelProvider.notifier,
+        );
 
         try {
           await viewModelNotifier.sendMessage('I need help with my order');
@@ -92,8 +98,9 @@ void main() {
           (previous, next) {},
           fireImmediately: true,
         );
-        final viewModelNotifier =
-            container.read(supportViewModelProvider.notifier);
+        final viewModelNotifier = container.read(
+          supportViewModelProvider.notifier,
+        );
 
         // Before sending, loading should be false
         var state = container.read(supportViewModelProvider);
@@ -123,19 +130,24 @@ void main() {
       () async {
         if (!runLive) return;
 
-        final viewModelNotifier =
-            container.read(supportViewModelProvider.notifier);
+        final viewModelNotifier = container.read(
+          supportViewModelProvider.notifier,
+        );
 
-        final initialMessageCount =
-            container.read(supportViewModelProvider).messages.length;
+        final initialMessageCount = container
+            .read(supportViewModelProvider)
+            .messages
+            .length;
 
         // Try to send empty message
         await viewModelNotifier.sendMessage('   ');
         await viewModelNotifier.sendMessage('');
 
         // Message count should not change
-        final finalMessageCount =
-            container.read(supportViewModelProvider).messages.length;
+        final finalMessageCount = container
+            .read(supportViewModelProvider)
+            .messages
+            .length;
         expect(
           finalMessageCount,
           equals(initialMessageCount),

@@ -22,7 +22,10 @@ void main() {
   });
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'test_user_123', email: 'test@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'test_user_123',
+      email: 'test@example.com',
+    );
     mockProductRepo = MockProductRepository();
   });
 
@@ -81,16 +84,24 @@ void main() {
 
     testWidgets('renders auth wrapper screen', (WidgetTester tester) async {
       await tester.runAsync(() async {
-        when(mockProductRepo.fetchProducts(
-          searchQuery: anyNamed('searchQuery'),
-          categoryId: anyNamed('categoryId'),
-          subcategory: anyNamed('subcategory'),
-          lastDocumentId: anyNamed('lastDocumentId'),
-          pageSize: anyNamed('pageSize'),
-          sortOption: anyNamed('sortOption'),
-          minPriceCents: anyNamed('minPriceCents'),
-          maxPriceCents: anyNamed('maxPriceCents'),
-        )).thenAnswer((_) async => ProductQueryResult(products: [], lastDocumentId: null, hasMore: false));
+        when(
+          mockProductRepo.fetchProducts(
+            searchQuery: anyNamed('searchQuery'),
+            categoryId: anyNamed('categoryId'),
+            subcategory: anyNamed('subcategory'),
+            lastDocumentId: anyNamed('lastDocumentId'),
+            pageSize: anyNamed('pageSize'),
+            sortOption: anyNamed('sortOption'),
+            minPriceCents: anyNamed('minPriceCents'),
+            maxPriceCents: anyNamed('maxPriceCents'),
+          ),
+        ).thenAnswer(
+          (_) async => ProductQueryResult(
+            products: [],
+            lastDocumentId: null,
+            hasMore: false,
+          ),
+        );
 
         await tester.pumpWidget(
           TestWrapper(

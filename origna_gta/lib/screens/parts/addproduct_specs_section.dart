@@ -131,8 +131,11 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                           ),
                         ),
                         style: TextStyle(color: inputTextColor, fontSize: 14),
-                        onChanged: (v) =>
-                            viewModel.updateSpec(index, v, spec[Fields.specValue] ?? ''),
+                        onChanged: (v) => viewModel.updateSpec(
+                          index,
+                          v,
+                          spec[Fields.specValue] ?? '',
+                        ),
                       ),
                     ),
                   ),
@@ -165,8 +168,11 @@ extension _AddProductSpecsSection on _AddProductScreenState {
                           ),
                         ),
                         style: TextStyle(color: inputTextColor, fontSize: 14),
-                        onChanged: (v) =>
-                            viewModel.updateSpec(index, spec[Fields.specKey] ?? '', v),
+                        onChanged: (v) => viewModel.updateSpec(
+                          index,
+                          spec[Fields.specKey] ?? '',
+                          v,
+                        ),
                       ),
                     ),
                   ),

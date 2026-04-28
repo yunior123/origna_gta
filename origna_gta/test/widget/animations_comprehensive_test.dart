@@ -97,9 +97,7 @@ void main() {
     testWidgets('empty children list', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: StaggeredList(children: []),
-          ),
+          home: Scaffold(body: StaggeredList(children: [])),
         ),
       );
       await tester.pump();
@@ -116,7 +114,10 @@ void main() {
               icon: Icons.search_off,
               title: 'Nothing found',
               subtitle: 'Try different keywords',
-              action: ElevatedButton(onPressed: () {}, child: const Text('Retry')),
+              action: ElevatedButton(
+                onPressed: () {},
+                child: const Text('Retry'),
+              ),
             ),
           ),
         ),
@@ -148,10 +149,7 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
-            body: AnimatedEmptyState(
-              icon: Icons.inbox,
-              title: 'Empty',
-            ),
+            body: AnimatedEmptyState(icon: Icons.inbox, title: 'Empty'),
           ),
         ),
       );
@@ -183,9 +181,7 @@ void main() {
     testWidgets('renders without onTap', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: ScaleBounce(child: Text('No tap')),
-          ),
+          home: Scaffold(body: ScaleBounce(child: Text('No tap'))),
         ),
       );
       await tester.pump();

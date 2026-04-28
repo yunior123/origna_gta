@@ -17,8 +17,12 @@ class _FakeOb implements OrignaBase {
   String? lastPath;
 
   @override
-  Future<Map<String, dynamic>> request(String method, String path,
-      {Map<String, dynamic>? body, Map<String, String>? headers}) async {
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
     lastMethod = method;
     lastPath = path;
     if (nextError != null) throw nextError!;
@@ -34,11 +38,11 @@ class _FakeOb implements OrignaBase {
 // ---------------------------------------------------------------------------
 
 Address _testAddress({String city = 'Toronto'}) => Address(
-      street: '123 Main St',
-      city: city,
-      state: 'ON',
-      postalCode: 'M1M 1M1',
-    );
+  street: '123 Main St',
+  city: city,
+  state: 'ON',
+  postalCode: 'M1M 1M1',
+);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -76,7 +80,9 @@ void main() {
       final c = makeContainer(userId: 'seller_1');
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: '',
             type: 'physical',
             address: _testAddress(),
@@ -91,7 +97,9 @@ void main() {
       final c = makeContainer(userId: 'seller_1');
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'a' * 101,
             type: 'physical',
             address: _testAddress(),
@@ -105,7 +113,9 @@ void main() {
       final c = makeContainer(userId: 'seller_1');
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'Main Warehouse',
             type: 'physical',
             address: _testAddress(city: ''),
@@ -119,7 +129,9 @@ void main() {
       final c = makeContainer(userId: null);
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'Main Warehouse',
             type: 'physical',
             address: _testAddress(),
@@ -134,7 +146,9 @@ void main() {
       final c = makeContainer(userId: 'seller_1');
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'Main Warehouse',
             type: 'physical',
             address: _testAddress(),
@@ -151,7 +165,9 @@ void main() {
       final c = makeContainer(userId: 'seller_1');
       addTearDown(c.dispose);
 
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'Main Warehouse',
             type: 'physical',
             address: _testAddress(),
@@ -167,7 +183,9 @@ void main() {
       addTearDown(c.dispose);
 
       // Trigger a success first
-      await c.read(obWarehousesViewModelProvider.notifier).createWarehouse(
+      await c
+          .read(obWarehousesViewModelProvider.notifier)
+          .createWarehouse(
             label: 'Warehouse',
             type: 'physical',
             address: _testAddress(),
@@ -181,22 +199,25 @@ void main() {
       expect(state.errorMessage, isNull);
     });
 
-    test('createWarehouse guards against double-submit while loading', () async {
-      final c = makeContainer(userId: 'seller_1');
-      addTearDown(c.dispose);
+    test(
+      'createWarehouse guards against double-submit while loading',
+      () async {
+        final c = makeContainer(userId: 'seller_1');
+        addTearDown(c.dispose);
 
-      final notifier = c.read(obWarehousesViewModelProvider.notifier);
-      // Force loading state
-      notifier.state = notifier.state.copyWith(isLoading: true);
+        final notifier = c.read(obWarehousesViewModelProvider.notifier);
+        // Force loading state
+        notifier.state = notifier.state.copyWith(isLoading: true);
 
-      await notifier.createWarehouse(
-        label: 'Warehouse',
-        type: 'physical',
-        address: _testAddress(),
-      );
+        await notifier.createWarehouse(
+          label: 'Warehouse',
+          type: 'physical',
+          address: _testAddress(),
+        );
 
-      // Should have returned early, no API call
-      expect(fakeOb.lastMethod, isNull);
-    });
+        // Should have returned early, no API call
+        expect(fakeOb.lastMethod, isNull);
+      },
+    );
   });
 }

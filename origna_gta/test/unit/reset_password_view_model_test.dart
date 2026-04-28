@@ -7,7 +7,8 @@ import 'package:origna_gta/features/auth/reset_password_view_model.dart';
 import 'package:origna_gta/utils/utils.dart';
 
 class FakeAuthRepository implements AuthRepository {
-  Future<void> Function(String code, String newPassword)? onConfirmPasswordReset;
+  Future<void> Function(String code, String newPassword)?
+  onConfirmPasswordReset;
   int confirmPasswordResetCallCount = 0;
 
   @override
@@ -72,7 +73,10 @@ void main() {
 
   group('ResetPasswordViewModel', () {
     test('initialization completes verification state', () async {
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
+      final keepAlive = container.listen(
+        resetPasswordViewModelProvider(oobCode),
+        (_, _) {},
+      );
       container.read(resetPasswordViewModelProvider(oobCode).notifier);
 
       await Future.delayed(Duration.zero);
@@ -84,30 +88,49 @@ void main() {
     });
 
     test('resetPassword validates password requirements', () async {
-      final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
+      final viewModel = container.read(
+        resetPasswordViewModelProvider(oobCode).notifier,
+      );
+      final keepAlive = container.listen(
+        resetPasswordViewModelProvider(oobCode),
+        (_, _) {},
+      );
       await Future.delayed(Duration.zero);
 
       // Empty
       await viewModel.resetPassword('', '');
-      expect(container.read(resetPasswordViewModelProvider(oobCode)).errorMessage, isNotNull);
+      expect(
+        container.read(resetPasswordViewModelProvider(oobCode)).errorMessage,
+        isNotNull,
+      );
 
       // Too short
       await viewModel.resetPassword('123', '123');
-      expect(container.read(resetPasswordViewModelProvider(oobCode)).errorMessage, isNotNull);
+      expect(
+        container.read(resetPasswordViewModelProvider(oobCode)).errorMessage,
+        isNotNull,
+      );
 
       // Mismatch
       await viewModel.resetPassword('Password123!', 'Password124!');
-      expect(container.read(resetPasswordViewModelProvider(oobCode)).errorMessage, isNotNull);
+      expect(
+        container.read(resetPasswordViewModelProvider(oobCode)).errorMessage,
+        isNotNull,
+      );
       keepAlive.close();
     });
 
     test('resetPassword success', () async {
-      fakeAuthRepository.onConfirmPasswordReset =
-          (code, password) => Future<void>.value();
+      fakeAuthRepository.onConfirmPasswordReset = (code, password) =>
+          Future<void>.value();
 
-      final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
+      final viewModel = container.read(
+        resetPasswordViewModelProvider(oobCode).notifier,
+      );
+      final keepAlive = container.listen(
+        resetPasswordViewModelProvider(oobCode),
+        (_, _) {},
+      );
       await Future.delayed(Duration.zero);
 
       await viewModel.resetPassword('Password123!', 'Password123!');
@@ -124,8 +147,13 @@ void main() {
         throw OrignaBaseAuthException(code: 'weak-password');
       };
 
-      final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
+      final viewModel = container.read(
+        resetPasswordViewModelProvider(oobCode).notifier,
+      );
+      final keepAlive = container.listen(
+        resetPasswordViewModelProvider(oobCode),
+        (_, _) {},
+      );
       await Future.delayed(Duration.zero);
 
       await viewModel.resetPassword('Password123!', 'Password123!');
@@ -141,8 +169,13 @@ void main() {
         throw Exception('error');
       };
 
-      final viewModel = container.read(resetPasswordViewModelProvider(oobCode).notifier);
-      final keepAlive = container.listen(resetPasswordViewModelProvider(oobCode), (_, _) {});
+      final viewModel = container.read(
+        resetPasswordViewModelProvider(oobCode).notifier,
+      );
+      final keepAlive = container.listen(
+        resetPasswordViewModelProvider(oobCode),
+        (_, _) {},
+      );
       await Future.delayed(Duration.zero);
 
       await viewModel.resetPassword('Password123!', 'Password123!');

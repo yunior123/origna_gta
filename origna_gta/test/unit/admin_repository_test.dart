@@ -18,17 +18,36 @@ void main() {
     when(repository.approveProduct(any)).thenAnswer((_) async {});
     when(repository.deleteProduct(any)).thenAnswer((_) async {});
     when(repository.disableAdminMfa(any)).thenAnswer((_) async {});
-    when(repository.enableAdminMfa()).thenAnswer((_) async => {'secret': 'secret123'});
-    when(repository.getPaymentProviders()).thenAnswer((_) async => {'stripe': true});
+    when(
+      repository.enableAdminMfa(),
+    ).thenAnswer((_) async => {'secret': 'secret123'});
+    when(
+      repository.getPaymentProviders(),
+    ).thenAnswer((_) async => {'stripe': true});
     when(repository.setUserSuspended(any, any)).thenAnswer((_) async {});
-    when(repository.updatePaymentProvider(any, any, reason: anyNamed('reason'))).thenAnswer((_) async {});
+    when(
+      repository.updatePaymentProvider(any, any, reason: anyNamed('reason')),
+    ).thenAnswer((_) async {});
     when(repository.updateProductStock(any, any)).thenAnswer((_) async {});
     when(repository.rejectProduct(any, any)).thenAnswer((_) async {});
-    when(repository.updateUserRoles(any, add: anyNamed('add'), remove: anyNamed('remove'), reason: anyNamed('reason'))).thenAnswer((_) async {});
-    when(repository.verifyAdminMfa(any)).thenAnswer((_) async => {'success': true});
+    when(
+      repository.updateUserRoles(
+        any,
+        add: anyNamed('add'),
+        remove: anyNamed('remove'),
+        reason: anyNamed('reason'),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      repository.verifyAdminMfa(any),
+    ).thenAnswer((_) async => {'success': true});
     when(repository.deleteReview(any)).thenAnswer((_) async {});
-    when(repository.flagReview(any, flagged: anyNamed('flagged'))).thenAnswer((_) async {});
-    when(repository.refundOrder(any, reason: anyNamed('reason'))).thenAnswer((_) async {});
+    when(
+      repository.flagReview(any, flagged: anyNamed('flagged')),
+    ).thenAnswer((_) async {});
+    when(
+      repository.refundOrder(any, reason: anyNamed('reason')),
+    ).thenAnswer((_) async {});
   });
 
   group('AdminRepository', () {
@@ -53,13 +72,15 @@ void main() {
     });
 
     test('fetchUserById returns user if exists', () async {
-      when(repository.fetchUserById('u1')).thenAnswer((_) async => UserModel(
-        uid: 'u1',
-        email: 'test@ex.com',
-        name: 'Test',
-        roles: [UserRole.admin],
-        createdAt: DateTime.now(),
-      ));
+      when(repository.fetchUserById('u1')).thenAnswer(
+        (_) async => UserModel(
+          uid: 'u1',
+          email: 'test@ex.com',
+          name: 'Test',
+          roles: [UserRole.admin],
+          createdAt: DateTime.now(),
+        ),
+      );
 
       final user = await repository.fetchUserById('u1');
       expect(user?.uid, 'u1');
@@ -67,7 +88,9 @@ void main() {
     });
 
     test('fetchUserById returns null if not exists', () async {
-      when(repository.fetchUserById('non-existent')).thenAnswer((_) async => null);
+      when(
+        repository.fetchUserById('non-existent'),
+      ).thenAnswer((_) async => null);
       final user = await repository.fetchUserById('non-existent');
       expect(user, isNull);
     });
@@ -89,7 +112,9 @@ void main() {
 
     test('updatePaymentProvider calls repository', () async {
       await repository.updatePaymentProvider('stripe', true, reason: 'test');
-      verify(repository.updatePaymentProvider('stripe', true, reason: 'test')).called(1);
+      verify(
+        repository.updatePaymentProvider('stripe', true, reason: 'test'),
+      ).called(1);
     });
 
     test('updateProductStock calls repository', () async {
@@ -103,8 +128,20 @@ void main() {
     });
 
     test('updateUserRoles calls repository', () async {
-      await repository.updateUserRoles('u1', add: ['admin'], remove: ['buyer'], reason: 'promotion');
-      verify(repository.updateUserRoles('u1', add: ['admin'], remove: ['buyer'], reason: 'promotion')).called(1);
+      await repository.updateUserRoles(
+        'u1',
+        add: ['admin'],
+        remove: ['buyer'],
+        reason: 'promotion',
+      );
+      verify(
+        repository.updateUserRoles(
+          'u1',
+          add: ['admin'],
+          remove: ['buyer'],
+          reason: 'promotion',
+        ),
+      ).called(1);
     });
 
     test('verifyAdminMfa returns result', () async {
@@ -113,9 +150,17 @@ void main() {
     });
 
     test('watchUsers returns stream of users', () async {
-      when(repository.watchUsers()).thenAnswer((_) => Stream.value([
-        UserModel(uid: 'u1', email: 'u1@ex.com', name: 'U1', roles: [UserRole.buyer], createdAt: DateTime.now()),
-      ]));
+      when(repository.watchUsers()).thenAnswer(
+        (_) => Stream.value([
+          UserModel(
+            uid: 'u1',
+            email: 'u1@ex.com',
+            name: 'U1',
+            roles: [UserRole.buyer],
+            createdAt: DateTime.now(),
+          ),
+        ]),
+      );
 
       final stream = repository.watchUsers();
       final users = await stream.first;
@@ -124,24 +169,28 @@ void main() {
     });
 
     test('watchOrders with status filter', () async {
-      when(repository.watchOrders(status: OrderStatusValues.pending)).thenAnswer((_) => Stream.value([
-        OrderModel(
-          orderId: 'o1',
-          orderStatus: OrderStatusValues.pending,
-          userId: 'u1',
-          customerId: 'cust1',
-          customerEmail: 'buyer@ex.com',
-          items: const [],
-          totalAmountCents: 1000,
-          subtotalCents: 900,
-          shippingAddress: const {},
-          createdAt: DateTime.now(),
-          taxes: const {},
-          currency: 'CAD',
-          sellerIds: const ['s1'],
-          stripeSessionId: 'sess_1',
-        ),
-      ]));
+      when(
+        repository.watchOrders(status: OrderStatusValues.pending),
+      ).thenAnswer(
+        (_) => Stream.value([
+          OrderModel(
+            orderId: 'o1',
+            orderStatus: OrderStatusValues.pending,
+            userId: 'u1',
+            customerId: 'cust1',
+            customerEmail: 'buyer@ex.com',
+            items: const [],
+            totalAmountCents: 1000,
+            subtotalCents: 900,
+            shippingAddress: const {},
+            createdAt: DateTime.now(),
+            taxes: const {},
+            currency: 'CAD',
+            sellerIds: const ['s1'],
+            stripeSessionId: 'sess_1',
+          ),
+        ]),
+      );
 
       final stream = repository.watchOrders(status: OrderStatusValues.pending);
       final orders = await stream.first;
@@ -150,20 +199,28 @@ void main() {
     });
 
     test('watchProducts returns stream', () async {
-      when(repository.watchProducts(sellerId: 's1')).thenAnswer((_) => Stream.value([
-        ProductModel(
-          id: 'p1',
-          sellerId: 's1',
-          name: 'P1',
-          priceCents: 1000,
-          imageUrls: const [],
-          sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
-          description: 'Test',
-          stockQuantity: 10,
-          categoryId: 1,
-          keywords: const [],
-        ),
-      ]));
+      when(repository.watchProducts(sellerId: 's1')).thenAnswer(
+        (_) => Stream.value([
+          ProductModel(
+            id: 'p1',
+            sellerId: 's1',
+            name: 'P1',
+            priceCents: 1000,
+            imageUrls: const [],
+            sellerAddress: Address(
+              street: 'S',
+              city: 'C',
+              state: 'ON',
+              postalCode: 'M1M',
+              country: 'CA',
+            ),
+            description: 'Test',
+            stockQuantity: 10,
+            categoryId: 1,
+            keywords: const [],
+          ),
+        ]),
+      );
 
       final stream = repository.watchProducts(sellerId: 's1');
       final products = await stream.first;
@@ -172,21 +229,29 @@ void main() {
     });
 
     test('watchPendingReviewProducts returns stream', () async {
-      when(repository.watchPendingReviewProducts()).thenAnswer((_) => Stream.value([
-        ProductModel(
-          id: 'p1',
-          name: 'P1',
-          sellerId: 's1',
-          lifecycleStatus: ProductLifecycleStatusValues.underReview,
-          priceCents: 1000,
-          imageUrls: const [],
-          sellerAddress: Address(street: 'S', city: 'C', state: 'ON', postalCode: 'M1M', country: 'CA'),
-          description: 'Test',
-          stockQuantity: 10,
-          categoryId: 1,
-          keywords: const [],
-        ),
-      ]));
+      when(repository.watchPendingReviewProducts()).thenAnswer(
+        (_) => Stream.value([
+          ProductModel(
+            id: 'p1',
+            name: 'P1',
+            sellerId: 's1',
+            lifecycleStatus: ProductLifecycleStatusValues.underReview,
+            priceCents: 1000,
+            imageUrls: const [],
+            sellerAddress: Address(
+              street: 'S',
+              city: 'C',
+              state: 'ON',
+              postalCode: 'M1M',
+              country: 'CA',
+            ),
+            description: 'Test',
+            stockQuantity: 10,
+            categoryId: 1,
+            keywords: const [],
+          ),
+        ]),
+      );
 
       final stream = repository.watchPendingReviewProducts();
       final products = await stream.first;
@@ -194,9 +259,17 @@ void main() {
     });
 
     test('watchSellers returns stream of sellers', () async {
-      when(repository.watchSellers()).thenAnswer((_) => Stream.value([
-        UserModel(uid: 's1', email: 's1@ex.com', name: 'S1', roles: [UserRole.seller], createdAt: DateTime.now()),
-      ]));
+      when(repository.watchSellers()).thenAnswer(
+        (_) => Stream.value([
+          UserModel(
+            uid: 's1',
+            email: 's1@ex.com',
+            name: 'S1',
+            roles: [UserRole.seller],
+            createdAt: DateTime.now(),
+          ),
+        ]),
+      );
 
       final stream = repository.watchSellers();
       final sellers = await stream.first;
@@ -205,9 +278,11 @@ void main() {
     });
 
     test('watchReviews returns stream', () async {
-      when(repository.watchReviews(flaggedOnly: true)).thenAnswer((_) => Stream.value([
-        {'isFlagged': true, 'rating': 5, 'reviewText': 'Great'},
-      ]));
+      when(repository.watchReviews(flaggedOnly: true)).thenAnswer(
+        (_) => Stream.value([
+          {'isFlagged': true, 'rating': 5, 'reviewText': 'Great'},
+        ]),
+      );
 
       final stream = repository.watchReviews(flaggedOnly: true);
       final reviews = await stream.first;
@@ -227,7 +302,9 @@ void main() {
 
     test('refundOrder calls repository', () async {
       await repository.refundOrder('o1', reason: 'Customer changed mind');
-      verify(repository.refundOrder('o1', reason: 'Customer changed mind')).called(1);
+      verify(
+        repository.refundOrder('o1', reason: 'Customer changed mind'),
+      ).called(1);
     });
   });
 }

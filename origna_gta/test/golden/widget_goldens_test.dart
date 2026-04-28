@@ -15,10 +15,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: ModernButton(
-                label: 'Add to Cart',
-                onPressed: () {},
-              ),
+              child: ModernButton(label: 'Add to Cart', onPressed: () {}),
             ),
           ),
         ),
@@ -75,10 +72,7 @@ void main() {
         const MaterialApp(
           home: Scaffold(
             body: Center(
-              child: ModernButton(
-                label: 'Disabled',
-                onPressed: null,
-              ),
+              child: ModernButton(label: 'Disabled', onPressed: null),
             ),
           ),
         ),

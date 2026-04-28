@@ -17,18 +17,22 @@ void main() {
 
   group('TermsScreen', () {
     testWidgets('renders seeded terms content from provider', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          termsProvider.overrideWith((ref) async => '''
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            termsProvider.overrideWith(
+              (ref) async => '''
 1. ACCEPTANCE OF TERMS
 These are the preview-safe terms.
 
 2. PRIVACY
 We protect buyer and seller data.
-'''),
-        ],
-        child: const TermsScreen(),
-      ));
+''',
+            ),
+          ],
+          child: const TermsScreen(),
+        ),
+      );
 
       await tester.pumpAndSettle();
 
@@ -40,12 +44,12 @@ We protect buyer and seller data.
     testWidgets('shows loading state while terms are pending', (tester) async {
       final completer = Completer<String>();
 
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          termsProvider.overrideWith((ref) => completer.future),
-        ],
-        child: const TermsScreen(),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [termsProvider.overrideWith((ref) => completer.future)],
+          child: const TermsScreen(),
+        ),
+      );
 
       await tester.pump();
 
@@ -53,14 +57,16 @@ We protect buyer and seller data.
     });
 
     testWidgets('shows error state when terms provider fails', (tester) async {
-      await tester.pumpWidget(TestWrapper(
-        overrides: [
-          termsProvider.overrideWith(
-            (ref) => Future<String>.error(Exception('terms failed')),
-          ),
-        ],
-        child: const TermsScreen(),
-      ));
+      await tester.pumpWidget(
+        TestWrapper(
+          overrides: [
+            termsProvider.overrideWith(
+              (ref) => Future<String>.error(Exception('terms failed')),
+            ),
+          ],
+          child: const TermsScreen(),
+        ),
+      );
 
       await tester.pump();
       await tester.pump();

@@ -31,8 +31,9 @@ void main() {
 
   group('SubscriptionViewModel', () {
     test('createSubscription success', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {'checkoutUrl': 'https://checkout.com'});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {'checkoutUrl': 'https://checkout.com'});
 
       final viewModel = container.read(subscriptionViewModelProvider.notifier);
       await viewModel.createSubscription();
@@ -44,8 +45,9 @@ void main() {
     });
 
     test('createSubscription error', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenThrow(Exception('test error'));
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenThrow(Exception('test error'));
 
       final viewModel = container.read(subscriptionViewModelProvider.notifier);
       await viewModel.createSubscription();
@@ -56,8 +58,9 @@ void main() {
     });
 
     test('cancelSubscription success', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {});
 
       final viewModel = container.read(subscriptionViewModelProvider.notifier);
       await viewModel.cancelSubscription();
@@ -68,8 +71,9 @@ void main() {
     });
 
     test('reactivateSubscription success', () async {
-      when(mockOrignaBase.request(any, any, body: anyNamed('body')))
-          .thenAnswer((_) async => {});
+      when(
+        mockOrignaBase.request(any, any, body: anyNamed('body')),
+      ).thenAnswer((_) async => {});
 
       final viewModel = container.read(subscriptionViewModelProvider.notifier);
       await viewModel.reactivateSubscription();

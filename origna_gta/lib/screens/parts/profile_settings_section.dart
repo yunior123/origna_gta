@@ -299,7 +299,8 @@ class _EmailVerificationRequiredViewState
                   onPressed: () async {
                     await ref.read(authActionsProvider).signOut();
                     if (context.mounted) {
-                      appPushNamedAndRemoveUntil(context,
+                      appPushNamedAndRemoveUntil(
+                        context,
                         AppRoutes.home,
                         (route) => false,
                       );

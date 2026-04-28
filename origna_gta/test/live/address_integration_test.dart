@@ -40,7 +40,10 @@ void main() {
       // Clean up created address
       if (createdAddressId.isNotEmpty) {
         try {
-          await ob.collection(Collections.addresses).doc(createdAddressId).delete();
+          await ob
+              .collection(Collections.addresses)
+              .doc(createdAddressId)
+              .delete();
         } catch (_) {
           // Address already deleted or doesn't exist
         }
@@ -66,9 +69,16 @@ void main() {
           Fields.isDefault: false,
         };
 
-        await ob.collection(Collections.addresses).doc(createdAddressId).set(addressData);
+        await ob
+            .collection(Collections.addresses)
+            .doc(createdAddressId)
+            .set(addressData);
 
-        expect(createdAddressId, isNotEmpty, reason: 'Should return an address ID');
+        expect(
+          createdAddressId,
+          isNotEmpty,
+          reason: 'Should return an address ID',
+        );
       },
       timeout: const Timeout(Duration(minutes: 2)),
     );
@@ -76,24 +86,38 @@ void main() {
     test(
       'get user addresses includes newly added address',
       () async {
-        expect(createdAddressId, isNotEmpty, reason: 'Address must be created first');
+        expect(
+          createdAddressId,
+          isNotEmpty,
+          reason: 'Address must be created first',
+        );
         try {
           final addressSnapshot = await ob
               .collection(Collections.addresses)
               .where(Fields.userId, isEqualTo: ob.auth.currentUserId)
               .get();
 
-          expect(addressSnapshot.docs, isNotEmpty,
-              reason: 'Should have at least one address');
+          expect(
+            addressSnapshot.docs,
+            isNotEmpty,
+            reason: 'Should have at least one address',
+          );
 
           final addressIds = addressSnapshot.docs
-              .map((doc) => doc.id.contains(':') ? doc.id.split(':').last : doc.id)
+              .map(
+                (doc) => doc.id.contains(':') ? doc.id.split(':').last : doc.id,
+              )
               .toList();
-          expect(addressIds.contains(createdAddressId), isTrue,
-              reason: 'Created address should be in the list');
+          expect(
+            addressIds.contains(createdAddressId),
+            isTrue,
+            reason: 'Created address should be in the list',
+          );
 
           final createdDoc = addressSnapshot.docs.firstWhere((doc) {
-            final shortId = doc.id.contains(':') ? doc.id.split(':').last : doc.id;
+            final shortId = doc.id.contains(':')
+                ? doc.id.split(':').last
+                : doc.id;
             return shortId == createdAddressId || doc.id == createdAddressId;
           });
           expect(createdDoc.data['street'], equals('123 Test St'));
@@ -112,13 +136,16 @@ void main() {
     test(
       'update address modifies address data',
       () async {
-        expect(createdAddressId, isNotEmpty, reason: 'Address must be created first');
+        expect(
+          createdAddressId,
+          isNotEmpty,
+          reason: 'Address must be created first',
+        );
 
         final newStreet = '456 Updated Ave';
-        await ob
-            .collection(Collections.addresses)
-            .doc(createdAddressId)
-            .update({'street': newStreet, 'city': 'Vancouver'});
+        await ob.collection(Collections.addresses).doc(createdAddressId).update(
+          {'street': newStreet, 'city': 'Vancouver'},
+        );
 
         // Verify update
         final updatedDoc = await ob
@@ -135,10 +162,17 @@ void main() {
     test(
       'delete address removes it from list',
       () async {
-        expect(createdAddressId, isNotEmpty, reason: 'Address must be created first');
+        expect(
+          createdAddressId,
+          isNotEmpty,
+          reason: 'Address must be created first',
+        );
 
         // Delete the address
-        await ob.collection(Collections.addresses).doc(createdAddressId).delete();
+        await ob
+            .collection(Collections.addresses)
+            .doc(createdAddressId)
+            .delete();
 
         // Verify deletion
         final deletedDoc = await ob
@@ -174,7 +208,11 @@ void main() {
 
         // Read
         var doc = await docRef.get();
-        expect(doc?.exists, isTrue, reason: 'Address should exist after creation');
+        expect(
+          doc?.exists,
+          isTrue,
+          reason: 'Address should exist after creation',
+        );
         expect(doc?.data['street'], equals('789 Lifecycle St'));
 
         // Update

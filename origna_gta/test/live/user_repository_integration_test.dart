@@ -6,7 +6,10 @@ import 'package:origna_gta/core/repositories/orignabase_user_repository.dart';
 import 'package:origna_gta/models/models.dart';
 
 void main() {
-  const runLive = bool.fromEnvironment('RUN_ORIGNABASE_LIVE_TESTS', defaultValue: false);
+  const runLive = bool.fromEnvironment(
+    'RUN_ORIGNABASE_LIVE_TESTS',
+    defaultValue: false,
+  );
 
   if (!runLive) {
     test('live tests disabled', () {});
@@ -71,9 +74,15 @@ void main() {
           final profile = await repo.getUserProfile('nonexistent_user_xyz');
           expect(profile, isNull);
         } catch (e) {
-          expect(e.toString().toLowerCase(),
-              anyOf(contains('403'), contains('permission'), contains('forbidden')),
-              reason: 'Expected null or 403 for nonexistent user, got: $e');
+          expect(
+            e.toString().toLowerCase(),
+            anyOf(
+              contains('403'),
+              contains('permission'),
+              contains('forbidden'),
+            ),
+            reason: 'Expected null or 403 for nonexistent user, got: $e',
+          );
         }
       },
       timeout: const Timeout(Duration(minutes: 2)),
@@ -177,7 +186,10 @@ void main() {
         await repo.setDefaultBuyerAddress(addressId);
 
         // Update address (keep isDefault: true so the assertion below passes)
-        final updated = address.copyWith(street: '789 Oak Ave', isDefault: true);
+        final updated = address.copyWith(
+          street: '789 Oak Ave',
+          isDefault: true,
+        );
         await repo.updateBuyerAddress(addressId, updated);
 
         // Verify changes (fresh stream)

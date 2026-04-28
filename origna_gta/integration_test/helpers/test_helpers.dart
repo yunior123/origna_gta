@@ -566,19 +566,19 @@ Future<bool> ensureAddProductCreationContext(WidgetTester tester) async {
   }
 
   await ensureHomeReady(tester, timeoutSeconds: 12);
-  
+
   // Tap outside menu overlay to dismiss it (settings menu stays open after credential switch)
   debugPrint('  🔒 Dismissing any open menus by tapping outside...');
   await tester.tapAt(const Offset(50, 100));
   await pumpWait(tester, seconds: 1);
-  
+
   // Navigate to home tab to force menu closure
   await navigateToTab(tester, Icons.home, logIfMissing: false);
   await pumpWait(tester, seconds: 2);
-  
+
   // Force rebuilds to ensure add product button appears
   await pumpSettle(tester, iterations: 3, ms: 500);
-  
+
   final canNavigate = await navigateToAddProduct(tester);
   if (!canNavigate) {
     debugStep(
@@ -1290,11 +1290,7 @@ Future<void> fillAddress(
       continue;
     }
 
-    final ready = await _ensureFinderOnScreen(
-      tester,
-      tiles,
-      maxAttempts: 8,
-    );
+    final ready = await _ensureFinderOnScreen(tester, tiles, maxAttempts: 8);
     if (!ready) {
       continue;
     }
@@ -1364,9 +1360,7 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
   }
 
   final currentUserId = _ob.auth.currentUserId;
-  debugPrint(
-    'ℹ️ Publish auth context: uid=$currentUserId',
-  );
+  debugPrint('ℹ️ Publish auth context: uid=$currentUserId');
 
   // DEBUG: Dump all TextFormField error states before publish
   debugPrint('🔍 PRE-PUBLISH: scanning TextFormField values...');
@@ -1378,7 +1372,9 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
     if (w is TextFormField) {
       final controller = (w as dynamic).controller as TextEditingController?;
       final text = controller?.text ?? '(no ctrl)';
-      debugPrint('  📝 field[$idx] key=$keyStr text="${text.substring(0, text.length > 40 ? 40 : text.length)}"');
+      debugPrint(
+        '  📝 field[$idx] key=$keyStr text="${text.substring(0, text.length > 40 ? 40 : text.length)}"',
+      );
     }
   }
   // Also check DropdownButtonFormField state
@@ -1402,11 +1398,16 @@ Future<String?> tapPublishProduct(WidgetTester tester) async {
       for (var idx = 0; idx < errorTexts.evaluate().length; idx++) {
         final w = tester.widget<Text>(errorTexts.at(idx));
         final t = w.data ?? w.textSpan?.toPlainText() ?? '';
-        if (t.contains('required') || t.contains('Required') ||
-            t.contains('requis') || t.contains('invalid') ||
-            t.contains('too_short') || t.contains('trop court') ||
-            t.contains('Veuillez') || t.contains('erreur') ||
-            t.contains('error') || t.contains('Obligatoire')) {
+        if (t.contains('required') ||
+            t.contains('Required') ||
+            t.contains('requis') ||
+            t.contains('invalid') ||
+            t.contains('too_short') ||
+            t.contains('trop court') ||
+            t.contains('Veuillez') ||
+            t.contains('erreur') ||
+            t.contains('error') ||
+            t.contains('Obligatoire')) {
           debugPrint('  ❌ error-text[$idx]: "$t"');
         }
       }

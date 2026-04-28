@@ -6,7 +6,8 @@ import 'package:mockito/mockito.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
 import 'package:origna_gta/features/orders/orders_provider.dart';
-import 'package:origna_gta/features/orders/seller_orders_state.dart' as seller_orders_state;
+import 'package:origna_gta/features/orders/seller_orders_state.dart'
+    as seller_orders_state;
 import 'package:origna_gta/features/orders/seller_orders_viewmodel.dart';
 import 'package:origna_gta/features/products/products_provider.dart';
 import 'package:origna_gta/models/generated/models.dart' as models;
@@ -16,7 +17,10 @@ import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/modern_loading_indicator.dart';
 
 import '../test_utils.dart';
-@GenerateNiceMocks([MockSpec<SellerOrdersViewModel>(), MockSpec<NavigatorObserver>()])
+@GenerateNiceMocks([
+  MockSpec<SellerOrdersViewModel>(),
+  MockSpec<NavigatorObserver>(),
+])
 import 'seller_orders_screen_test.mocks.dart';
 
 void main() {
@@ -28,8 +32,20 @@ void main() {
   late MockSellerOrdersViewModel mockViewModel;
   late MockNavigatorObserver mockNavigatorObserver;
 
-  final testAddress = core_models.Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
-  final testAddressGenerated = models.Address(street: '123 Main St', city: 'Toronto', state: 'ON', postalCode: 'M5V 3A8', country: 'Canada');
+  final testAddress = core_models.Address(
+    street: '123 Main St',
+    city: 'Toronto',
+    state: 'ON',
+    postalCode: 'M5V 3A8',
+    country: 'Canada',
+  );
+  final testAddressGenerated = models.Address(
+    street: '123 Main St',
+    city: 'Toronto',
+    state: 'ON',
+    postalCode: 'M5V 3A8',
+    country: 'Canada',
+  );
 
   final testUser = UserModel(
     uid: 'seller_123',
@@ -67,12 +83,17 @@ void main() {
   );
 
   setUp(() {
-    mockUser = const AppAuthUser(uid: 'seller_123', email: 'seller@example.com');
+    mockUser = const AppAuthUser(
+      uid: 'seller_123',
+      email: 'seller@example.com',
+    );
     mockViewModel = MockSellerOrdersViewModel();
     mockNavigatorObserver = MockNavigatorObserver();
 
     // Default viewmodel state
-    when(mockViewModel.state).thenReturn(const seller_orders_state.SellerOrdersState());
+    when(
+      mockViewModel.state,
+    ).thenReturn(const seller_orders_state.SellerOrdersState());
   });
 
   Widget createSellerOrdersScreen({List<Override> overrides = const []}) {
@@ -104,9 +125,9 @@ void main() {
         createSellerOrdersScreen(
           overrides: [
             sellerOrdersProvider.overrideWith((ref) => Stream.value([])),
-            sellerUnansweredQaProvider('seller_123').overrideWith(
-              (ref) => Stream.value(0),
-            ),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -124,7 +145,9 @@ void main() {
         createSellerOrdersScreen(
           overrides: [
             sellerOrdersProvider.overrideWith((ref) => Stream.value([])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -142,7 +165,9 @@ void main() {
         createSellerOrdersScreen(
           overrides: [
             sellerOrdersProvider.overrideWith((ref) => const Stream.empty()),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -156,8 +181,12 @@ void main() {
       await tester.pumpWidget(
         createSellerOrdersScreen(
           overrides: [
-            sellerOrdersProvider.overrideWith((ref) => Stream.value([testOrder])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerOrdersProvider.overrideWith(
+              (ref) => Stream.value([testOrder]),
+            ),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -168,17 +197,24 @@ void main() {
 
       expect(find.textContaining('ORDER_12'), findsOneWidget);
       expect(find.text('Test Product'), findsOneWidget);
-      expect(find.textContaining('\$97.50'), findsOneWidget); // Net: 100 - 2.5% fee
+      expect(
+        find.textContaining('\$97.50'),
+        findsOneWidget,
+      ); // Net: 100 - 2.5% fee
       expect(find.textContaining('Total Earnings'), findsOneWidget);
     });
 
-    testWidgets('shows unanswered Q&A badge when count > 0', (WidgetTester tester) async {
+    testWidgets('shows unanswered Q&A badge when count > 0', (
+      WidgetTester tester,
+    ) async {
       setupScreenSize(tester);
       await tester.pumpWidget(
         createSellerOrdersScreen(
           overrides: [
             sellerOrdersProvider.overrideWith((ref) => Stream.value([])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(5)),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(5)),
           ],
         ),
       );
@@ -189,34 +225,48 @@ void main() {
       expect(find.text('5'), findsOneWidget);
     });
 
-    testWidgets('shows authorization banner when payment status is awaitingPayment', (WidgetTester tester) async {
-      final authOrder = testOrder.copyWith(paymentStatus: models.PaymentStatus.awaitingPayment, actualShippingCents: 0);
+    testWidgets(
+      'shows authorization banner when payment status is awaitingPayment',
+      (WidgetTester tester) async {
+        final authOrder = testOrder.copyWith(
+          paymentStatus: models.PaymentStatus.awaitingPayment,
+          actualShippingCents: 0,
+        );
 
-      setupScreenSize(tester);
-      await tester.pumpWidget(
-        createSellerOrdersScreen(
-          overrides: [
-            sellerOrdersProvider.overrideWith((ref) => Stream.value([authOrder])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
-          ],
-        ),
-      );
+        setupScreenSize(tester);
+        await tester.pumpWidget(
+          createSellerOrdersScreen(
+            overrides: [
+              sellerOrdersProvider.overrideWith(
+                (ref) => Stream.value([authOrder]),
+              ),
+              sellerUnansweredQaProvider(
+                'seller_123',
+              ).overrideWith((ref) => Stream.value(0)),
+            ],
+          ),
+        );
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.textContaining('Payment Authorized'), findsOneWidget);
-      expect(find.textContaining('Confirm Shipping & Ship'), findsOneWidget);
-    });
+        expect(find.textContaining('Payment Authorized'), findsOneWidget);
+        expect(find.textContaining('Confirm Shipping & Ship'), findsOneWidget);
+      },
+    );
 
     testWidgets('can open mark as shipped dialog', (WidgetTester tester) async {
       setupScreenSize(tester);
       await tester.pumpWidget(
         createSellerOrdersScreen(
           overrides: [
-            sellerOrdersProvider.overrideWith((ref) => Stream.value([testOrder])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerOrdersProvider.overrideWith(
+              (ref) => Stream.value([testOrder]),
+            ),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -236,16 +286,22 @@ void main() {
       expect(find.textContaining('Tracking Number'), findsWidgets);
     });
 
-    testWidgets('shows account suspended message when user is suspended', (WidgetTester tester) async {
+    testWidgets('shows account suspended message when user is suspended', (
+      WidgetTester tester,
+    ) async {
       final suspendedUser = testUser.copyWith(suspended: true);
 
       setupScreenSize(tester);
       await tester.pumpWidget(
         createSellerOrdersScreen(
           overrides: [
-            userProfileProvider.overrideWith((ref) => Stream.value(suspendedUser)),
+            userProfileProvider.overrideWith(
+              (ref) => Stream.value(suspendedUser),
+            ),
             sellerOrdersProvider.overrideWith((ref) => Stream.value([])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );
@@ -264,8 +320,12 @@ void main() {
       await tester.pumpWidget(
         createSellerOrdersScreen(
           overrides: [
-            sellerOrdersProvider.overrideWith((ref) => Stream.value([digitalOrder])),
-            sellerUnansweredQaProvider('seller_123').overrideWith((ref) => Stream.value(0)),
+            sellerOrdersProvider.overrideWith(
+              (ref) => Stream.value([digitalOrder]),
+            ),
+            sellerUnansweredQaProvider(
+              'seller_123',
+            ).overrideWith((ref) => Stream.value(0)),
           ],
         ),
       );

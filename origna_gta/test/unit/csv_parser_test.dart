@@ -13,7 +13,8 @@ void main() {
     });
 
     test('handles quoted fields with commas', () {
-      const csv = 'title,description,price\n"Widget A","A great, amazing product",99.99';
+      const csv =
+          'title,description,price\n"Widget A","A great, amazing product",99.99';
       final rows = parseCsv(csv);
       expect(rows.length, 1);
       expect(rows[0]['title'], 'Widget A');
