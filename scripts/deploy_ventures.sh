@@ -24,7 +24,10 @@ ssh "${VPS_HOST}" "mkdir -p ${REMOTE_BASE}/releases && chmod -R 755 ${REMOTE_BAS
 rsync -avz --delete origna_ventures/build/web/ "${VPS_HOST}:${RELEASE_DIR}/"
 
 ssh "${VPS_HOST}" "
-  ln -sfn ${RELEASE_DIR} ${CURRENT_LINK}
+  if [ -d ${CURRENT_LINK} ] && [ ! -L ${CURRENT_LINK} ]; then
+    mv ${CURRENT_LINK} ${CURRENT_LINK}.directory-backup-${TIMESTAMP}
+  fi
+  ln -sfnT ${RELEASE_DIR} ${CURRENT_LINK}
   echo 'Deployed release ${TIMESTAMP}'
   ls -l ${CURRENT_LINK}
   echo 'Current symlink updated.'
