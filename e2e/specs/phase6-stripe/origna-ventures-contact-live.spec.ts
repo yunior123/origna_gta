@@ -22,21 +22,41 @@ async function openVenturesPage(): Promise<{
   context: BrowserContext;
   page: Page;
 }> {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 1200 },
-  });
-  const page = await context.newPage();
+  let lastError: unknown;
 
-  await page.goto(VENTURES_WEB_URL, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60_000,
-  });
-  await page.waitForLoadState('load', { timeout: 20_000 }).catch(() => {});
-  await page.waitForTimeout(2_000);
-  await enableFlutterSemantics(page);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 1200 },
+    });
+    const page = await context.newPage();
 
-  return { browser, context, page };
+    try {
+      await page.goto(VENTURES_WEB_URL, {
+        waitUntil: 'commit',
+        timeout: 30_000,
+      });
+      await page
+        .waitForFunction(() => document.body?.innerText.length > 0, {
+          timeout: 30_000,
+        })
+        .catch(() => {});
+      await page.waitForLoadState('domcontentloaded', { timeout: 10_000 }).catch(() => {});
+      await page.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+      await page.waitForTimeout(2_000);
+      await enableFlutterSemantics(page);
+
+      return { browser, context, page };
+    } catch (error) {
+      lastError = error;
+      await closeVenturesPage(browser, context);
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
+      }
+    }
+  }
+
+  throw lastError;
 }
 
 async function closeVenturesPage(browser: Browser, context: BrowserContext) {
@@ -146,7 +166,7 @@ describe('OrignaVentures contact form live verification', () => {
     } finally {
       await closeVenturesPage(browser, context);
     }
-  }, 90_000);
+  }, 150_000);
 
   test('live contact submission reports support + confirmation emails as sent', async () => {
     const unique = Date.now();

@@ -11,6 +11,23 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+54. **Full payment-flow verification across GTA, Ventures, OrignaBase, and E2E**: Advanced and verified on 2026-04-29.
+   - ran GTA local checkout/payment Flutter tests, including checkout providers, order repository payment calls, checkout UI, order success UI, and live-test wrappers.
+   - ran GTA live Dart payment/checkout tests with `--dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev`; live checkout, Stripe infrastructure, order repository, stock, coupon, and lifecycle coverage passed.
+   - ran Ventures backend payment API tests from the backend virtualenv; checkout session payloads, idempotency, webhook/security, tax, and payment persistence coverage passed.
+   - ran Ventures Flutter pricing/payment widget coverage; service tier and payment/pricing UI coverage passed.
+   - ran OrignaBase payment/order integration tests against `https://api.dev.orignagta.ca` with ignored live tests enabled; order lifecycle, order repository, and payment fixes passed.
+   - hardened `e2e/specs/phase6-stripe/origna-ventures-contact-live.spec.ts` after the full Phase 6 suite exposed a late-run browser navigation timeout that passed standalone; the helper now retries page setup and waits for navigation commit/body content instead of blocking on `domcontentloaded`.
+   - verification:
+     - `cd origna_gta && flutter test ... --exclude-tags golden --reporter=compact`: passed, 113 tests.
+     - `cd origna_gta && flutter test test/live/... --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev --reporter=compact`: passed, 23 tests.
+     - `cd origna_ventures/backend && .venv/bin/python -m pytest -q tests/test_payments_api.py`: passed, 36 tests.
+     - `cd origna_ventures && flutter test test/widget_test.dart --reporter=compact`: passed, 13 tests.
+     - `cd orignabase && OB_TEST_URL=https://api.dev.orignagta.ca cargo test -p orignabase --test payment_fixes_test --test order_lifecycle_test --test order_repository_test -- --ignored --test-threads=1`: passed, 22 live tests.
+     - `cd e2e && bun x tsc --noEmit`: passed.
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts`: passed, 2 tests.
+     - `cd e2e && bun test specs/phase6-stripe/`: passed, 198 tests, 0 failures.
+
 53. **GlitchTip DNS/TLS/upstream blocker**: Advanced and verified on 2026-04-29.
    - added Cloudflare DNS record `A glitchtip -> 204.168.137.16` for `glitchtip.orignagta.ca` with DNS-only proxy status.
    - restarted Caddy after DNS propagation so Let's Encrypt could validate `glitchtip.orignagta.ca`; certificate issuance completed successfully.
