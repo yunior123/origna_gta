@@ -2418,9 +2418,21 @@ The following items were verified as done and are no longer reusable as active t
   - OrignaVentures backend Docker now resolves `mail.orignagta.ca` to the host gateway so it can reach self-hosted Postal over the public HTTPS route from inside Docker.
   - Postal domain `orignaventures.ca` is verified/enabled for outbound contact email.
   - OrignaBase rules now allow authenticated users to create their own `error_events`, while reads/updates/deletes remain admin-only.
-- Remaining blocker discovered but not fixed in this pass: OrignaBase public `/config/*` currently returns null for all tested keys (`glitchtip_dsn`, `image_base_url`, `google_web_client_id`) even though `_config` rows exist; the GlitchTip E2E therefore verifies the self-hosted endpoint plus secured event persistence directly.
+- Follow-up blocker discovered in this pass: OrignaBase public `/config/*` returned null for all tested keys (`glitchtip_dsn`, `image_base_url`, `google_web_client_id`) even though `_config` rows existed; fixed later in item 113.
 - Verification:
   - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase2-smoke/investor-deck-regression.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts && bun x tsc --noEmit` -> passed, 8 tests / 213 expect calls.
   - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64` -> passed.
   - `cd origna_ventures/backend && source .venv/bin/activate && pytest -q` -> passed, 36 tests.
   - `cd ../orignabase && cargo test -p ob-security` -> passed, 165 tests.
+
+113. **OrignaBase public config blocker fixed and deployed on 2026-04-29**:
+- Fixed public `/config` and `/config/{key}` to read `_config` rows from the Postgres-backed document shape as well as legacy top-level fields.
+- Added `glitchtip_dsn` to the public config allowlist and restored the E2E assertion that the public DSN points to self-hosted `glitchtip.orignagta.ca`.
+- Updated GraphQL config resolvers to use the same stored config shape so API config reads stay consistent.
+- Deployed rebuilt OrignaBase containers to dev, staging, and production on the VPS.
+- Verification:
+  - `cd ../orignabase && cargo fmt --check -p ob-admin -p ob-graphql && cargo check -p ob-admin -p ob-graphql` -> passed.
+  - `curl https://api.dev.orignagta.ca/config/glitchtip_dsn`, `curl https://api.staging.orignagta.ca/config/glitchtip_dsn`, and `curl https://api.orignagta.ca/config/glitchtip_dsn` -> all returned the GlitchTip DSN with host `glitchtip.orignagta.ca`.
+  - `curl https://api.dev.orignagta.ca/config`, `curl https://api.staging.orignagta.ca/config`, and `curl https://api.orignagta.ca/config` -> all returned public config JSON without 500s.
+  - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase2-smoke/investor-deck-regression.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts` -> passed, 8 tests / 215 expect calls.
+  - `cargo test -p ob-admin -p ob-graphql` was started but stopped after the command sat idle with no active compiler/test process; targeted `cargo check` and live E2E covered this blocker.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { signIn } from '../../lib/auth.js';
+import { getPublicConfigValue, signIn } from '../../lib/auth.js';
 import {
   obGraphQL,
   parseGraphQLValue,
@@ -74,6 +74,12 @@ describe('Self-hosted integration regressions', () => {
   }, 30_000);
 
   test('GlitchTip is self-hosted and structured error events are writable', async () => {
+    const dsn = String(await getPublicConfigValue('glitchtip_dsn'));
+    expect(dsn).toMatch(/^https?:\/\/[^@/]+@[^/]+\/\d+/);
+
+    const dsnUrl = new URL(dsn);
+    expect(dsnUrl.hostname).toBe('glitchtip.orignagta.ca');
+
     const glitchtipResponse = await fetch('https://glitchtip.orignagta.ca', { method: 'GET' });
     expect(glitchtipResponse.status).toBeLessThan(500);
 
