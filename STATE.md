@@ -2347,3 +2347,18 @@ The following items were verified as done and are no longer reusable as active t
   - Runtime scan for GitHub passkeys URLs found only documentation references in `origna_gta/web/vendor/passkeys/README.md`; `origna_gta/web/index.html` loads the local asset.
   - Local Caddy syntax validation could not run because `caddy` is not installed and Docker daemon is not running under Colima.
   - `git diff --check` reports trailing-whitespace warnings inside generated PDF binary diffs under `origna_ventures/web/docs/`; source-code diffs were not the cause.
+
+107. **Translation audit and investor screenshot duplicate guard passed on 2026-04-29**:
+- Added missing top-level localization keys used by the app (`security.*`, `mfa.*`, root `start_shopping`, checkout/order/product/seller helper keys) across English, French, and Spanish so screens no longer render raw keys like `security.title` or `start_shopping`.
+- Tightened Spanish investor-facing labels including `common.go_shopping`, `subscription.start_shopping`, `admin.security.enable_mfa`, and admin security tab labels.
+- Added a unit localization audit that scans `origna_gta/lib/**/*.dart` for `.tr()` keys and fails if any used key is missing from `en`, `fr`, or `es`.
+- Expanded the live desktop investor capture generator to include GTA seller/admin targets, login as buyer/seller/admin, avoid fake scroll captures on non-scrollable screens, and skip exact duplicate screenshot buffers before writing.
+- Updated the investor deck artifact validator to reject exact duplicate screenshots by hash.
+- Pruned local untracked `origna_ventures/output/desktop-screenshots` exact duplicates from 320 PNGs down to 202 unique PNGs; the folder is generated/untracked, and the source generator now writes sequential non-duplicates on the next capture run.
+- Verification:
+  - Locale scan over `origna_gta/lib` -> 0 missing `.tr()` keys in `en`, `fr`, and `es`.
+  - `cd origna_gta && flutter analyze --no-fatal-infos test/unit/localization_check_test.dart` -> passed.
+  - `cd origna_gta && flutter test test/unit/localization_check_test.dart` -> passed, 3 tests.
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `PYTHONPYCACHEPREFIX=/tmp/python-cache python3 -m py_compile origna_ventures/scripts/validate_investor_deck_artifacts.py` -> passed.
+  - `cd origna_gta && flutter test --exclude-tags golden` -> passed, 4,787 tests.

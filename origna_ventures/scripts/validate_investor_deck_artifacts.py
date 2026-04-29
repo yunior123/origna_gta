@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 from pathlib import Path
 
@@ -20,11 +21,17 @@ BAD_NAME_RE = re.compile(
 def validate_screenshots(path: Path, expected_count: int) -> None:
     files = sorted(path.glob("*.png"))
     issues: list[str] = []
+    hashes: dict[str, str] = {}
     for index, file in enumerate(files, start=1):
         match = SCREENSHOT_RE.fullmatch(file.name)
         if not match:
             issues.append(f"bad screenshot name: {file.name}")
             continue
+        image_hash = hashlib.sha256(file.read_bytes()).hexdigest()
+        if image_hash in hashes:
+            issues.append(f"duplicate screenshot: {file.name} matches {hashes[image_hash]}")
+        else:
+            hashes[image_hash] = file.name
         if int(file.name[:3]) != index:
             issues.append(f"bad screenshot sequence: {file.name}")
         image = Image.open(file).convert("RGB")

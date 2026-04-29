@@ -32,27 +32,27 @@
     "success": "Operación exitosa",
     "failed": "Operación fallida",
     "try_again": "Inténtelo de nuevo",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "back": "Back",
-    "next": "Next",
-    "done": "Done",
-    "close": "Close",
-    "search": "Search",
-    "loading": "Loading...",
-    "refresh": "Refresh",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "done": "Listo",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "refresh": "Actualizar",
     "error": "Error",
-    "row": "Row",
-    "submit": "Submit",
-    "processing": "Processing...",
-    "got_it": "Got it",
-    "retry": "Retry",
-    "retry_later": "Please try again later.",
-    "failed_to_load_page": "Failed to load page",
-    "yes": "Yes",
+    "row": "Fila",
+    "submit": "Enviar",
+    "processing": "Procesando...",
+    "got_it": "Entendido",
+    "retry": "Reintentar",
+    "retry_later": "Inténtelo más tarde.",
+    "failed_to_load_page": "No se pudo cargar la página",
+    "yes": "Sí",
     "no": "No",
     "ok": "OK",
     "apply": "Apply",
@@ -71,7 +71,7 @@
     "continue_text": "Continue",
     "delivery_instructions": "Delivery Instructions",
     "no_items": "No items yet",
-    "go_shopping": "Start shopping",
+    "go_shopping": "Empezar a comprar",
     "unknown": "Unknown",
     "manage": "Manage",
     "publish": "Publish",
@@ -91,9 +91,11 @@
     "view": "View",
     "toggle_password_visibility": "Toggle password visibility",
     "loading_more": "Loading more products",
-    "add_to_cart_semantics": "Add {name} to cart",
+    "add_to_cart_semantics": "Agregar {name} al carrito",
     "dismiss": "Dismiss",
-    "see_less": "Show Less"
+    "see_less": "Show Less",
+    "go_back": "Volver",
+    "now": "Ahora"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -621,7 +623,9 @@
     "a11y_regular": "{name}, {price}, {rating} stars",
     "verified_purchase": "Verified Purchase",
     "ratings_no_text_one": "{count} rating (no text review yet)",
-    "ratings_no_text_other": "{count} ratings (no text reviews yet)"
+    "ratings_no_text_other": "{count} ratings (no text reviews yet)",
+    "location_error": "Elija una ubicación válida para el producto.",
+    "no_image": "No hay imagen disponible"
   },
   "cart": {
     "empty": "Su carrito está vacío",
@@ -688,7 +692,8 @@
     "currently_unavailable": "Currently unavailable",
     "subtotal_with_count": "Subtotal ({count} items)",
     "free_shipping_threshold": "Free shipping on orders $75+",
-    "view_cart": "View Cart"
+    "view_cart": "View Cart",
+    "step_cart": "Carrito"
   },
   "checkout": {
     "title": "Pago",
@@ -704,7 +709,7 @@
     "express_days": "1-2 días hábiles",
     "maritime_days": "21-45 días hábiles",
     "checkout": "Checkout",
-    "step_cart": "Cart",
+    "step_cart": "Carrito",
     "step_details": "Details",
     "step_confirm": "Confirm",
     "delivery_address_title": "Delivery Address",
@@ -772,7 +777,8 @@
       "biometric_error": "Biometric authentication error. Please try again.",
       "biometric_failed": "Biometric authentication failed. Please use your PIN.",
       "biometric_unavailable": "This transaction requires biometric authentication, but it's not available on this device.",
-      "unable_to_verify_prices": "Unable to verify prices. Please try again."
+      "unable_to_verify_prices": "Unable to verify prices. Please try again.",
+      "processing_failed": "No pudimos procesar el pago. Inténtelo de nuevo."
     },
     "free_shipping_banner": "Spend {amount} more for free shipping!",
     "order_review_title": "Review Your Order",
@@ -919,6 +925,12 @@
       "swift_chip": "No Firebase SDK or CocoaPods required — plain URLSession"
     },
     "supplier": {
+      "1688": {
+        "display_name": "1688",
+        "region": "Asia",
+        "country": "China",
+        "description": "Chinese domestic B2B platform"
+      },
       "aliexpress": {
         "display_name": "AliExpress",
         "region": "Asia",
@@ -930,12 +942,6 @@
         "region": "Asia",
         "country": "China",
         "description": "B2B wholesale marketplace"
-      },
-      "1688": {
-        "display_name": "1688",
-        "region": "Asia",
-        "country": "China",
-        "description": "Chinese domestic B2B platform"
       },
       "dhgate": {
         "display_name": "DHgate",
@@ -1389,7 +1395,10 @@
     "bulk_product_success": "{updated} product{updated_plural} {action}d{skipped_msg}",
     "bulk_products_updated": "{} product(s) {}d",
     "bulk_products_updated_skipped": "{} product(s) {}d ({} skipped)",
-    "unexpected_error": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo."
+    "unexpected_error": "Ocurrió un error inesperado. Por favor, inténtalo de nuevo.",
+    "account_fully_active": "La cuenta de vendedor está completamente activa",
+    "api_config_required": "Configuración de API requerida",
+    "api_config_required_desc": "Configure sus claves de API antes de usar esta integración."
   },
   "profile": {
     "title": "Perfil",
@@ -1530,7 +1539,7 @@
     "back_to_home": "Back to Home",
     "welcome_to_premium": "Welcome to Premium!",
     "subscription_active_desc": "Your subscription is active. Enjoy all the benefits below.",
-    "start_shopping": "Start Shopping",
+    "start_shopping": "Empezar a comprar",
     "status_active": "ACTIVE",
     "menu_manage_desc": "Manage subscription & notifications",
     "menu_upgrade_desc": "Upgrade for no fees & seller chat — CAD $7.86/mo",
@@ -1646,7 +1655,7 @@
     "title": "Admin Panel",
     "sellers_tab": "Sellers",
     "users_tab": "Users",
-    "orders_tab": "Orders",
+    "orders_tab": "Pedidos",
     "products_tab": "Products",
     "payments_tab": "Payments",
     "payments": {
@@ -1688,7 +1697,7 @@
       "stripe_feature_3": "Google Pay",
       "stripe_feature_4": "Connect Payouts"
     },
-    "security_tab": "Security",
+    "security_tab": "Seguridad",
     "reviews_tab": "Reviews",
     "reviews": {
       "flagged": "Flagged",
@@ -1715,36 +1724,36 @@
     "go_home": "Go Home",
     "quick_stats": "Quick Stats",
     "security": {
-      "title": "Multi-Factor Authentication",
-      "subtitle": "Admin account protection",
-      "mfa_enabled": "MFA Enabled",
-      "mfa_disabled": "MFA Disabled",
-      "enable_mfa": "Enable MFA",
-      "disable_mfa": "Disable MFA",
-      "setup_app": "Set up authenticator app",
-      "scan_qr": "Scan QR Code",
-      "enter_code": "Enter code",
-      "verify": "Verify",
-      "copy_secret": "Copy Secret",
-      "secret_copied": "Secret copied to clipboard",
-      "description": "Protect your admin account with time-based one-time passwords (TOTP). Required for high-risk admin actions: suspend/unsuspend sellers, update user roles, configure search.",
-      "step1": "Step 1: Scan QR Code",
-      "scan_qr_desc": "Use an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.) to scan this QR code:",
-      "qr_unavailable": "QR Code\nUnavailable",
-      "enter_secret_manual": "Or enter this secret manually:",
-      "step2": "Step 2: Verify Code",
-      "enter_code_desc": "Enter the 6-digit code from your authenticator app:",
-      "verify_enable": "Verify & Enable MFA",
-      "step3": "Step 3: Save Backup Codes",
-      "backup_codes_desc": "If you lose access to your authenticator, use these backup codes to regain access. Each code can be used once.",
-      "copy_all_codes": "Copy All Codes",
-      "backup_codes_copied": "Backup codes copied to clipboard",
-      "disable_mfa_title": "Disable MFA?",
-      "disable_mfa_desc": "Enter your current TOTP code to confirm disabling multi-factor authentication.",
-      "totp_code": "TOTP Code",
-      "mfa_disabled_success": "MFA disabled",
-      "invalid_code_length": "Please enter a 6-digit code",
-      "mfa_enabled_success": "MFA enabled successfully! Save your backup codes in a secure location."
+      "title": "Autenticación multifactor",
+      "subtitle": "Protección de la cuenta de administrador",
+      "mfa_enabled": "MFA activado",
+      "mfa_disabled": "MFA desactivado",
+      "enable_mfa": "Activar MFA",
+      "disable_mfa": "Desactivar MFA",
+      "setup_app": "Configurar aplicación de autenticación",
+      "scan_qr": "Escanear código QR",
+      "enter_code": "Ingresar código",
+      "verify": "Verificar",
+      "copy_secret": "Copiar secreto",
+      "secret_copied": "Secreto copiado al portapapeles",
+      "description": "Proteja su cuenta de administrador con contraseñas de un solo uso basadas en tiempo (TOTP). Requerido para acciones administrativas de alto riesgo: suspender o reactivar vendedores, actualizar roles de usuario y configurar la búsqueda.",
+      "step1": "Paso 1: escanear código QR",
+      "scan_qr_desc": "Use una aplicación de autenticación (Google Authenticator, Microsoft Authenticator, Authy, etc.) para escanear este código QR:",
+      "qr_unavailable": "Código QR\nNo disponible",
+      "enter_secret_manual": "O ingrese este secreto manualmente:",
+      "step2": "Paso 2: verificar código",
+      "enter_code_desc": "Ingrese el código de 6 dígitos de su aplicación de autenticación:",
+      "verify_enable": "Verificar y activar MFA",
+      "step3": "Paso 3: guardar códigos de respaldo",
+      "backup_codes_desc": "Si pierde acceso a su autenticador, use estos códigos de respaldo para recuperar el acceso. Cada código se puede usar una sola vez.",
+      "copy_all_codes": "Copiar todos los códigos",
+      "backup_codes_copied": "Códigos de respaldo copiados al portapapeles",
+      "disable_mfa_title": "¿Desactivar MFA?",
+      "disable_mfa_desc": "Ingrese su código TOTP actual para confirmar la desactivación de la autenticación multifactor.",
+      "totp_code": "Código TOTP",
+      "mfa_disabled_success": "MFA desactivado",
+      "mfa_enabled_success": "MFA activado correctamente. Guarde sus códigos de respaldo en un lugar seguro.",
+      "invalid_code_length": "Ingrese un código de 6 dígitos"
     },
     "users": {
       "title": "User Management",
@@ -1867,7 +1876,8 @@
       "reject_error": "Failed to reject product",
       "download_urls_title": "Download URLs",
       "digital_type_label": "Type: {type}",
-      "no_download_urls": "No digitalBuilds URLs"
+      "no_download_urls": "No digitalBuilds URLs",
+      "actions_tooltip": "Más acciones del producto"
     },
     "header_brand": "Origna GTA Admin"
   },
@@ -1992,9 +2002,9 @@
     "order_placed": "Order Placed Successfully!",
     "thank_you": "Thank you for your purchase!\nYou will receive a confirmation email shortly.",
     "estimated_delivery": "Estimated delivery",
-"delivery_window_hours": "Within 2\u20134 hours (local)",
-      "estimated_delivery_international": "4\u20138 semanas o más",
-      "continue_shopping": "Continue Shopping",
+    "delivery_window_hours": "Within 2–4 hours (local)",
+    "estimated_delivery_international": "4–8 semanas o más",
+    "continue_shopping": "Continue Shopping",
     "view_my_orders": "View My Orders",
     "order_id_label": "Order ID: {id}",
     "order_id_prefix": "Order #",
@@ -2070,7 +2080,15 @@
     "payment_authorized": "Payment authorized — awaiting seller approval.",
     "payment_waiting_approval": "Waiting for seller approval",
     "refund_error": "Failed to process refund. Please try again.",
-    "refund_success": "Refund processed successfully."
+    "refund_success": "Refund processed successfully.",
+    "cancel_failed": "No se pudo cancelar el pedido",
+    "cancel_order_body": "Rechazar el costo de envío cancelará su pedido. La autorización de pago se liberará y no se le cobrará.",
+    "cancel_order_title": "¿Cancelar pedido?",
+    "carrier_maritime": "Marítimo (internacional)",
+    "carrier_other": "Otro transportista",
+    "order_cancelled": "Pedido cancelado",
+    "tracking": "Seguimiento",
+    "yes_cancel_order": "Sí, cancelar pedido"
   },
   "accessibility": {
     "navigation_menu": "Navigation menu",
@@ -2255,15 +2273,15 @@
     "inbox_empty_desc": "Chat with sellers about products to start a conversation",
     "unread_badge": "{count}",
     "last_seen": "{time} ago",
-      "tap_to_chat": "Tap to open conversation",
-      "type_a_message": "Type a message...",
-      "coming_soon": "Próximamente",
-      "seller_onboarding_disabled": "Chat con vendedores externos próximamente"
-    },
-    "seller_integration": {
-      "title": "Developer Integration Guide",
-      "how_licensing_works": "How licensing works on Origna",
-      "intro_p1": "When a buyer purchases your software on Origna, a unique license key (format: XXXX-XXXX-XXXX-XXXX) is automatically generated and emailed to them.",
+    "tap_to_chat": "Tap to open conversation",
+    "type_a_message": "Type a message...",
+    "coming_soon": "Próximamente",
+    "seller_onboarding_disabled": "Chat con vendedores externos próximamente"
+  },
+  "seller_integration": {
+    "title": "Developer Integration Guide",
+    "how_licensing_works": "How licensing works on Origna",
+    "intro_p1": "When a buyer purchases your software on Origna, a unique license key (format: XXXX-XXXX-XXXX-XXXX) is automatically generated and emailed to them.",
     "intro_p2": "Your app calls two public endpoints — no API key, no SDK, no login required. Just a plain HTTPS POST from anywhere: Swift, Python, Electron, Unity.",
     "step_1": "Buyer enters their license key in your app",
     "step_2": "Your app calls POST /activate_license",
@@ -2344,6 +2362,12 @@
     "swift_chip": "No SDK or CocoaPods required — plain URLSession"
   },
   "supplier": {
+    "1688": {
+      "display_name": "1688",
+      "region": "Asia",
+      "country": "China",
+      "description": "Chinese domestic B2B platform"
+    },
     "aliexpress": {
       "display_name": "AliExpress",
       "region": "Asia",
@@ -2355,12 +2379,6 @@
       "region": "Asia",
       "country": "China",
       "description": "B2B wholesale marketplace"
-    },
-    "1688": {
-      "display_name": "1688",
-      "region": "Asia",
-      "country": "China",
-      "description": "Chinese domestic B2B platform"
     },
     "dhgate": {
       "display_name": "DHgate",
@@ -2769,5 +2787,62 @@
     "bundle_hint": "Link up to 5 complementary products",
     "add_bundle": "Add to Bundle",
     "remove_bundle": "Remove from Bundle"
+  },
+  "start_shopping": "Empezar a comprar",
+  "security": {
+    "title": "Seguridad",
+    "subtitle": "Administre la seguridad de su cuenta",
+    "description": "La autenticación de dos factores agrega una capa adicional de seguridad a su cuenta. Deberá ingresar un código de su aplicación de autenticación al iniciar sesión.",
+    "mfa_enabled": "MFA activado",
+    "mfa_disabled": "MFA desactivado",
+    "enable_mfa": "Activar MFA",
+    "disable_mfa": "Desactivar MFA",
+    "disable_mfa_title": "Desactivar autenticación de dos factores",
+    "disable_mfa_desc": "Ingrese su código de autenticación actual para desactivar MFA. Esto hará que su cuenta sea menos segura.",
+    "totp_code": "Código de autenticación",
+    "mfa_disabled_success": "La autenticación de dos factores se desactivó",
+    "mfa_enabled_success": "La autenticación de dos factores ahora está activa",
+    "login_history": "Historial de inicio de sesión",
+    "known_devices": "Dispositivos conocidos",
+    "security_alerts": "Alertas de seguridad",
+    "was_this_you": "¿Fue usted?",
+    "yes_it_was_me": "Sí, fui yo",
+    "remove_device": "Eliminar dispositivo",
+    "device_removed": "Dispositivo eliminado",
+    "no_login_history": "Sin historial de inicio de sesión",
+    "no_devices": "No hay dispositivos conocidos",
+    "ip_address": "Dirección IP"
+  },
+  "mfa": {
+    "challenge_title": "Autenticación de dos factores",
+    "enter_code": "Ingrese el código de 6 dígitos de su aplicación de autenticación",
+    "use_recovery_code": "Usar un código de recuperación",
+    "use_totp_code": "Usar el código de autenticación",
+    "enter_recovery_code": "Ingrese su código de recuperación",
+    "submit": "Verificar",
+    "invalid_code": "Código inválido. Inténtelo de nuevo.",
+    "too_manyattempts": "Demasiados intentos. Inicie sesión de nuevo.",
+    "attempts_remaining": "intentos restantes",
+    "back_to_login": "Volver a iniciar sesión",
+    "setup_title": "Configurar autenticación de dos factores",
+    "step1_scan": "Paso 1: escanear código QR",
+    "step1_desc": "Escanee este código QR con su aplicación de autenticación (Google Authenticator, Authy o Contraseñas de iOS).",
+    "copy_manual_key": "O ingrese esta clave manualmente:",
+    "manual_key_copied": "Clave manual copiada al portapapeles",
+    "next": "Siguiente",
+    "step2_verify": "Paso 2: verificar código",
+    "step2_desc": "Ingrese el código de 6 dígitos de su aplicación de autenticación para confirmar la configuración.",
+    "verify": "Verificar",
+    "step3_backup": "Paso 3: guardar códigos de recuperación",
+    "step3_desc": "Guarde estos códigos de recuperación en un lugar seguro. Puede usarlos para iniciar sesión si pierde acceso a su aplicación de autenticación.",
+    "save_codes_warning": "Estos códigos solo se mostrarán una vez. ¡Guárdelos ahora!",
+    "codes_copied": "Códigos de recuperación copiados al portapapeles",
+    "copy_all_codes": "Copiar todos los códigos",
+    "confirm_saved": "He guardado estos códigos de recuperación",
+    "done": "Listo",
+    "setup_complete": "La autenticación de dos factores ahora está activa!"
+  },
+  "seller_orders": {
+    "net_tooltip": "Pago neto después de la comisión de plataforma. Bruto: ${gross}; comisión: ${fee}."
   }
 }

@@ -233,7 +233,8 @@
       "reject_error": "Impossible de rejeter le produit",
       "download_urls_title": "URLs de téléchargement",
       "digital_type_label": "Type : {type}",
-      "no_download_urls": "Aucune URL digitalBuilds"
+      "no_download_urls": "Aucune URL digitalBuilds",
+      "actions_tooltip": "Plus d’actions sur le produit"
     },
     "header_brand": "Admin Origna GTA"
   },
@@ -279,7 +280,7 @@
     "continue_text": "Continuer",
     "delivery_instructions": "Instructions de livraison",
     "no_items": "Aucun article",
-    "go_shopping": "Commencer à magasiner",
+    "go_shopping": "Commencer les achats",
     "unknown": "Inconnu",
     "manage": "Gérer",
     "required": "Requis",
@@ -302,7 +303,9 @@
     "loading_more": "Chargement de plus de produits",
     "add_to_cart_semantics": "Ajouter {name} au panier",
     "dismiss": "Fermer",
-    "see_less": "Voir Moins"
+    "see_less": "Voir Moins",
+    "go_back": "Retour",
+    "now": "Maintenant"
   },
   "auth": {
     "sign_in": "Se connecter",
@@ -986,7 +989,9 @@
     "a11y_regular": "{name}, {price}, {rating} étoiles",
     "verified_purchase": "Achat vérifié",
     "ratings_no_text_one": "{count} évaluation (sans commentaire)",
-    "ratings_no_text_other": "{count} évaluations (sans commentaire)"
+    "ratings_no_text_other": "{count} évaluations (sans commentaire)",
+    "location_error": "Veuillez choisir un emplacement de produit valide.",
+    "no_image": "Aucune image disponible"
   },
   "cart": {
     "your_cart": "Votre panier",
@@ -1117,7 +1122,8 @@
       "biometric_error": "Erreur d'authentification biométrique. Veuillez réessayer.",
       "biometric_failed": "Authentification biométrique échouée. Veuillez utiliser votre NIP.",
       "biometric_unavailable": "Cette transaction nécessite une authentification biométrique, mais elle n'est pas disponible sur cet appareil.",
-      "unable_to_verify_prices": "Impossible de vérifier les prix. Veuillez réessayer."
+      "unable_to_verify_prices": "Impossible de vérifier les prix. Veuillez réessayer.",
+      "processing_failed": "Nous n’avons pas pu traiter votre paiement. Veuillez réessayer."
     },
     "free_shipping_banner": "Dépensez {amount} de plus pour la livraison gratuite !",
     "order_review_title": "Vérifier votre commande",
@@ -1159,320 +1165,320 @@
       }
     },
     "chat": {
-        "title": "Clavardage",
-        "message_copied": "Message copié",
-        "empty_state_no_messages": "Aucun message pour le moment. Dites bonjour ! 👋",
-        "send_message_cta": "Envoyer un message",
-        "own_product_title": "Votre produit",
-        "own_product_body": "Vous ne pouvez pas vous envoyer de message pour votre propre produit.",
-        "copy_message": "Copier le message",
-        "delete_message": "Supprimer le message",
-        "message_deleted": "Message supprimé",
-        "delete_failed": "Impossible de supprimer le message. Veuillez réessayer.",
-        "inbox_title": "Mes messages",
-        "inbox_subtitle": "Conversations de chat premium",
-        "inbox_empty": "Aucune conversation",
-        "inbox_empty_desc": "Chattez avec les vendeurs pour commencer une conversation",
-        "unread_badge": "{count}",
-        "last_seen": "il y a {time}",
+      "title": "Clavardage",
+      "message_copied": "Message copié",
+      "empty_state_no_messages": "Aucun message pour le moment. Dites bonjour ! 👋",
+      "send_message_cta": "Envoyer un message",
+      "own_product_title": "Votre produit",
+      "own_product_body": "Vous ne pouvez pas vous envoyer de message pour votre propre produit.",
+      "copy_message": "Copier le message",
+      "delete_message": "Supprimer le message",
+      "message_deleted": "Message supprimé",
+      "delete_failed": "Impossible de supprimer le message. Veuillez réessayer.",
+      "inbox_title": "Mes messages",
+      "inbox_subtitle": "Conversations de chat premium",
+      "inbox_empty": "Aucune conversation",
+      "inbox_empty_desc": "Chattez avec les vendeurs pour commencer une conversation",
+      "unread_badge": "{count}",
+      "last_seen": "il y a {time}",
       "tap_to_chat": "Appuyez pour ouvrir la conversation",
       "type_a_message": "Tapez un message...",
       "coming_soon": "Bientôt disponible",
       "seller_onboarding_disabled": "Clavardage avec les vendeurs tiers bientôt disponible"
     },
     "seller_integration": {
-        "title": "Guide d'intégration pour les développeurs",
-        "how_licensing_works": "Comment fonctionnent les licences sur Origna",
-        "intro_p1": "Lorsqu'un acheteur acquiert votre logiciel sur Origna, une clé de licence unique (format : XXXX-XXXX-XXXX-XXXX) est générée automatiquement et envoyée par e-mail.",
-        "intro_p2": "Votre application appelle deux points de terminaison publics — aucune clé API, aucun SDK Firebase, aucune connexion requise. Un simple HTTPS POST depuis n'importe où : Swift, Python, Electron, Unity.",
-        "step_1": "L'acheteur saisit sa clé de licence dans votre application",
-        "step_2": "Votre application appelle POST /activate_license",
-        "step_3": "Origna vérifie la clé, enregistre l'appareil, retourne les infos du produit",
-        "step_4": "Votre application déverrouille les fonctionnalités Pro",
-        "activation_vs_verification": "Activation vs Vérification",
-        "activate_title": "activate_license — à appeler au premier lancement ou lors de la saisie de la clé",
-        "activate_desc": "Enregistre l'appareil (deviceId) pour cette licence. Respecte la limite d'appareils configurée par le vendeur. Idempotent — peut être appelé plusieurs fois en toute sécurité depuis le même appareil.",
-        "verify_title": "verify_license — à appeler périodiquement (ex: au lancement de l'application)",
-        "verify_desc": "Vérifie que la licence est toujours active et non révoquée (ex: après un remboursement). Même format de requête/réponse que l'activation. Recommandé : appeler une fois par lancement, mettre en cache le résultat pour une utilisation hors ligne pendant 24 h.",
-        "api_endpoints": "Points de terminaison API",
-        "activate_register": "Activer / enregistrer l'appareil",
-        "verify_launch": "Vérifier au lancement de l'application",
-        "request_body": "Corps de la requête (JSON)",
-        "success_response": "Réponse de succès (HTTP 200)",
-        "swift_integration": "Intégration Swift / macOS",
-        "swift_desc": "Collez ceci dans votre application. Utilise IOKit pour obtenir l'UUID matériel comme identifiant d'appareil stable.",
-        "swift_info": "Aucun SDK Firebase ni CocoaPods requis — uniquement URLSession",
-        "python_integration": "Intégration Python / Windows / Linux",
-        "python_desc": "Fonctionne pour toute application Python sur macOS, Windows ou Linux.",
-        "python_info": "Seule dépendance : requests  (pip install requests)",
-        "books_title": "Livres — aucune intégration nécessaire",
-        "books_p1": "Les téléchargements de livres sont entièrement gérés par Origna. Lorsqu'un acheteur appuie sur \"Télécharger\" dans l'application, Origna génère un lien sécurisé à usage unique valable 15 minutes et le redirige vers l'URL de votre PDF/EPUB — votre URL n'est jamais exposée à l'acheteur.",
-        "books_p2": "En tant que vendeur de livres, il vous suffit de fournir votre URL de téléchargement lors de la création du produit. Origna gère le contrôle d'accès, l'expiration du token et l'application de l'usage unique.",
-        "books_step_1": "L'acheteur appuie sur Télécharger dans sa commande Origna",
-        "books_step_2": "Le backend Origna crée un token de 15 min, l'URL reste côté serveur",
-        "books_step_3": "Le navigateur est redirigé — l'acheteur télécharge directement",
-        "books_step_4": "Le lien expire et ne peut plus être réutilisé",
-        "error_codes": "Codes d'erreur",
-        "error_404_desc": "La clé n'existe pas — l'acheteur a saisi une mauvaise clé",
-        "error_403_revoked_desc": "Licence révoquée (remboursement émis)",
-        "error_403_limit_desc": "Trop d'appareils activés pour cette clé",
-        "error_403_platform_desc": "Plateforme non incluse dans ce produit",
-        "error_400_format_desc": "Format de clé incorrect — valider avant d'appeler",
-        "security": "Recommandations de sécurité",
-        "security_1": "Utiliser l'UUID matériel (IOKit / WMI) comme deviceId — pas un UUID aléatoire stocké sur le disque",
-        "security_2": "Mettre en cache le résultat de l'activation localement ; re-vérifier au lancement, pas à chaque action",
-        "security_3": "Si verify_license retourne \"revoked\", désactiver les fonctionnalités Pro immédiatement",
-        "security_4": "Fixer votre limite d'appareils à 2–3 dans la liste des produits pour limiter le partage de clés",
-        "security_5": "Ne jamais coder en dur les clés dans votre source — l'acheteur fournit la sienne à l'exécution",
-        "book_title": "Livres — aucune intégration requise",
-        "book_p1": "Les téléchargements de livres sont entièrement gérés par Origna. Lorsqu'un acheteur appuie sur « Télécharger » dans l'application, Origna génère un lien sécurisé à usage unique de 15 minutes et redirige l'acheteur vers l'URL de votre PDF/EPUB — votre URL n'est jamais exposée à l'acheteur.",
-        "book_p2": "Aucune intégration SDK ou API n'est requise de votre côté.",
-        "book_step1": "L'acheteur appuie sur Télécharger dans sa commande Origna",
-        "book_step2": "Le backend Origna crée un jeton de 15 minutes, l'URL reste côté serveur",
-        "book_step3": "Le navigateur est redirigé — l'acheteur télécharge directement",
-        "book_step4": "Le lien expire et ne peut pas être réutilisé",
-        "endpoints_title": "Points de terminaison API",
-        "endpoints_activate_label": "Activer / enregistrer l'appareil",
-        "endpoints_verify_label": "Vérifier au lancement de l'application",
-        "endpoints_req_title": "Corps de la requête (JSON)",
-        "endpoints_res_title": "Réponse en cas de succès (HTTP 200)",
-        "error_title": "Codes d'erreur",
-        "error_404": "Clé inexistante — l'acheteur a entré la mauvaise clé",
-        "error_revoked": "Licence révoquée (remboursement effectué)",
-        "error_limit": "Trop d'appareils activés pour cette clé",
-        "error_platform": "Plateforme non incluse dans ce produit",
-        "error_format": "Format de clé incorrect — validez avant d'appeler",
-        "how_it_works_title": "Activation vs Vérification",
-        "how_it_works_act_title": "activate_license — appeler au premier démarrage ou quand l'utilisateur entre sa clé",
-        "how_it_works_act_desc": "Enregistre l'appareil (deviceId) contre la licence. Respecte la limite d'appareils configurée par le vendeur. Idempotent — peut être appelé plusieurs fois depuis le même appareil.",
-        "how_it_works_ver_title": "verify_license — appeler périodiquement (ex. au lancement de l'application)",
-        "how_it_works_ver_desc": "Revalide que la licence est toujours active et non révoquée (ex. après un remboursement). Même structure de requête/réponse qu'activate. Recommandé : appeler une fois par lancement, mettre en cache 24 h hors ligne.",
-        "intro_title": "Comment fonctionne la licence sur Origna",
-        "intro_step1": "L'acheteur entre sa clé de licence dans votre application",
-        "intro_step2": "Votre application appelle POST /activate_license",
-        "intro_step3": "Origna vérifie la clé, enregistre l'appareil, retourne les infos produit",
-        "intro_step4": "Votre application déverrouille les fonctionnalités Pro",
-        "python_title": "Intégration Python / Windows / Linux",
-        "python_chip": "pip install requests",
-        "security_title": "Recommandations de sécurité",
-        "security_step1": "Utilisez l'UUID matériel (IOKit / WMI) comme deviceId — pas un UUID aléatoire stocké sur disque",
-        "security_step2": "Mettez en cache le résultat d'activation localement ; revérifiez au lancement, pas à chaque action",
-        "security_step3": "Si verify_license retourne « revoked », désactivez immédiatement les fonctionnalités Pro",
-        "security_step4": "Définissez votre limite d'appareils à 2–3 dans la fiche produit pour limiter le partage de clés",
-        "security_step5": "Ne codez jamais les clés en dur dans votre source — l'acheteur fournit les siennes au moment de l'exécution",
-        "swift_title": "Intégration Swift / macOS",
-        "swift_chip": "Aucun SDK Firebase ou CocoaPods requis — URLSession pure"
+      "title": "Guide d'intégration pour les développeurs",
+      "how_licensing_works": "Comment fonctionnent les licences sur Origna",
+      "intro_p1": "Lorsqu'un acheteur acquiert votre logiciel sur Origna, une clé de licence unique (format : XXXX-XXXX-XXXX-XXXX) est générée automatiquement et envoyée par e-mail.",
+      "intro_p2": "Votre application appelle deux points de terminaison publics — aucune clé API, aucun SDK Firebase, aucune connexion requise. Un simple HTTPS POST depuis n'importe où : Swift, Python, Electron, Unity.",
+      "step_1": "L'acheteur saisit sa clé de licence dans votre application",
+      "step_2": "Votre application appelle POST /activate_license",
+      "step_3": "Origna vérifie la clé, enregistre l'appareil, retourne les infos du produit",
+      "step_4": "Votre application déverrouille les fonctionnalités Pro",
+      "activation_vs_verification": "Activation vs Vérification",
+      "activate_title": "activate_license — à appeler au premier lancement ou lors de la saisie de la clé",
+      "activate_desc": "Enregistre l'appareil (deviceId) pour cette licence. Respecte la limite d'appareils configurée par le vendeur. Idempotent — peut être appelé plusieurs fois en toute sécurité depuis le même appareil.",
+      "verify_title": "verify_license — à appeler périodiquement (ex: au lancement de l'application)",
+      "verify_desc": "Vérifie que la licence est toujours active et non révoquée (ex: après un remboursement). Même format de requête/réponse que l'activation. Recommandé : appeler une fois par lancement, mettre en cache le résultat pour une utilisation hors ligne pendant 24 h.",
+      "api_endpoints": "Points de terminaison API",
+      "activate_register": "Activer / enregistrer l'appareil",
+      "verify_launch": "Vérifier au lancement de l'application",
+      "request_body": "Corps de la requête (JSON)",
+      "success_response": "Réponse de succès (HTTP 200)",
+      "swift_integration": "Intégration Swift / macOS",
+      "swift_desc": "Collez ceci dans votre application. Utilise IOKit pour obtenir l'UUID matériel comme identifiant d'appareil stable.",
+      "swift_info": "Aucun SDK Firebase ni CocoaPods requis — uniquement URLSession",
+      "python_integration": "Intégration Python / Windows / Linux",
+      "python_desc": "Fonctionne pour toute application Python sur macOS, Windows ou Linux.",
+      "python_info": "Seule dépendance : requests  (pip install requests)",
+      "books_title": "Livres — aucune intégration nécessaire",
+      "books_p1": "Les téléchargements de livres sont entièrement gérés par Origna. Lorsqu'un acheteur appuie sur \"Télécharger\" dans l'application, Origna génère un lien sécurisé à usage unique valable 15 minutes et le redirige vers l'URL de votre PDF/EPUB — votre URL n'est jamais exposée à l'acheteur.",
+      "books_p2": "En tant que vendeur de livres, il vous suffit de fournir votre URL de téléchargement lors de la création du produit. Origna gère le contrôle d'accès, l'expiration du token et l'application de l'usage unique.",
+      "books_step_1": "L'acheteur appuie sur Télécharger dans sa commande Origna",
+      "books_step_2": "Le backend Origna crée un token de 15 min, l'URL reste côté serveur",
+      "books_step_3": "Le navigateur est redirigé — l'acheteur télécharge directement",
+      "books_step_4": "Le lien expire et ne peut plus être réutilisé",
+      "error_codes": "Codes d'erreur",
+      "error_404_desc": "La clé n'existe pas — l'acheteur a saisi une mauvaise clé",
+      "error_403_revoked_desc": "Licence révoquée (remboursement émis)",
+      "error_403_limit_desc": "Trop d'appareils activés pour cette clé",
+      "error_403_platform_desc": "Plateforme non incluse dans ce produit",
+      "error_400_format_desc": "Format de clé incorrect — valider avant d'appeler",
+      "security": "Recommandations de sécurité",
+      "security_1": "Utiliser l'UUID matériel (IOKit / WMI) comme deviceId — pas un UUID aléatoire stocké sur le disque",
+      "security_2": "Mettre en cache le résultat de l'activation localement ; re-vérifier au lancement, pas à chaque action",
+      "security_3": "Si verify_license retourne \"revoked\", désactiver les fonctionnalités Pro immédiatement",
+      "security_4": "Fixer votre limite d'appareils à 2–3 dans la liste des produits pour limiter le partage de clés",
+      "security_5": "Ne jamais coder en dur les clés dans votre source — l'acheteur fournit la sienne à l'exécution",
+      "book_title": "Livres — aucune intégration requise",
+      "book_p1": "Les téléchargements de livres sont entièrement gérés par Origna. Lorsqu'un acheteur appuie sur « Télécharger » dans l'application, Origna génère un lien sécurisé à usage unique de 15 minutes et redirige l'acheteur vers l'URL de votre PDF/EPUB — votre URL n'est jamais exposée à l'acheteur.",
+      "book_p2": "Aucune intégration SDK ou API n'est requise de votre côté.",
+      "book_step1": "L'acheteur appuie sur Télécharger dans sa commande Origna",
+      "book_step2": "Le backend Origna crée un jeton de 15 minutes, l'URL reste côté serveur",
+      "book_step3": "Le navigateur est redirigé — l'acheteur télécharge directement",
+      "book_step4": "Le lien expire et ne peut pas être réutilisé",
+      "endpoints_title": "Points de terminaison API",
+      "endpoints_activate_label": "Activer / enregistrer l'appareil",
+      "endpoints_verify_label": "Vérifier au lancement de l'application",
+      "endpoints_req_title": "Corps de la requête (JSON)",
+      "endpoints_res_title": "Réponse en cas de succès (HTTP 200)",
+      "error_title": "Codes d'erreur",
+      "error_404": "Clé inexistante — l'acheteur a entré la mauvaise clé",
+      "error_revoked": "Licence révoquée (remboursement effectué)",
+      "error_limit": "Trop d'appareils activés pour cette clé",
+      "error_platform": "Plateforme non incluse dans ce produit",
+      "error_format": "Format de clé incorrect — validez avant d'appeler",
+      "how_it_works_title": "Activation vs Vérification",
+      "how_it_works_act_title": "activate_license — appeler au premier démarrage ou quand l'utilisateur entre sa clé",
+      "how_it_works_act_desc": "Enregistre l'appareil (deviceId) contre la licence. Respecte la limite d'appareils configurée par le vendeur. Idempotent — peut être appelé plusieurs fois depuis le même appareil.",
+      "how_it_works_ver_title": "verify_license — appeler périodiquement (ex. au lancement de l'application)",
+      "how_it_works_ver_desc": "Revalide que la licence est toujours active et non révoquée (ex. après un remboursement). Même structure de requête/réponse qu'activate. Recommandé : appeler une fois par lancement, mettre en cache 24 h hors ligne.",
+      "intro_title": "Comment fonctionne la licence sur Origna",
+      "intro_step1": "L'acheteur entre sa clé de licence dans votre application",
+      "intro_step2": "Votre application appelle POST /activate_license",
+      "intro_step3": "Origna vérifie la clé, enregistre l'appareil, retourne les infos produit",
+      "intro_step4": "Votre application déverrouille les fonctionnalités Pro",
+      "python_title": "Intégration Python / Windows / Linux",
+      "python_chip": "pip install requests",
+      "security_title": "Recommandations de sécurité",
+      "security_step1": "Utilisez l'UUID matériel (IOKit / WMI) comme deviceId — pas un UUID aléatoire stocké sur disque",
+      "security_step2": "Mettez en cache le résultat d'activation localement ; revérifiez au lancement, pas à chaque action",
+      "security_step3": "Si verify_license retourne « revoked », désactivez immédiatement les fonctionnalités Pro",
+      "security_step4": "Définissez votre limite d'appareils à 2–3 dans la fiche produit pour limiter le partage de clés",
+      "security_step5": "Ne codez jamais les clés en dur dans votre source — l'acheteur fournit les siennes au moment de l'exécution",
+      "swift_title": "Intégration Swift / macOS",
+      "swift_chip": "Aucun SDK Firebase ou CocoaPods requis — URLSession pure"
     },
     "supplier": {
-        "aliexpress": {
-            "display_name": "AliExpress",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Marché de détail mondial"
-        },
-        "alibaba": {
-            "display_name": "Alibaba",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Marché de gros B2B"
-        },
-        "1688": {
-            "display_name": "1688",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Plateforme B2B domestique chinoise"
-        },
-        "dhgate": {
-            "display_name": "DHgate",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Plateforme de commerce électronique transfrontalier"
-        },
-        "temu": {
-            "display_name": "Temu",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Marché à expédition rapide"
-        },
-        "made_in_china": {
-            "display_name": "Made-in-China",
-            "region": "Asie",
-            "country": "Chine",
-            "description": "Plateforme de sourcing B2B"
-        },
-        "global_sources": {
-            "display_name": "Global Sources",
-            "region": "Asie",
-            "country": "Chine/Hong Kong",
-            "description": "Plateforme B2B basée en Asie"
-        },
-        "cjdropshipping": {
-            "display_name": "CJ Dropshipping",
-            "region": "Global",
-            "country": "Chine (entrepôts mondiaux)",
-            "description": "Service de dropshipping et de traitement"
-        },
-        "spocket": {
-            "display_name": "Spocket",
-            "region": "US/UE",
-            "country": "États-Unis/Europe",
-            "description": "Fournisseurs de dropshipping US/UE"
-        },
-        "printful": {
-            "display_name": "Printful",
-            "region": "Global",
-            "country": "États-Unis/UE/Mexique",
-            "description": "Exécution d'impression à la demande"
-        },
-        "printify": {
-            "display_name": "Printify",
-            "region": "Global",
-            "country": "Divers",
-            "description": "Plateforme d'impression à la demande"
-        },
-        "gmarket": {
-            "display_name": "Gmarket",
-            "region": "Asie",
-            "country": "Corée du Sud",
-            "description": "Plateforme de commerce électronique coréenne"
-        },
-        "coupang": {
-            "display_name": "Coupang",
-            "region": "Asie",
-            "country": "Corée du Sud",
-            "description": "Livraison rocket coréenne"
-        },
-        "rakuten": {
-            "display_name": "Rakuten",
-            "region": "Asie",
-            "country": "Japon",
-            "description": "Géant japonais du commerce électronique"
-        },
-        "amazon_japan": {
-            "display_name": "Amazon Japan",
-            "region": "Asie",
-            "country": "Japon",
-            "description": "Marché Amazon Japon"
-        },
-        "indiamart": {
-            "display_name": "IndiaMart",
-            "region": "Asie",
-            "country": "Inde",
-            "description": "Marché B2B indien"
-        },
-        "tradeindia": {
-            "display_name": "TradeIndia",
-            "region": "Asie",
-            "country": "Inde",
-            "description": "Plateforme B2B indienne"
-        },
-        "faire": {
-            "display_name": "Faire",
-            "region": "US/UE",
-            "country": "États-Unis/Europe",
-            "description": "Marché de gros"
-        },
-        "amazon_europe": {
-            "display_name": "Amazon Europe",
-            "region": "Europe",
-            "country": "Allemagne/RU/France",
-            "description": "Marchés européens Amazon"
-        },
-        "amazon_usa": {
-            "display_name": "Amazon USA",
-            "region": "Amérique du Nord",
-            "country": "États-Unis",
-            "description": "Marché Amazon US"
-        },
-        "walmart": {
-            "display_name": "Walmart",
-            "region": "Amérique du Nord",
-            "country": "États-Unis",
-            "description": "Géant de la vente au détail aux États-Unis"
-        },
-        "costco": {
-            "display_name": "Costco Business",
-            "region": "Amérique du Nord",
-            "country": "États-Unis/Canada",
-            "description": "Club de vente en gros"
-        },
-        "local": {
-            "display_name": "Fournisseur canadien local",
-            "region": "Canada",
-            "country": "Canada",
-            "description": "Fournisseur basé au Canada"
-        },
-        "etsy_wholesale": {
-            "display_name": "Etsy Wholesale",
-            "region": "Global",
-            "country": "Divers",
-            "description": "Articles faits à la main et vintage"
-        },
-        "custom": {
-            "display_name": "Fournisseur personnalisé",
-            "region": "Personnalisé",
-            "country": "Préciser",
-            "description": "Ajoutez vos propres détails de fournisseur"
-        },
-        "other": {
-            "display_name": "Autre",
-            "region": "Divers",
-            "country": "Divers",
-            "description": "Autre fournisseur non répertorié"
-        }
+      "1688": {
+        "display_name": "1688",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Plateforme B2B domestique chinoise"
+      },
+      "aliexpress": {
+        "display_name": "AliExpress",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Marché de détail mondial"
+      },
+      "alibaba": {
+        "display_name": "Alibaba",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Marché de gros B2B"
+      },
+      "dhgate": {
+        "display_name": "DHgate",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Plateforme de commerce électronique transfrontalier"
+      },
+      "temu": {
+        "display_name": "Temu",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Marché à expédition rapide"
+      },
+      "made_in_china": {
+        "display_name": "Made-in-China",
+        "region": "Asie",
+        "country": "Chine",
+        "description": "Plateforme de sourcing B2B"
+      },
+      "global_sources": {
+        "display_name": "Global Sources",
+        "region": "Asie",
+        "country": "Chine/Hong Kong",
+        "description": "Plateforme B2B basée en Asie"
+      },
+      "cjdropshipping": {
+        "display_name": "CJ Dropshipping",
+        "region": "Global",
+        "country": "Chine (entrepôts mondiaux)",
+        "description": "Service de dropshipping et de traitement"
+      },
+      "spocket": {
+        "display_name": "Spocket",
+        "region": "US/UE",
+        "country": "États-Unis/Europe",
+        "description": "Fournisseurs de dropshipping US/UE"
+      },
+      "printful": {
+        "display_name": "Printful",
+        "region": "Global",
+        "country": "États-Unis/UE/Mexique",
+        "description": "Exécution d'impression à la demande"
+      },
+      "printify": {
+        "display_name": "Printify",
+        "region": "Global",
+        "country": "Divers",
+        "description": "Plateforme d'impression à la demande"
+      },
+      "gmarket": {
+        "display_name": "Gmarket",
+        "region": "Asie",
+        "country": "Corée du Sud",
+        "description": "Plateforme de commerce électronique coréenne"
+      },
+      "coupang": {
+        "display_name": "Coupang",
+        "region": "Asie",
+        "country": "Corée du Sud",
+        "description": "Livraison rocket coréenne"
+      },
+      "rakuten": {
+        "display_name": "Rakuten",
+        "region": "Asie",
+        "country": "Japon",
+        "description": "Géant japonais du commerce électronique"
+      },
+      "amazon_japan": {
+        "display_name": "Amazon Japan",
+        "region": "Asie",
+        "country": "Japon",
+        "description": "Marché Amazon Japon"
+      },
+      "indiamart": {
+        "display_name": "IndiaMart",
+        "region": "Asie",
+        "country": "Inde",
+        "description": "Marché B2B indien"
+      },
+      "tradeindia": {
+        "display_name": "TradeIndia",
+        "region": "Asie",
+        "country": "Inde",
+        "description": "Plateforme B2B indienne"
+      },
+      "faire": {
+        "display_name": "Faire",
+        "region": "US/UE",
+        "country": "États-Unis/Europe",
+        "description": "Marché de gros"
+      },
+      "amazon_europe": {
+        "display_name": "Amazon Europe",
+        "region": "Europe",
+        "country": "Allemagne/RU/France",
+        "description": "Marchés européens Amazon"
+      },
+      "amazon_usa": {
+        "display_name": "Amazon USA",
+        "region": "Amérique du Nord",
+        "country": "États-Unis",
+        "description": "Marché Amazon US"
+      },
+      "walmart": {
+        "display_name": "Walmart",
+        "region": "Amérique du Nord",
+        "country": "États-Unis",
+        "description": "Géant de la vente au détail aux États-Unis"
+      },
+      "costco": {
+        "display_name": "Costco Business",
+        "region": "Amérique du Nord",
+        "country": "États-Unis/Canada",
+        "description": "Club de vente en gros"
+      },
+      "local": {
+        "display_name": "Fournisseur canadien local",
+        "region": "Canada",
+        "country": "Canada",
+        "description": "Fournisseur basé au Canada"
+      },
+      "etsy_wholesale": {
+        "display_name": "Etsy Wholesale",
+        "region": "Global",
+        "country": "Divers",
+        "description": "Articles faits à la main et vintage"
+      },
+      "custom": {
+        "display_name": "Fournisseur personnalisé",
+        "region": "Personnalisé",
+        "country": "Préciser",
+        "description": "Ajoutez vos propres détails de fournisseur"
+      },
+      "other": {
+        "display_name": "Autre",
+        "region": "Divers",
+        "country": "Divers",
+        "description": "Autre fournisseur non répertorié"
+      }
     },
     "security": {
-        "title": "Sécurité",
-        "subtitle": "Gérer la sécurité de votre compte",
-        "description": "L'authentification à deux facteurs ajoute une couche de sécurité supplémentaire à votre compte. Vous devrez entrer un code de votre application d'authentification lors de la connexion.",
-        "mfa_enabled": "A2F activée",
-        "mfa_disabled": "A2F désactivée",
-        "enable_mfa": "Activer l'A2F",
-        "disable_mfa": "Désactiver l'A2F",
-        "disable_mfa_title": "Désactiver l'authentification à deux facteurs",
-        "disable_mfa_desc": "Entrez votre code d'authentification actuel pour désactiver l'A2F. Votre compte sera moins sécurisé.",
-        "totp_code": "Code d'authentification",
-        "mfa_disabled_success": "L'authentification à deux facteurs a été désactivée",
-        "mfa_enabled_success": "L'authentification à deux facteurs est maintenant active",
-        "login_history": "Historique de connexion",
-        "known_devices": "Appareils connus",
-        "security_alerts": "Alertes de sécurité",
-        "was_this_you": "C'était vous?",
-        "yes_it_was_me": "Oui, c'était moi",
-        "remove_device": "Supprimer l'appareil",
-        "device_removed": "Appareil supprimé",
-        "no_login_history": "Aucun historique de connexion",
-        "no_devices": "Aucun appareil connu",
-        "ip_address": "Adresse IP"
+      "title": "Sécurité",
+      "subtitle": "Gérer la sécurité de votre compte",
+      "description": "L'authentification à deux facteurs ajoute une couche de sécurité supplémentaire à votre compte. Vous devrez entrer un code de votre application d'authentification lors de la connexion.",
+      "mfa_enabled": "A2F activée",
+      "mfa_disabled": "A2F désactivée",
+      "enable_mfa": "Activer l'A2F",
+      "disable_mfa": "Désactiver l'A2F",
+      "disable_mfa_title": "Désactiver l'authentification à deux facteurs",
+      "disable_mfa_desc": "Entrez votre code d'authentification actuel pour désactiver l'A2F. Votre compte sera moins sécurisé.",
+      "totp_code": "Code d'authentification",
+      "mfa_disabled_success": "L'authentification à deux facteurs a été désactivée",
+      "mfa_enabled_success": "L'authentification à deux facteurs est maintenant active",
+      "login_history": "Historique de connexion",
+      "known_devices": "Appareils connus",
+      "security_alerts": "Alertes de sécurité",
+      "was_this_you": "C'était vous?",
+      "yes_it_was_me": "Oui, c'était moi",
+      "remove_device": "Supprimer l'appareil",
+      "device_removed": "Appareil supprimé",
+      "no_login_history": "Aucun historique de connexion",
+      "no_devices": "Aucun appareil connu",
+      "ip_address": "Adresse IP"
     },
     "mfa": {
-        "challenge_title": "Authentification à deux facteurs",
-        "enter_code": "Entrez le code à 6 chiffres de votre application d'authentification",
-        "use_recovery_code": "Utiliser un code de récupération",
-        "use_totp_code": "Utiliser le code d'authentification",
-        "enter_recovery_code": "Entrez votre code de récupération",
-        "submit": "Vérifier",
-        "invalid_code": "Code invalide. Veuillez réessayer.",
-        "too_many_attempts": "Trop de tentatives. Veuillez vous reconnecter.",
-        "attempts_remaining": "tentatives restantes",
-        "back_to_login": "Retour à la connexion",
-        "setup_title": "Configurer l'authentification à deux facteurs",
-        "step1_scan": "Étape 1 : Scanner le code QR",
-        "step1_desc": "Scannez ce code QR avec votre application d'authentification (Google Authenticator, Authy ou Mots de passe iOS).",
-        "step2_verify": "Étape 2 : Vérifier le code",
-        "step2_desc": "Entrez le code à 6 chiffres de votre application d'authentification pour confirmer la configuration.",
-        "step3_backup": "Étape 3 : Sauvegarder les codes de récupération",
-        "step3_desc": "Sauvegardez ces codes de récupération dans un endroit sûr. Vous pouvez les utiliser pour vous connecter si vous perdez l'accès à votre application d'authentification.",
-        "copy_manual_key": "Ou entrez cette clé manuellement :",
-        "manual_key_copied": "Clé manuelle copiée dans le presse-papiers",
-        "save_codes_warning": "Ces codes ne seront affichés qu'une seule fois. Sauvegardez-les maintenant!",
-        "confirm_saved": "J'ai sauvegardé ces codes de récupération",
-        "setup_complete": "L'authentification à deux facteurs est maintenant active!",
-        "next": "Suivant",
-        "verify": "Vérifier",
-        "done": "Terminé",
-        "copy_all_codes": "Copier tous les codes",
-        "codes_copied": "Codes de récupération copiés dans le presse-papiers"
+      "challenge_title": "Authentification à deux facteurs",
+      "enter_code": "Entrez le code à 6 chiffres de votre application d'authentification",
+      "use_recovery_code": "Utiliser un code de récupération",
+      "use_totp_code": "Utiliser le code d'authentification",
+      "enter_recovery_code": "Entrez votre code de récupération",
+      "submit": "Vérifier",
+      "invalid_code": "Code invalide. Veuillez réessayer.",
+      "too_many_attempts": "Trop de tentatives. Veuillez vous reconnecter.",
+      "attempts_remaining": "tentatives restantes",
+      "back_to_login": "Retour à la connexion",
+      "setup_title": "Configurer l'authentification à deux facteurs",
+      "step1_scan": "Étape 1 : Scanner le code QR",
+      "step1_desc": "Scannez ce code QR avec votre application d'authentification (Google Authenticator, Authy ou Mots de passe iOS).",
+      "step2_verify": "Étape 2 : Vérifier le code",
+      "step2_desc": "Entrez le code à 6 chiffres de votre application d'authentification pour confirmer la configuration.",
+      "step3_backup": "Étape 3 : Sauvegarder les codes de récupération",
+      "step3_desc": "Sauvegardez ces codes de récupération dans un endroit sûr. Vous pouvez les utiliser pour vous connecter si vous perdez l'accès à votre application d'authentification.",
+      "copy_manual_key": "Ou entrez cette clé manuellement :",
+      "manual_key_copied": "Clé manuelle copiée dans le presse-papiers",
+      "save_codes_warning": "Ces codes ne seront affichés qu'une seule fois. Sauvegardez-les maintenant!",
+      "confirm_saved": "J'ai sauvegardé ces codes de récupération",
+      "setup_complete": "L'authentification à deux facteurs est maintenant active!",
+      "next": "Suivant",
+      "verify": "Vérifier",
+      "done": "Terminé",
+      "copy_all_codes": "Copier tous les codes",
+      "codes_copied": "Codes de récupération copiés dans le presse-papiers"
     }
   },
   "orders": {
@@ -1514,9 +1520,9 @@
     "order_placed": "Commande passée avec succès!",
     "thank_you": "Merci pour votre achat!\nVous recevrez un courriel de confirmation sous peu.",
     "estimated_delivery": "Livraison estimée",
-"delivery_window_hours": "Dans 2\u20134 heures (local)",
-      "estimated_delivery_international": "4\u20138 semaines ou plus",
-      "continue_shopping": "Continuer les achats",
+    "delivery_window_hours": "Dans 2–4 heures (local)",
+    "estimated_delivery_international": "4–8 semaines ou plus",
+    "continue_shopping": "Continuer les achats",
     "view_my_orders": "Voir mes commandes",
     "order_id_label": "No de commande : {id}",
     "order_id_prefix": "Commande #",
@@ -1592,7 +1598,15 @@
     "payment_authorized": "Paiement autorisé — en attente d'approbation du vendeur.",
     "payment_waiting_approval": "En attente d'approbation du vendeur",
     "refund_error": "Impossible de traiter le remboursement. Veuillez réessayer.",
-    "refund_success": "Remboursement traité avec succès."
+    "refund_success": "Remboursement traité avec succès.",
+    "cancel_failed": "Échec de l’annulation de la commande",
+    "cancel_order_body": "Le rejet des frais de livraison annulera votre commande. L’autorisation de paiement sera libérée et vous ne serez pas facturé.",
+    "cancel_order_title": "Annuler la commande ?",
+    "carrier_maritime": "Maritime (international)",
+    "carrier_other": "Autre transporteur",
+    "order_cancelled": "Commande annulée",
+    "tracking": "Suivi",
+    "yes_cancel_order": "Oui, annuler la commande"
   },
   "seller": {
     "total_earnings": "Gains totaux (nets)",
@@ -1702,7 +1716,6 @@
     "cancel_order_body": "Le rejet des frais de livraison annulera votre commande. L'autorisation de paiement sera libérée et vous ne serez pas facturé.",
     "yes_cancel_order": "Oui, annuler la commande",
     "carrier_maritime": "Maritime (International)",
-    "carrier_other": "Autre transporteur",
     "tracking": "Suivi",
     "error_prefix": "Erreur : {error}",
     "my_products": "Mes produits",
@@ -1782,7 +1795,10 @@
     "bulk_product_success": "{updated} produit{updated_plural} {action}s{skipped_msg}",
     "bulk_products_updated": "{} produit(s) {}s",
     "bulk_products_updated_skipped": "{} produit(s) {}s ({} ignorés)",
-    "unexpected_error": "Une erreur inattendue s'est produite. Veuillez réessayer."
+    "unexpected_error": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "account_fully_active": "Le compte vendeur est entièrement actif",
+    "api_config_required": "Configuration API requise",
+    "api_config_required_desc": "Configurez vos clés API avant d’utiliser cette intégration."
   },
   "address": {
     "street": "Adresse",
@@ -1821,17 +1837,17 @@
     "delete_confirmation": "Supprimer cette adresse ?",
     "limit_reached": "Maximum de 5 adresses atteint. Supprimez-en une pour en ajouter une autre.",
     "set_as_default": "Définir par défaut",
-"count_subtitle": "{count} adresse(s) sur {max} enregistrée(s)",
-"pickup_only": "Retrait uniquement",
-"maritime_shipping": "Transport maritime",
-"cuba_maritime_notice": "L'expédition à Cuba se fait par fret maritime (21-45 jours ouvrables). Tarifs basés sur le poids.",
-"postal_code_cuba": "Code postal cubain (5 chiffres)",
-"valid_postal_cuba": "Entrez un code postal cubain valide (5 chiffres)",
-"valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)",
-"valid_address_from_suggestions": "Veuillez sélectionner une adresse valide dans les suggestions",
-"cuba_havana_only": "L'expédition maritime vers Cuba dessert actuellement uniquement La Havane. Veuillez indiquer La Havane comme ville.",
-"save_failed": "Échec de l'enregistrement de l'adresse"
-},
+    "count_subtitle": "{count} adresse(s) sur {max} enregistrée(s)",
+    "pickup_only": "Retrait uniquement",
+    "maritime_shipping": "Transport maritime",
+    "cuba_maritime_notice": "L'expédition à Cuba se fait par fret maritime (21-45 jours ouvrables). Tarifs basés sur le poids.",
+    "postal_code_cuba": "Code postal cubain (5 chiffres)",
+    "valid_postal_cuba": "Entrez un code postal cubain valide (5 chiffres)",
+    "valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)",
+    "valid_address_from_suggestions": "Veuillez sélectionner une adresse valide dans les suggestions",
+    "cuba_havana_only": "L'expédition maritime vers Cuba dessert actuellement uniquement La Havane. Veuillez indiquer La Havane comme ville.",
+    "save_failed": "Échec de l'enregistrement de l'adresse"
+  },
   "legal": {
     "privacy_policy": "Politique de confidentialité",
     "terms_of_service": "Conditions d'utilisation",
@@ -2127,12 +2143,12 @@
     "inbox_empty_desc": "Chattez avec les vendeurs pour commencer une conversation",
     "unread_badge": "{count}",
     "last_seen": "il y a {time}",
-      "tap_to_chat": "Appuyez pour ouvrir la conversation",
-      "type_a_message": "Tapez un message...",
-      "coming_soon": "Bientôt disponible",
-      "seller_onboarding_disabled": "Clavardage avec les vendeurs tiers bientôt disponible"
-    },
-    "seller_integration": {
+    "tap_to_chat": "Appuyez pour ouvrir la conversation",
+    "type_a_message": "Tapez un message...",
+    "coming_soon": "Bientôt disponible",
+    "seller_onboarding_disabled": "Clavardage avec les vendeurs tiers bientôt disponible"
+  },
+  "seller_integration": {
     "title": "Guide d'intégration pour les développeurs",
     "how_licensing_works": "Comment fonctionnent les licences sur Origna",
     "intro_p1": "Lorsqu'un acheteur acquiert votre logiciel sur Origna, une clé de licence unique (format : XXXX-XXXX-XXXX-XXXX) est générée automatiquement et envoyée par e-mail.",
@@ -2216,6 +2232,12 @@
     "swift_chip": "Aucun SDK ou CocoaPods requis — URLSession pure"
   },
   "supplier": {
+    "1688": {
+      "display_name": "1688",
+      "region": "Asie",
+      "country": "Chine",
+      "description": "Plateforme B2B domestique chinoise"
+    },
     "aliexpress": {
       "display_name": "AliExpress",
       "region": "Asie",
@@ -2227,12 +2249,6 @@
       "region": "Asie",
       "country": "Chine",
       "description": "Marché de gros B2B"
-    },
-    "1688": {
-      "display_name": "1688",
-      "region": "Asie",
-      "country": "Chine",
-      "description": "Plateforme B2B domestique chinoise"
     },
     "dhgate": {
       "display_name": "DHgate",
@@ -2648,5 +2664,62 @@
     "accept": "Accepter"
   },
   "cookie_consent": "Nous utilisons des cookies pour améliorer votre expérience.",
-  "accept": "Accepter"
+  "accept": "Accepter",
+  "start_shopping": "Commencer les achats",
+  "security": {
+    "title": "Sécurité",
+    "subtitle": "Gérer la sécurité de votre compte",
+    "description": "L’authentification à deux facteurs ajoute une couche de sécurité supplémentaire à votre compte. Vous devrez entrer un code de votre application d’authentification lors de la connexion.",
+    "mfa_enabled": "A2F activée",
+    "mfa_disabled": "A2F désactivée",
+    "enable_mfa": "Activer l’A2F",
+    "disable_mfa": "Désactiver l’A2F",
+    "disable_mfa_title": "Désactiver l’authentification à deux facteurs",
+    "disable_mfa_desc": "Entrez votre code d’authentification actuel pour désactiver l’A2F. Votre compte sera moins sécurisé.",
+    "totp_code": "Code d’authentification",
+    "mfa_disabled_success": "L’authentification à deux facteurs a été désactivée",
+    "mfa_enabled_success": "L’authentification à deux facteurs est maintenant active",
+    "login_history": "Historique de connexion",
+    "known_devices": "Appareils connus",
+    "security_alerts": "Alertes de sécurité",
+    "was_this_you": "C’était vous ?",
+    "yes_it_was_me": "Oui, c’était moi",
+    "remove_device": "Supprimer l’appareil",
+    "device_removed": "Appareil supprimé",
+    "no_login_history": "Aucun historique de connexion",
+    "no_devices": "Aucun appareil connu",
+    "ip_address": "Adresse IP"
+  },
+  "mfa": {
+    "challenge_title": "Authentification à deux facteurs",
+    "enter_code": "Entrez le code à 6 chiffres de votre application d’authentification",
+    "use_recovery_code": "Utiliser plutôt un code de récupération",
+    "use_totp_code": "Utiliser plutôt le code d’authentification",
+    "enter_recovery_code": "Entrez votre code de récupération",
+    "submit": "Vérifier",
+    "invalid_code": "Code invalide. Veuillez réessayer.",
+    "too_manyattempts": "Trop de tentatives. Veuillez vous reconnecter.",
+    "attempts_remaining": "tentatives restantes",
+    "back_to_login": "Retour à la connexion",
+    "setup_title": "Configurer l’authentification à deux facteurs",
+    "step1_scan": "Étape 1 : scanner le code QR",
+    "step1_desc": "Scannez ce code QR avec votre application d’authentification (Google Authenticator, Authy ou Mots de passe iOS).",
+    "copy_manual_key": "Ou entrez cette clé manuellement :",
+    "manual_key_copied": "Clé manuelle copiée dans le presse-papier",
+    "next": "Suivant",
+    "step2_verify": "Étape 2 : vérifier le code",
+    "step2_desc": "Entrez le code à 6 chiffres de votre application d’authentification pour confirmer la configuration.",
+    "verify": "Vérifier",
+    "step3_backup": "Étape 3 : enregistrer les codes de récupération",
+    "step3_desc": "Conservez ces codes de récupération en lieu sûr. Vous pouvez les utiliser pour vous connecter si vous perdez l’accès à votre application d’authentification.",
+    "save_codes_warning": "Ces codes ne seront affichés qu’une seule fois. Enregistrez-les maintenant !",
+    "codes_copied": "Codes de récupération copiés dans le presse-papier",
+    "copy_all_codes": "Copier tous les codes",
+    "confirm_saved": "J’ai enregistré ces codes de récupération",
+    "done": "Terminé",
+    "setup_complete": "L’authentification à deux facteurs est maintenant active !"
+  },
+  "seller_orders": {
+    "net_tooltip": "Versement net après frais de plateforme. Brut : ${gross}; frais : ${fee}."
+  }
 }

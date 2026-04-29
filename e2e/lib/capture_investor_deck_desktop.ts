@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Page } from 'playwright';
@@ -14,7 +15,7 @@ const OUT_DIR =
   process.env.SCREENSHOT_OUT_DIR || '../origna_ventures/output/desktop-screenshots';
 const MIN_SCREENSHOTS = Number(process.env.MIN_INVESTOR_SCREENSHOTS || 320);
 
-type Persona = 'guest' | 'buyer';
+type Persona = 'guest' | 'buyer' | 'seller' | 'admin';
 
 type AuthSession = {
   email: string;
@@ -54,6 +55,17 @@ const GTA_TARGETS: CaptureTarget[] = [
   { id: 'gta-buyer-browse-products', app: 'gta', persona: 'buyer', path: '/', actions: ['focus-search'] },
   { id: 'gta-buyer-support', app: 'gta', persona: 'buyer', path: '/support' },
   { id: 'gta-buyer-security', app: 'gta', persona: 'buyer', path: '/security-settings' },
+  { id: 'gta-seller-products', app: 'gta', persona: 'seller', path: '/seller/products' },
+  { id: 'gta-seller-orders', app: 'gta', persona: 'seller', path: '/seller/orders' },
+  { id: 'gta-seller-analytics', app: 'gta', persona: 'seller', path: '/seller/analytics' },
+  { id: 'gta-seller-integration', app: 'gta', persona: 'seller', path: '/seller/integration' },
+  { id: 'gta-seller-warehouses', app: 'gta', persona: 'seller', path: '/seller/warehouses' },
+  { id: 'gta-seller-bulk-upload', app: 'gta', persona: 'seller', path: '/seller/bulk-upload' },
+  { id: 'gta-seller-add-product', app: 'gta', persona: 'seller', path: '/add-product' },
+  { id: 'gta-admin-panel', app: 'gta', persona: 'admin', path: '/admin' },
+  { id: 'gta-admin-users', app: 'gta', persona: 'admin', path: '/admin' },
+  { id: 'gta-admin-products', app: 'gta', persona: 'admin', path: '/admin' },
+  { id: 'gta-admin-orders', app: 'gta', persona: 'admin', path: '/admin' },
 ];
 
 const VENTURES_TARGETS: CaptureTarget[] = [
@@ -63,8 +75,22 @@ const VENTURES_TARGETS: CaptureTarget[] = [
   { id: 'ventures-contact-form', app: 'ventures', persona: 'guest', path: '/', actions: ['contact-form'] },
 ];
 
-async function loginBuyer(): Promise<AuthSession> {
-  const creds = { email: TEST_ACCOUNTS.BUYER_EMAIL, password: TEST_ACCOUNTS.BUYER_PASS };
+function credentialsForPersona(persona: Exclude<Persona, 'guest'>): {
+  email: string;
+  password: string;
+} {
+  switch (persona) {
+    case 'buyer':
+      return { email: TEST_ACCOUNTS.BUYER_EMAIL, password: TEST_ACCOUNTS.BUYER_PASS };
+    case 'seller':
+      return { email: TEST_ACCOUNTS.SELLER_EMAIL, password: TEST_ACCOUNTS.SELLER_PASS };
+    case 'admin':
+      return { email: TEST_ACCOUNTS.ADMIN_EMAIL, password: TEST_ACCOUNTS.ADMIN_PASS };
+  }
+}
+
+async function loginPersona(persona: Exclude<Persona, 'guest'>): Promise<AuthSession> {
+  const creds = credentialsForPersona(persona);
   const response = await fetch(`${ORIGNABASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -73,7 +99,7 @@ async function loginBuyer(): Promise<AuthSession> {
   const body = await response.json().catch(() => ({}));
   if (!response.ok || !body?.access_token) {
     throw new Error(
-      `Deck capture login failed for ${creds.email}: ${
+      `Deck capture ${persona} login failed for ${creds.email}: ${
         body?.error?.message ?? body?.message ?? response.status
       }`,
     );
@@ -94,7 +120,7 @@ function screenshotLooksWritten(path: string, minBytes = 25_000): boolean {
 }
 
 function scrollPositions(maxScroll: number): number[] {
-  if (maxScroll <= 0) return [0, 1, 2, 3];
+  if (maxScroll <= 0) return [0];
   return [0, 0.25, 0.5, 0.75].map((ratio) => Math.round(maxScroll * ratio));
 }
 
@@ -159,6 +185,12 @@ async function applyActions(page: Page, target: CaptureTarget): Promise<void> {
       }
     }
   }
+  if (target.id === 'gta-admin-products') {
+    await page.getByText(/products|produits/i).click({ timeout: 2_000 }).catch(() => undefined);
+  }
+  if (target.id === 'gta-admin-orders') {
+    await page.getByText(/orders|commandes/i).click({ timeout: 2_000 }).catch(() => undefined);
+  }
 }
 
 async function main(): Promise<void> {
@@ -166,14 +198,14 @@ async function main(): Promise<void> {
   mkdirSync(OUT_DIR, { recursive: true });
 
   const sessions = new Map<Persona, AuthSession | null>([['guest', null]]);
-  sessions.set('buyer', await loginBuyer());
+  sessions.set('buyer', await loginPersona('buyer'));
+  sessions.set('seller', await loginPersona('seller'));
+  sessions.set('admin', await loginPersona('admin'));
 
   const browser = await chromium.launch({ headless: true });
   let captured = 0;
-  const productiveGtaTargets = GTA_TARGETS.filter(
-    (target) => target.persona === 'guest' || target.persona === 'buyer',
-  );
-  const targets = [...productiveGtaTargets, ...VENTURES_TARGETS];
+  const targets = [...GTA_TARGETS, ...VENTURES_TARGETS];
+  const seenImageHashes = new Set<string>();
 
   try {
     const context = await browser.newContext({ deviceScaleFactor: 1 });
@@ -221,7 +253,16 @@ async function main(): Promise<void> {
             scrollY,
           ).padStart(5, '0')}.png`;
           const filepath = join(OUT_DIR, filename);
-          await page.screenshot({ path: filepath, fullPage: false });
+          const image = await page.screenshot({ fullPage: false });
+          const imageHash = createHash('sha256').update(image).digest('hex');
+          if (seenImageHashes.has(imageHash)) {
+            console.log(
+              `[investor-desktop-capture] skip duplicate ${target.id} ${viewport.name} y=${scrollY}`,
+            );
+            continue;
+          }
+          seenImageHashes.add(imageHash);
+          await Bun.write(filepath, image);
           if (!screenshotLooksWritten(filepath)) {
             throw new Error(`Screenshot missing or too small: ${filepath}`);
           }
