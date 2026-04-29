@@ -2408,3 +2408,19 @@ The following items were verified as done and are no longer reusable as active t
   - Deploy script ran `flutter build web --release --dart-define=ENVIRONMENT=production --dart-define=ORIGNABASE_URL=https://api.orignagta.ca`, `flutter analyze --no-fatal-infos`, and `flutter test test/unit/home_viewmodel_test.dart test/screens/home_screen_test.dart` -> passed, 49 tests.
   - Post-deploy `E2E_TARGET_URL=https://orignagta.ca ORIGNABASE_URL=https://api.orignagta.ca bun test specs/phase4-product-flows/prod-solar-product-live.spec.ts` -> passed, 2 tests.
   - Live homepage sanity check: Google placeholder absent, `.apps.googleusercontent.com` client-id shape present, and GitHub passkeys URL absent.
+
+112. **Self-hosted integration and investor-view E2E guards added on 2026-04-29**:
+- Added E2E coverage for self-hosted Postal contact delivery, Meilisearch product search, and GlitchTip/error-event persistence.
+- Added investor screenshot regression checks that require buyer cart/orders/notifications/chat/support/security, GTA seller/admin coverage, Ventures contact screenshots, 64 unique generated screenshots, and no exact duplicate screenshot hashes.
+- Strengthened the Ventures contact live test to assert both support and confirmation emails are sent through Postal.
+- Tightened the investor deck artifact validator so missing required live view targets fail validation.
+- Fixed live blockers found by the new tests:
+  - OrignaVentures backend Docker now resolves `mail.orignagta.ca` to the host gateway so it can reach self-hosted Postal over the public HTTPS route from inside Docker.
+  - Postal domain `orignaventures.ca` is verified/enabled for outbound contact email.
+  - OrignaBase rules now allow authenticated users to create their own `error_events`, while reads/updates/deletes remain admin-only.
+- Remaining blocker discovered but not fixed in this pass: OrignaBase public `/config/*` currently returns null for all tested keys (`glitchtip_dsn`, `image_base_url`, `google_web_client_id`) even though `_config` rows exist; the GlitchTip E2E therefore verifies the self-hosted endpoint plus secured event persistence directly.
+- Verification:
+  - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase2-smoke/investor-deck-regression.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts && bun x tsc --noEmit` -> passed, 8 tests / 213 expect calls.
+  - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64` -> passed.
+  - `cd origna_ventures/backend && source .venv/bin/activate && pytest -q` -> passed, 36 tests.
+  - `cd ../orignabase && cargo test -p ob-security` -> passed, 165 tests.

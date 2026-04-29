@@ -16,6 +16,18 @@ BAD_NAME_RE = re.compile(
     r"artifact|extracted|mascot|product-placeholder|design-token|checkout|pricing-fr|pricing-es",
     re.IGNORECASE,
 )
+REQUIRED_SCREENSHOT_TARGETS = (
+    "gta-buyer-orders",
+    "gta-buyer-notifications",
+    "gta-buyer-chat",
+    "gta-buyer-cart",
+    "gta-buyer-support",
+    "gta-buyer-security",
+    "gta-seller-products",
+    "gta-admin-panel",
+    "gta-admin-orders",
+    "ventures-contact-form",
+)
 
 
 def validate_screenshots(path: Path, expected_count: int) -> None:
@@ -45,6 +57,10 @@ def validate_screenshots(path: Path, expected_count: int) -> None:
             issues.append(f"screenshot appears blank: {file.name}")
     if len(files) != expected_count:
         issues.append(f"expected {expected_count} screenshots, found {len(files)}")
+    names = "\n".join(file.name for file in files)
+    for target in REQUIRED_SCREENSHOT_TARGETS:
+        if target not in names:
+            issues.append(f"missing required screenshot target: {target}")
     if issues:
         raise SystemExit("\n".join(issues))
 

@@ -9,6 +9,8 @@ services:
       - ./data/storage:/app/storage
     ports:
       - "127.0.0.1:8083:8080"
+    extra_hosts:
+      - "mail.orignagta.ca:172.18.0.1"
     networks:
       - ventures-net
       - orignabase_default

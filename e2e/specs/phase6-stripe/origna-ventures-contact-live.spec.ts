@@ -190,6 +190,8 @@ describe('OrignaVentures contact form live verification', () => {
     expect(body?.status).toBe('ok');
     expect(String(body?.id ?? '')).toMatch(/^ct-/);
     expect(body?.emails?.support?.status).toBe('sent');
+    expect(body?.emails?.support?.provider).toBe('postal');
     expect(body?.emails?.confirmation?.status).toBe('sent');
+    expect(body?.emails?.confirmation?.provider).toBe('postal');
   }, 30_000);
 });
