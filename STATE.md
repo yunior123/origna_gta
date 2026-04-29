@@ -2388,3 +2388,12 @@ The following items were verified as done and are no longer reusable as active t
   - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/output/origna_ventures_onepager.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 64 --min-screenshots 64` -> passed.
   - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64 --expected-pages 20 --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf` -> passed.
   - Local screenshot folder remains 64 PNGs with 0 exact duplicate hashes.
+
+110. **OrignaVentures frontend/docs redeployed on 2026-04-29**:
+- Pushed the full local `main` stack to GitHub after commit `9dc85302 Regenerate Ventures presentation PDFs`.
+- Deployed the OrignaVentures frontend/docs to `/var/www/orignaventures/production/current` on the VPS, including the regenerated onepager and full presentation PDFs.
+- Verification:
+  - `cd origna_ventures && ./deploy.sh --frontend-only` -> passed.
+  - Deploy script ran `flutter pub get`, `flutter analyze --no-fatal-infos`, and `flutter build web --release --dart-define=ENVIRONMENT=production` -> passed.
+  - Post-deploy live regression `VENTURES_TARGET_URL=https://orignaventures.ca bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts -t "live page keeps Flutter shell mounted"` -> passed, 1 test.
+- Remaining blocker: OrignaGTA production deploy cannot run from this shell because `VPS_HOST` and `GOOGLE_WEB_CLIENT_ID` are not set.
