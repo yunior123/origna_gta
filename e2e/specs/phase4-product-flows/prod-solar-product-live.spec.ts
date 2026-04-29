@@ -111,13 +111,14 @@ describe('Production solar product live verification', () => {
         script.src.includes('js.stripe.com/v3/'),
       )?.outerHTML,
       passkeyScript: [...document.scripts].find((script) =>
-        script.src.includes('flutter-passkeys'),
+        script.src.includes('vendor/passkeys/corbado-passkeys-2.4.0.bundle.js'),
       )?.outerHTML,
     }));
 
     expect(scriptInfo.stripeScript).toContain('https://js.stripe.com/v3/');
     expect(scriptInfo.stripeScript).not.toContain('integrity=');
-    expect(scriptInfo.passkeyScript).toContain('flutter-passkeys');
+    expect(scriptInfo.passkeyScript).toContain('vendor/passkeys/corbado-passkeys-2.4.0.bundle.js');
+    expect(scriptInfo.passkeyScript).not.toContain('github.com/corbado');
     expect(scriptInfo.passkeyScript).not.toContain('crossorigin=');
     expect(page.url()).toContain(`/product/${PRODUCT_ID}`);
     expect(matchingGraphqlBodies.length).toBeGreaterThan(0);
