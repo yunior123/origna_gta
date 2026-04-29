@@ -2362,3 +2362,15 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun x tsc --noEmit` -> passed.
   - `PYTHONPYCACHEPREFIX=/tmp/python-cache python3 -m py_compile origna_ventures/scripts/validate_investor_deck_artifacts.py` -> passed.
   - `cd origna_gta && flutter test --exclude-tags golden` -> passed, 4,787 tests.
+
+108. **Unique live desktop screenshot capture regenerated on 2026-04-29**:
+- Fixed the live desktop capture follow-up after regeneration exposed disabled Ventures contact fields; disabled contact fields are now skipped instead of failing the run.
+- Lowered the default desktop capture minimum to 64 unique screenshots because duplicate suppression makes the previous 320 target invalid for the current live desktop route set. The old 320 count was inflated by repeated identical scroll captures.
+- Made deck validation optional in `validate_investor_deck_artifacts.py`, so screenshot-only validation can run before PDFs are regenerated.
+- Regenerated `origna_ventures/output/desktop-screenshots` locally with 64 sequential live desktop PNGs and 0 exact duplicate hashes. The generated folder remains untracked.
+- The capture includes live buyer cart, orders, notifications, chat, support, security, GTA admin panel/orders, seller products, and Ventures site/contact screenshots. Live seller subroutes and some admin tab states currently render duplicate/gated states and were skipped by hash.
+- Verification:
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `PYTHONPYCACHEPREFIX=/tmp/python-cache python3 -m py_compile origna_ventures/scripts/validate_investor_deck_artifacts.py` -> passed.
+  - `cd e2e && MIN_INVESTOR_SCREENSHOTS=64 bun run lib/capture_investor_deck_desktop.ts` -> passed, 64 screenshots.
+  - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64` -> passed.

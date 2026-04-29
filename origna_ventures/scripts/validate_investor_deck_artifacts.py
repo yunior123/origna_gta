@@ -78,8 +78,8 @@ def validate_pdf(path: Path, expected_count: int, expected_pages: int) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--screenshots", type=Path, required=True)
-    parser.add_argument("--deck", type=Path, action="append", required=True)
-    parser.add_argument("--expected-count", type=int, default=320)
+    parser.add_argument("--deck", type=Path, action="append", default=[])
+    parser.add_argument("--expected-count", type=int, default=64)
     parser.add_argument("--expected-pages", type=int, default=63)
     args = parser.parse_args()
 
