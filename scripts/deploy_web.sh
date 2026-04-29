@@ -105,11 +105,17 @@ if [ "${SKIP_SCROLL_REGRESSION_CHECK:-0}" != "1" ]; then
   (
     cd e2e
     bun x tsc --noEmit
-    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase1-api/dev-product-browse-live.spec.ts
+    if [ "${ENV}" = "production" ]; then
+      E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/prod-solar-product-live.spec.ts
+    else
+      E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase1-api/dev-product-browse-live.spec.ts
+    fi
     E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase2-smoke/smoke-home-profile.spec.ts -t "A08b"
-    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/search-filters-sort.spec.ts
-    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
-    E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts
+    if [ "${ENV}" != "production" ]; then
+      E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/search-filters-sort.spec.ts
+      E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase4-product-flows/subcategory-filtering.spec.ts
+      E2E_TARGET_URL="${WEB_APP_URL}" ORIGNABASE_URL="${ORIGNABASE_URL}" bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts
+    fi
   )
 fi
 
