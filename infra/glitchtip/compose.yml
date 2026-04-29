@@ -37,7 +37,14 @@ services:
       - "127.0.0.1:8010:8000"
     volumes:
       - uploads:/code/uploads
+    networks:
+      - default
+      - orignabase_default
 
 volumes:
   postgres-data:
   uploads:
+
+networks:
+  orignabase_default:
+    external: true

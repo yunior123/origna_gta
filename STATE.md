@@ -11,6 +11,17 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+53. **GlitchTip DNS/TLS/upstream blocker**: Advanced and verified on 2026-04-29.
+   - added Cloudflare DNS record `A glitchtip -> 204.168.137.16` for `glitchtip.orignagta.ca` with DNS-only proxy status.
+   - restarted Caddy after DNS propagation so Let's Encrypt could validate `glitchtip.orignagta.ca`; certificate issuance completed successfully.
+   - fixed the Caddy upstream from container-local `127.0.0.1:8010` to Docker service DNS `glitchtip:8000`.
+   - updated `infra/glitchtip/compose.yml` so the GlitchTip app container joins the external `orignabase_default` Docker network used by Caddy.
+   - deployed the updated compose file to `/opt/glitchtip/compose.yml`, recreated `glitchtip-glitchtip-1`, updated `/opt/orignabase/Caddyfile`, and restarted `orignabase-caddy-1` to remount the changed bind-mounted Caddyfile.
+   - verification:
+     - `dig +short glitchtip.orignagta.ca A @1.1.1.1` and `@8.8.8.8` both returned `204.168.137.16`.
+     - `curl -fsSI --resolve glitchtip.orignagta.ca:443:204.168.137.16 https://glitchtip.orignagta.ca/` returned `HTTP/2 200`.
+     - `cd /opt/glitchtip && docker compose config --quiet` passed on the VPS.
+
 52. **OrignaBase db rules audit / payload spoofing protection**: Advanced and verified on 2026-04-28.
    - the `rules.ob` configuration was audited and found to enforce strong `resource` read boundaries but allowed `incoming` spoofing during `create` and `update` across several collections, allowing attackers to create documents under another user's ID or change ownership.
    - fixes applied in the worktree:

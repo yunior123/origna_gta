@@ -56,7 +56,7 @@ Caddy handles TLS termination (auto Let's Encrypt) and reverse proxying.
 
 | Domain | Target |
 |--------|--------|
-| `glitchtip.orignagta.ca` | `127.0.0.1:8010` |
+| `glitchtip.orignagta.ca` | `glitchtip:8000` via `orignabase_default` Docker network |
 
 ---
 
@@ -383,7 +383,7 @@ Caddy route:
 
 ```caddy
 glitchtip.orignagta.ca {
-  reverse_proxy 127.0.0.1:8010
+  reverse_proxy glitchtip:8000
 }
 ```
 
