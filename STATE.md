@@ -2397,3 +2397,14 @@ The following items were verified as done and are no longer reusable as active t
   - Deploy script ran `flutter pub get`, `flutter analyze --no-fatal-infos`, and `flutter build web --release --dart-define=ENVIRONMENT=production` -> passed.
   - Post-deploy live regression `VENTURES_TARGET_URL=https://orignaventures.ca bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts -t "live page keeps Flutter shell mounted"` -> passed, 1 test.
 - Remaining blocker: OrignaGTA production deploy cannot run from this shell because `VPS_HOST` and `GOOGLE_WEB_CLIENT_ID` are not set.
+
+111. **OrignaGTA production redeployed on 2026-04-29**:
+- Resolved the deploy variables without committing secrets:
+  - `VPS_HOST` confirmed from repo docs/history as `root@204.168.137.16`.
+  - `GOOGLE_WEB_CLIENT_ID` loaded from macOS Keychain service `GOOGLE_OAUTH_WEB_CLIENT_ID` for account `yuniorrodriguezosorio`.
+- Deployed OrignaGTA production release `20260429115600` to `/var/www/orignagta/production/current`.
+- Verification:
+  - `VPS_HOST=root@204.168.137.16 GOOGLE_WEB_CLIENT_ID=<keychain value> ./scripts/deploy_web.sh production` -> passed.
+  - Deploy script ran `flutter build web --release --dart-define=ENVIRONMENT=production --dart-define=ORIGNABASE_URL=https://api.orignagta.ca`, `flutter analyze --no-fatal-infos`, and `flutter test test/unit/home_viewmodel_test.dart test/screens/home_screen_test.dart` -> passed, 49 tests.
+  - Post-deploy `E2E_TARGET_URL=https://orignagta.ca ORIGNABASE_URL=https://api.orignagta.ca bun test specs/phase4-product-flows/prod-solar-product-live.spec.ts` -> passed, 2 tests.
+  - Live homepage sanity check: Google placeholder absent, `.apps.googleusercontent.com` client-id shape present, and GitHub passkeys URL absent.
