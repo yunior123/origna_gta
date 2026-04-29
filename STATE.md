@@ -2374,3 +2374,17 @@ The following items were verified as done and are no longer reusable as active t
   - `PYTHONPYCACHEPREFIX=/tmp/python-cache python3 -m py_compile origna_ventures/scripts/validate_investor_deck_artifacts.py` -> passed.
   - `cd e2e && MIN_INVESTOR_SCREENSHOTS=64 bun run lib/capture_investor_deck_desktop.ts` -> passed, 64 screenshots.
   - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64` -> passed.
+
+109. **Ventures presentation PDFs regenerated from 64 unique screenshots on 2026-04-29**:
+- Regenerated checked-in docs:
+  - `origna_ventures/web/docs/origna_ventures_onepager.pdf`
+  - `origna_ventures/web/docs/origna_ventures_full_presentation.pdf`
+- Also regenerated ignored output copies:
+  - `origna_ventures/output/origna_ventures_onepager.pdf`
+  - `origna_ventures/output/origna_ventures_full_deck.pdf`
+- The full deck PDFs now contain 64 live screenshot names across 20 pages. The onepagers remain 1 page.
+- Verification:
+  - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/web/docs/origna_ventures_onepager.pdf --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 64 --min-screenshots 64` -> passed.
+  - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/output/origna_ventures_onepager.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 64 --min-screenshots 64` -> passed.
+  - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --expected-count 64 --expected-pages 20 --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf` -> passed.
+  - Local screenshot folder remains 64 PNGs with 0 exact duplicate hashes.
