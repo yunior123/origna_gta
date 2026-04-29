@@ -47,14 +47,11 @@ class OrignaBaseConfigService {
 
   /// GlitchTip DSN for self-hosted error reporting and crash analytics.
   ///
-  /// Supports `--dart-define=GLITCHTIP_DSN=...` for local verification and
-  /// falls back to the legacy `sentry_dns` remote config key during migration.
+  /// Supports `--dart-define=GLITCHTIP_DSN=...` for local verification.
   String get glitchtipDsn {
     const override = String.fromEnvironment('GLITCHTIP_DSN', defaultValue: '');
     if (override.trim().isNotEmpty) return override.trim();
-    final value = _cache[RemoteConfigKeys.glitchtipDsn]?.trim();
-    if (value != null && value.isNotEmpty) return value;
-    return _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
+    return _cache[RemoteConfigKeys.glitchtipDsn]?.trim() ?? '';
   }
 
   /// Deprecated compatibility alias for callers not yet migrated.
