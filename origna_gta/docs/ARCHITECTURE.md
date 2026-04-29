@@ -14,7 +14,7 @@ OrignaGTA is a Canada-first multi-vendor e-commerce marketplace built with Flutt
 | Backend | OrignaBase (Rust VPS — axum + PostgreSQL + Meilisearch) |
 | Payments | Stripe (Connect for multi-seller payouts) |
 | Storage | Cloudflare R2 (presigned URLs) |
-| Error Tracking | Sentry |
+| Error Tracking | Self-hosted GlitchTip via Sentry-compatible SDK |
 | i18n | easy_localization (EN + FR-CA) |
 | E2E Testing | Bun + agent-browser (agent-browser) |
 
@@ -237,7 +237,7 @@ Container(
 
 **What**: Centralized error handling via `AppError.getMessage()` and `AppError.log()`.
 
-**Why**: Raw error messages leak stack traces and server internals. `AppError` sanitizes messages, adds error codes for support, and routes to Sentry.
+**Why**: Raw error messages leak stack traces and server internals. `AppError` sanitizes messages, adds error codes for support, and routes to GlitchTip.
 
 **Error display rules**:
 - **Transient errors** (network, timeout) → `SnackBar` (auto-dismiss)
@@ -485,7 +485,7 @@ AppError.getMessage(error, fallback, code)
 
 AppError.log(error, stackTrace, context)
   ├── debugPrint (debug mode)
-  └── Sentry.captureException (release mode)
+  └── GlitchTip SDK capture (release mode)
 ```
 
 ### Error Display by Context

@@ -4,8 +4,8 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 /// Centralized logging utility.
 ///
 /// - Debug/info logs only print in debug mode.
-/// - Warnings add Sentry breadcrumbs.
-/// - Errors are captured by Sentry in release mode.
+/// - Warnings add GlitchTip breadcrumbs through the Sentry-compatible SDK.
+/// - Errors are captured by GlitchTip in release mode.
 class AppLogger {
   AppLogger._();
 
@@ -23,7 +23,7 @@ class AppLogger {
     }
   }
 
-  /// Warning-level log — prints in debug, adds Sentry breadcrumb.
+  /// Warning-level log — prints in debug, adds GlitchTip breadcrumb.
   static void w(String message, {String? tag, Object? error}) {
     if (kDebugMode) {
       debugPrint(tag != null ? '⚠️ [$tag] $message' : '⚠️ $message');
@@ -37,7 +37,7 @@ class AppLogger {
     );
   }
 
-  /// Error-level log — prints in debug, captures to Sentry in release.
+  /// Error-level log — prints in debug, captures to GlitchTip in release.
   static void e(
     String message, {
     String? tag,

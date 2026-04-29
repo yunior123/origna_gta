@@ -20,6 +20,7 @@ static START_TIME: std::sync::LazyLock<std::time::Instant> =
 const PUBLIC_CONFIG_KEYS: &[&str] = &[
     "geoapify_api_key",
     "image_base_url",
+    "glitchtip_dsn",
     "sentry_dns",
     "google_web_client_id",
     "terms_and_conditions",

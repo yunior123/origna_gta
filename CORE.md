@@ -124,7 +124,7 @@ Rules:
 
 ### 7B) Error observability hardening
 - [x] Add an internal error-event path that links user-facing codes to support/debug context.
-- Current verified state: **COMPLETED** — `AppError.log()` now writes to Sentry and best-effort persists structured internal events to OrignaBase `error_events` with `SE-YYYYMMDD-XXXXXX` support IDs, `ORIGNA-*` user-facing code, stack trace, environment, user context, and metadata.
+- Current verified state: **COMPLETED** — `AppError.log()` now writes to self-hosted GlitchTip and best-effort persists structured internal events to OrignaBase `error_events` with `SE-YYYYMMDD-XXXXXX` support IDs, `ORIGNA-*` user-facing code, stack trace, environment, user context, and metadata.
 
 ### 8) Delivery messaging closeout
 - [x] Replace stale shopper delivery messaging and re-verify country coverage.

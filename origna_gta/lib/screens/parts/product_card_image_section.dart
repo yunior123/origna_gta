@@ -59,7 +59,12 @@ class _ProductCardImageSection extends ConsumerWidget {
               ),
               child: SizedBox.expand(
                 child: switch (imageUrls.length) {
-                  0 => _placeholderImage(),
+                  0 => Stack(
+                    children: [
+                      _placeholderImage(),
+                      if (isOutOfStock) _outOfStockOverlay(),
+                    ],
+                  ),
                   1 => Stack(
                     children: [
                       Semantics(

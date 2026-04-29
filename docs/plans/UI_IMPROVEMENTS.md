@@ -20,7 +20,7 @@
 - [ ] Product card shows `$-19.99` (negative price) — `Bad Product` with negative cents. Backend should reject negative `priceCents`. Frontend should guard with `max(0, priceCents)`.
 - [ ] Product card shows `$100000.01` — exceeds $100K max. Backend validation exists (`max 10_000_000 cents`) but this product slipped through. Verify price validation on product creation endpoint.
 - [ ] `TURNSTILE_SITE_KEY` not configured for dev build — every page load triggers `Error: 400020`. The `__TURNSTILE_SITE_KEY__` placeholder was never replaced in the deployed build. Fix: set `TURNSTILE_SITE_KEY` dart-define or inject at deploy time.
-- [ ] Sentry DSN not configured — `No DSN provided, capturing is disabled`. Dev builds should have a dev Sentry project DSN.
+- [ ] GlitchTip DSN not configured — `No DSN provided, capturing is disabled`. Dev builds should have a dev GlitchTip project DSN.
 
 ## Per-Screen Reports
 
@@ -118,7 +118,7 @@
 - [ ] Missing Semantics: profile_screen (8), login_screen (7), orders_screen (5) — 20 interactive elements without labels
 - [ ] `MediaQuery.of(context).size` used in 4 screen files instead of `ResponsiveBreakpoints`
 - [ ] Login screen title shows "OrignaGta" instead of "Origna GTA"
-- [ ] Sentry DSN not configured for dev builds
+- [ ] GlitchTip DSN not configured for dev builds
 - [ ] Low contrast on "Se connecter avec un autre compte" text
 - [ ] Stripe payment badge overlaps product card on desktop
 

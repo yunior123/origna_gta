@@ -11,7 +11,7 @@ import 'package:origna_gta/utils/app_logger.dart';
 /// Config values include:
 /// - Geoapify API key (geocoding/address autocomplete)
 /// - Image base URL (Cloudflare R2 CDN)
-/// - Sentry DSN (error reporting)
+/// - GlitchTip DSN (self-hosted error reporting)
 /// - Google OAuth web client ID
 class OrignaBaseConfigService {
   static final OrignaBaseConfigService _instance =
@@ -45,8 +45,21 @@ class OrignaBaseConfigService {
   /// Base URL for serving product images (e.g., `https://cdn.example.com/`).
   String get imageBaseUrl => _cache[RemoteConfigKeys.imageBaseUrl] ?? '';
 
-  /// Sentry DSN for error reporting and crash analytics.
-  String get sentryDnsKey => _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
+  /// GlitchTip DSN for self-hosted error reporting and crash analytics.
+  ///
+  /// Supports `--dart-define=GLITCHTIP_DSN=...` for local verification and
+  /// falls back to the legacy `sentry_dns` remote config key during migration.
+  String get glitchtipDsn {
+    const override = String.fromEnvironment('GLITCHTIP_DSN', defaultValue: '');
+    if (override.trim().isNotEmpty) return override.trim();
+    final value = _cache[RemoteConfigKeys.glitchtipDsn]?.trim();
+    if (value != null && value.isNotEmpty) return value;
+    return _cache[RemoteConfigKeys.sentryDnsKey] ?? '';
+  }
+
+  /// Deprecated compatibility alias for callers not yet migrated.
+  @Deprecated('Use glitchtipDsn.')
+  String get sentryDnsKey => glitchtipDsn;
 
   /// Google OAuth web client ID for Sign-In with Google on web.
   String get googleWebClientId =>
@@ -67,6 +80,7 @@ class OrignaBaseConfigService {
     // Set safe defaults.
     _cache[RemoteConfigKeys.geoapifyApiKey] = '';
     _cache[RemoteConfigKeys.imageBaseUrl] = '';
+    _cache[RemoteConfigKeys.glitchtipDsn] = '';
     _cache[RemoteConfigKeys.sentryDnsKey] = '';
     _cache[RemoteConfigKeys.googleWebClientId] = '';
     if (skipFetch) return;

@@ -24,6 +24,7 @@ All services run as Docker containers managed by `docker compose` in `/opt/orign
 | orignabase-staging | 8082 | .env.staging | staging | 256M |
 | postgresql | 8000 | — | all (namespaced) | — |
 | meilisearch | 7700 | — | — | — |
+| glitchtip | 8010 loopback | `/opt/glitchtip/.env` | glitchtip | — |
 | caddy | 80/443 | Caddyfile | — | — |
 
 - Dev has `OB_TEST_MODE=1` (disables rate limits for testing).
@@ -50,6 +51,12 @@ Caddy handles TLS termination (auto Let's Encrypt) and reverse proxying.
 | `orignagta.ca` | `/var/www/orignagta/production/current` |
 | `dev.orignagta.ca` | `/var/www/orignagta/dev/current` |
 | `staging.orignagta.ca` | `/var/www/orignagta/staging/current` |
+
+### Observability Routes
+
+| Domain | Target |
+|--------|--------|
+| `glitchtip.orignagta.ca` | `127.0.0.1:8010` |
 
 ---
 
@@ -346,9 +353,41 @@ Unhealthy containers are automatically restarted by Docker.
 
 ### Error Tracking
 
-- **Sentry**: Integrated in both Flutter frontend and OrignaBase backend.
+- **GlitchTip**: self-hosted error tracking on the VPS, pinned to Docker image `glitchtip/glitchtip:6.1.6`.
+- Flutter sends events through the Sentry-compatible SDK to the configured GlitchTip DSN.
 - Errors are tagged with environment (dev/staging/production).
 - Critical errors trigger alerts.
+- The app reads `glitchtip_dsn` from OrignaBase remote config, with a temporary fallback to legacy `sentry_dns`.
+
+### GlitchTip Deployment
+
+Repo-managed files:
+
+- `infra/glitchtip/compose.yml`
+- `infra/glitchtip/.env.example`
+
+Deploy/update on the VPS:
+
+```bash
+mkdir -p /opt/glitchtip
+rsync -av infra/glitchtip/ root@204.168.137.16:/opt/glitchtip/
+ssh root@204.168.137.16
+cd /opt/glitchtip
+cp .env.example .env
+openssl rand -hex 32  # paste into SECRET_KEY
+docker compose pull
+docker compose up -d
+```
+
+Caddy route:
+
+```caddy
+glitchtip.orignagta.ca {
+  reverse_proxy 127.0.0.1:8010
+}
+```
+
+After the first admin account is created, keep `ENABLE_USER_REGISTRATION=false`.
 
 ### Contact
 

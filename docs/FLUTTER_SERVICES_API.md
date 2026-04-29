@@ -292,15 +292,15 @@
 
 ### app_logger.dart
 **Path**: `lib/utils/app_logger.dart`
-**Purpose**: Centralized logging utility.  - Debug/info logs only print in debug mode. - Warnings add Sentry breadcrumbs. - Errors are captured by Sentry in release mode.
+**Purpose**: Centralized logging utility.  - Debug/info logs only print in debug mode. - Warnings add GlitchTip breadcrumbs. - Errors are captured by GlitchTip in release mode.
 
 **`AppLogger`**
-> Centralized logging utility.  - Debug/info logs only print in debug mode. - Warnings add Sentry breadcrumbs. - Errors are captured by Sentry in release mode.
+> Centralized logging utility.  - Debug/info logs only print in debug mode. - Warnings add GlitchTip breadcrumbs. - Errors are captured by GlitchTip in release mode.
   Methods:
   - `void d(String message, {String? tag})` -- Debug-level log — only prints in debug mode.
   - `void i(String message, {String? tag})` -- Info-level log — only prints in debug mode.
-  - `void w(String message, {String? tag, Object? error})` -- Warning-level log — prints in debug, adds Sentry breadcrumb.
-  - `void e( String message, { String? tag, Object? error, StackTrace? stackTrace, })` -- Error-level log — prints in debug, captures to Sentry in release.
+  - `void w(String message, {String? tag, Object? error})` -- Warning-level log — prints in debug, adds GlitchTip breadcrumb.
+  - `void e( String message, { String? tag, Object? error, StackTrace? stackTrace, })` -- Error-level log — prints in debug, captures to GlitchTip in release.
 
 ### circuit_breaker.dart
 **Path**: `lib/utils/circuit_breaker.dart`
@@ -587,10 +587,10 @@
 **Path**: `lib/utils/utils.dart`
 
 **`AppError`**
-> Centralized error handler - logs to console and Sentry Use this for all caught errors to ensure visibility
+> Centralized error handler - logs to console and GlitchTip Use this for all caught errors to ensure visibility
   Methods:
   - `String getMessage(dynamic error, [String? fallback, String? code])` -- Extract user-friendly message from error.  For [OrignaBaseException], returns the backend message (safe — our backend already sanitises messages before raising HttpsError), but filters out any raw database exceptions that might have leaked. For auth/storage/backend exceptions, returns a safe generic message when the raw message may leak internals. For everything else, returns [fallback] to avoid leaking internals.  If [code] is provided it is appended to the message so users can quote it when contacting support: e.g. "Card declined [ORIGNA-PAY-001]". When [code] is omitted the method attempts to infer one automatically via [_inferCode].
-  - `void log( dynamic error, { StackTrace? stackTrace, String? context, Map<String, dynamic>? extras, })` -- Log error with optional user message - Logs to debugPrint in development - Sends to Sentry in production
+  - `void log( dynamic error, { StackTrace? stackTrace, String? context, Map<String, dynamic>? extras, })` -- Log error with optional user message - Logs to debugPrint in development - Sends to GlitchTip in production
   - `void show( BuildContext context, String userMessage, { dynamic error, StackTrace? stackTrace, String? logContext, Duration duration = const Duration(seconds: 5)` -- Show error to user via SnackBar and log it.  If [userMessage] contains an embedded `[ORIGNA-*]` code the code is extracted and rendered as a small monospace subtitle so users can quote it when contacting support@orignagta.ca.
 
 **`VideoValidationError`**

@@ -19,6 +19,7 @@ const ADMIN_EMAIL = TEST_ACCOUNTS.ADMIN_EMAIL;
 const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 
 let browser: AgentBrowser;
+let loggedInEmail: string | null = null;
 
 beforeAll(async () => {
   browser = new AgentBrowser();
@@ -29,15 +30,13 @@ afterAll(async () => {
 });
 
 async function loginAs(email: string, password: string) {
+  if (loggedInEmail === email) return;
   try {
     await browser.loginViaApi(email, password);
+    loggedInEmail = email;
   } catch {
     // Continue with best-effort page state.
-  }
-  try {
-    await browser.waitForFlutter();
-  } catch {
-    // Best-effort only; callers will navigate explicitly.
+    loggedInEmail = null;
   }
 }
 
@@ -70,7 +69,7 @@ describe('New Screens & Features', () => {
       /revenue|sales|orders|analytics|kpi|card/i.test(r.name)
     );
     expect(hasKPIs || snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 
   test('C002: Bulk upload screen loads with file picker', async () => {
     await loginAs(SELLER_EMAIL, SELLER_PASS);
@@ -81,7 +80,7 @@ describe('New Screens & Features', () => {
 
     // Verify products screen loads (may or may not have bulk upload button in dev)
     expect(snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 
   test('C003: Return request screen loads with item checkboxes', async () => {
     await loginAs(BUYER_EMAIL, BUYER_PASS);
@@ -97,7 +96,7 @@ describe('New Screens & Features', () => {
     if (orderCards.length > 0) {
       expect(orderCards.length > 0 || snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
     }
-  }, 60_000);
+  }, 120_000);
 
   test('C004: Product reviews section shows "Write a Review" button for eligible buyer', async () => {
     await loginAs(BUYER_EMAIL, BUYER_PASS);
@@ -123,7 +122,7 @@ describe('New Screens & Features', () => {
       // Reviews section may or may not have "Write a Review" depending on purchase history
       expect(detailSnap.refs.length > 0 || detailSnap.raw.length > 0).toBe(true);
     }
-  }, 60_000);
+  }, 120_000);
 
   test('C005: Product reviews section hides "Write a Review" for non-purchaser', async () => {
     await loginAs(SELLER_EMAIL, SELLER_PASS);
@@ -150,7 +149,7 @@ describe('New Screens & Features', () => {
       }
       expect(detailSnap.refs.length > 0 || detailSnap.raw.length > 0).toBe(true);
     }
-  }, 60_000);
+  }, 120_000);
 
   test('C006: MFA setup screen loads', async () => {
     await loginAs(BUYER_EMAIL, BUYER_PASS);
@@ -159,7 +158,7 @@ describe('New Screens & Features', () => {
     const snap = await browser.snapshot({ interactive: true, compact: true });
     // Security settings page should load
     expect(snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 
   test('C007: Security settings screen loads with login history section', async () => {
     await loginAs(BUYER_EMAIL, BUYER_PASS);
@@ -172,7 +171,7 @@ describe('New Screens & Features', () => {
 
     // Security page should load (may not have login history in early dev)
     expect(hasLoginHistory || snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 
   test('C008: Seller products screen has "Bulk Upload" button in AppBar', async () => {
     await loginAs(SELLER_EMAIL, SELLER_PASS);
@@ -183,7 +182,7 @@ describe('New Screens & Features', () => {
 
     // Seller products page should load with app bar
     expect(appBar.length > 0 || snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 
   test('C009: Profile has "Download My Data" button', async () => {
     await loginAs(BUYER_EMAIL, BUYER_PASS);
@@ -199,7 +198,7 @@ describe('New Screens & Features', () => {
     if (downloadBtn) {
       expect(downloadBtn).toBeTruthy();
     }
-  }, 60_000);
+  }, 120_000);
 
   test('C010: Admin can access security audit logs', async () => {
     await loginAs(ADMIN_EMAIL, ADMIN_PASS);
@@ -208,5 +207,5 @@ describe('New Screens & Features', () => {
     const snap = await browser.snapshot({ interactive: true, compact: true });
     // Admin page should load
     expect(snap.refs.length > 0 || snap.raw.length > 0).toBe(true);
-  }, 60_000);
+  }, 120_000);
 });

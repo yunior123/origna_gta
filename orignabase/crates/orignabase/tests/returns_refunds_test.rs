@@ -47,7 +47,7 @@ fn create_doc_query(collection: &str, data: &Value) -> String {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration"), ignore)]
+#[ignore = "requires running orignabase instance"]
 async fn test_create_return_for_delivered_order() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;
@@ -102,7 +102,7 @@ async fn test_create_return_for_delivered_order() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration"), ignore)]
+#[ignore = "requires running orignabase instance"]
 async fn test_cannot_return_pending_order() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;
@@ -155,7 +155,7 @@ async fn test_cannot_return_pending_order() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration"), ignore)]
+#[ignore = "requires running orignabase instance"]
 async fn test_return_request_rejection() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;
@@ -220,7 +220,7 @@ async fn test_return_request_rejection() {
 }
 
 #[tokio::test]
-#[cfg_attr(not(feature = "integration"), ignore)]
+#[ignore = "requires running orignabase instance"]
 async fn test_partial_refund() {
     let client = Client::new();
     let (seller_token, seller_id) = register_test_user(&client).await;

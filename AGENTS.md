@@ -103,7 +103,7 @@ cd origna_ventures && flutter analyze --no-fatal-infos
 - Every async action handles loading / error / success states
 - Transient errors → `SnackBar`; form errors → inline
 - Never `print()` — use `AppLogger`
-- `AppError.log()` now writes to Sentry and best-effort persists structured events to OrignaBase `error_events`
+- `AppError.log()` now writes to self-hosted GlitchTip and best-effort persists structured events to OrignaBase `error_events`
 - User-facing codes stay `ORIGNA-*`; internal support/debug IDs use `SE-YYYYMMDD-XXXXXX`
 
 ### Semantics (required for Playwright E2E)

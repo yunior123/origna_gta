@@ -14,7 +14,7 @@
 **Key Topics:**
 - What personal data is collected (account, address, payment via Stripe, browsing, usage)
 - How data is used (service delivery, compliance, marketing, fraud prevention)
-- Third-party sharing (Stripe, Cloudflare, Postal, Sentry)
+- Third-party sharing (Stripe, Cloudflare, Postal, self-hosted GlitchTip)
 - Data retention (7 years for tax, 90 days for logs)
 - PIPEDA rights (access, correction, deletion, complaint)
 - Breach notification procedures

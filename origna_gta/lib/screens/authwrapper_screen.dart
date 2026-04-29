@@ -46,7 +46,7 @@ class AuthWrapper extends ConsumerWidget {
       },
       loading: () => const MainScreen(), // HTML splash covers the gap
       error: (e, st) {
-        // Log for Sentry observability — don't block the user
+        // Log for GlitchTip observability — don't block the user
         AppError.log(e, stackTrace: st, context: 'auth_wrapper');
         return const MainScreen();
       },

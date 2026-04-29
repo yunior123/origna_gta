@@ -344,7 +344,7 @@ class ProductsNotifier extends AsyncNotifier<List<Product>> {
     try {
       return await _fetchProducts();
     } catch (e, st) {
-      // Log to Sentry
+      // Log to GlitchTip
       AppError.log(
         e,
         stackTrace: st,

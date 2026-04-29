@@ -944,7 +944,7 @@ _FixedPriceResult _hasFixedPriceForSpeed(
   return _FixedPriceResult(isEnabled: true, total: total);
 }
 
-/// Centralized error handler - logs to console and Sentry
+/// Centralized error handler - logs to console and GlitchTip
 /// Use this for all caught errors to ensure visibility
 class AppError {
   /// Extract user-friendly message from error.
@@ -1023,7 +1023,7 @@ class AppError {
 
   /// Log error with optional user message
   /// - Logs to debugPrint in development
-  /// - Sends to Sentry in production
+  /// - Sends to GlitchTip in production
   static void log(
     dynamic error, {
     StackTrace? stackTrace,
@@ -1035,7 +1035,7 @@ class AppError {
     final code = _inferCode(error);
     final userFacingMessage = getMessage(error, null, code);
 
-    // Send to Sentry and persist the paired Sentry event ID for support/debugging.
+    // Send to GlitchTip and persist the paired SDK event ID for support/debugging.
     unawaited(() async {
       final sentryId = await Sentry.captureException(
         error,

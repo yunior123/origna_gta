@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { AgentBrowser, type CapturePersona } from './agent-browser.js';
 import { TEST_ACCOUNTS, ORIGNABASE_URL, WEB_APP_URL } from './config.js';
@@ -155,6 +155,7 @@ async function captureCurrentView(
 }
 
 async function main(): Promise<void> {
+  rmSync(OUT_DIR, { recursive: true, force: true });
   mkdirSync(OUT_DIR, { recursive: true });
   const browser = new AgentBrowser();
   let currentPersona: Persona | null = null;
@@ -195,8 +196,8 @@ async function main(): Promise<void> {
     await browser.close().catch(() => undefined);
   }
 
-  if (captured < 300) {
-    throw new Error(`Investor deck capture produced only ${captured} screenshots; expected at least 300.`);
+  if (captured < MIN_SCREENSHOTS) {
+    throw new Error(`Investor deck capture produced only ${captured} screenshots; expected at least ${MIN_SCREENSHOTS}.`);
   }
 
   console.log(`[investor-capture] complete: ${captured} screenshots in ${OUT_DIR}`);

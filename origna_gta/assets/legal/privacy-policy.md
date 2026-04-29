@@ -42,7 +42,7 @@ When you interact with OrignaGTA, we automatically collect:
 - **Device Information:** IP address, browser type, device type, operating system, unique device identifiers, referrer URL
 - **Cookies and Tracking:** Cloudflare Turnstile (bot protection), session cookies, analytics cookies (if applicable)
 - **Location:** approximate location inferred from IP address (not precise GPS)
-- **Error and Log Data:** crash reports, error messages, performance metrics (via Sentry error tracking)
+- **Error and Log Data:** crash reports, error messages, performance metrics (via self-hosted GlitchTip error tracking)
 
 #### 2.3 Information From Third Parties
 
@@ -124,7 +124,7 @@ We engage third-party service providers who process personal information on our 
 | **Stripe** | Payment processing, Stripe Connect (seller payouts) | USA |
 | **Cloudflare** | CDN, DDoS protection, Turnstile bot protection | USA / Global |
 | **Postal** | Transactional and marketing email delivery | USA / EU |
-| **Sentry** | Error tracking and performance monitoring | USA |
+| **GlitchTip (Self-Hosted)** | Error tracking and performance monitoring | Origna VPS infrastructure |
 | **Google Analytics** (optional) | Website traffic and user behavior analysis | USA |
 
 All service providers are contractually required to use personal information only for their service purposes and to comply with PIPEDA and applicable privacy law.
@@ -164,7 +164,7 @@ We may use aggregated or anonymized data (which cannot reasonably identify you) 
 | **Server Logs** | 90 days | Security and troubleshooting |
 | **Marketing Consent Records** | Until consent withdrawn | CASL compliance |
 | **Fraud/Security Data** | 3 years | Fraud prevention |
-| **Sentry Error Logs** | 90 days | Error tracking (automatically purged) |
+| **GlitchTip Error Logs** | 90 days | Error tracking (automatically purged) |
 
 You may request account deletion at any time. Upon deletion:
 - Account credentials are removed
@@ -391,7 +391,7 @@ Lors de votre interaction avec OrignaGTA, nous collectons automatiquement :
 - **Informations sur l'Appareil :** adresse IP, type de navigateur, type d'appareil, système d'exploitation, identifiants d'appareil uniques
 - **Cookies et Suivi :** Cloudflare Turnstile, cookies de session
 - **Localisation :** localisation approximative dérivée de l'adresse IP
-- **Données d'Erreur et de Journalisation :** rapports d'incident, messages d'erreur, métriques de performance (via Sentry)
+- **Données d'Erreur et de Journalisation :** rapports d'incident, messages d'erreur, métriques de performance (via GlitchTip auto-hébergé)
 
 #### 2.3 Informations Provenant de Tiers
 
@@ -419,7 +419,7 @@ Nous utilisons vos informations pour :
 Nous partageons vos informations avec :
 
 - **Vendeurs :** informations minimales nécessaires pour l'exécution des commandes
-- **Prestataires de Services :** Stripe, Cloudflare, Postal, Sentry (tous contractuellement tenus de respecter PIPEDA)
+- **Prestataires de Services :** Stripe, Cloudflare, Postal, GlitchTip auto-hébergé (tous contractuellement tenus de respecter PIPEDA)
 - **Autorités Légales :** si exigé par la loi ou ordonnance du tribunal
 
 ### 5. Combien de Temps Nous Conservons Vos Informations

@@ -839,7 +839,7 @@ class OrignaBaseProfileViewModel extends StateNotifier<ProfileState> {
 ## 10. Error Handling: Rust Backend -> SDK -> Flutter UI
 
 ### Pattern Overview
-Errors flow through 3 layers: Rust `Error` enum (with HTTP status codes) -> SDK `OrignaBaseException` -> Flutter `AppError` class + `AppLogger` for Sentry. Each layer sanitizes and never leaks internals.
+Errors flow through 3 layers: Rust `Error` enum (with HTTP status codes) -> SDK `OrignaBaseException` -> Flutter `AppError` class + `AppLogger` for GlitchTip. Each layer sanitizes and never leaks internals.
 
 ### File Paths
 - **Rust Error Type**: `orignabase/crates/ob-core/src/error.rs` (enum `Error`)
@@ -892,7 +892,7 @@ class AppError {
   }
 
   static void log(dynamic error, {StackTrace? stackTrace, String? context}) {
-    // Delegates to AppLogger for Sentry capture
+    // Delegates to AppLogger for GlitchTip capture
   }
 }
 ```
@@ -902,9 +902,9 @@ class AppError {
 class AppLogger {
   static void d(String message, {String? tag})  // debug only (kDebugMode)
   static void i(String message, {String? tag})  // info only (kDebugMode)
-  static void w(String message, {String? tag})  // warning: prints + Sentry breadcrumb
+  static void w(String message, {String? tag})  // warning: prints + GlitchTip breadcrumb
   static void e(String message, {String? tag, Object? error, StackTrace? stackTrace})
-    // error: prints in debug + captures to Sentry in release
+    // error: prints in debug + captures to GlitchTip in release
 }
 ```
 
@@ -950,7 +950,7 @@ abstract final class ErrorCodes {
    Transient error -> SnackBar
    Form error -> inline under field
    |
-7. AppLogger.e() captures to Sentry in release mode
+7. AppLogger.e() captures to GlitchTip in release mode
 ```
 
 ### Gotchas
@@ -959,5 +959,5 @@ abstract final class ErrorCodes {
 3. **NEVER expose raw error.toString()**: `AppError.getMessage()` filters unsafe messages.
 4. **Database errors are always generic**: Backend returns "Internal server error" for DB/Config/Internal errors.
 5. **Error codes are user-facing**: Users quote `[ORIGNA-XXX-NNN]` to support for debugging.
-6. **Sentry captures in release only**: Debug mode prints to console. Release captures to Sentry via `AppLogger.e()`.
+6. **GlitchTip captures in release only**: Debug mode prints to console. Release captures to GlitchTip via `AppLogger.e()`.
 7. **Double code prevention**: If backend already embedded `[ORIGNA-...]` in the message, `AppError.getMessage` won't append another code.

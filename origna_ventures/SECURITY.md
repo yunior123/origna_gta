@@ -109,7 +109,7 @@ GitHub collaborator auto-invite has been **permanently removed**. Repository acc
 
 ### 1. Monitoring (Recommended)
 Set up monitoring for:
-- Error tracking (Sentry)
+- Error tracking (self-hosted GlitchTip)
 - Performance monitoring
 - Uptime alerts
 

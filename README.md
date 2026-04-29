@@ -12,6 +12,7 @@ Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers brows
 | Search | Meilisearch v1.12 (via OrignaBase) |
 | Payments | Stripe Checkout + Connect + webhooks |
 | Bot protection | Cloudflare Turnstile |
+| Error tracking | Self-hosted GlitchTip 6.1.6, using the Sentry-compatible Flutter SDK |
 | Web proxy | Caddy (on VPS) |
 | E2E tests | agent-browser (TypeScript) |
 
@@ -39,7 +40,7 @@ This repo contains:
 - Stripe Checkout Sessions: https://docs.stripe.com/api/checkout/sessions
 - Postal Send API v3.1: https://documentation.postal.com/hc/en-us/articles/16886347025947-Postal-Templating-Language
 - PostgreSQL current docs: https://www.postgresql.org/docs/current/
-- Sentry Flutter: https://docs.sentry.io/platforms/flutter/
+- GlitchTip Flutter SDK: https://glitchtip.com/sdkdocs/dart-flutter/
 
 ## Backend contract
 - `orignabaseUrl` is the only primary backend for auth, data, and business logic in the active app path.

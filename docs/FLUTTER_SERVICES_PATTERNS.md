@@ -76,8 +76,8 @@ class OrignaBaseConfigService {
     // Falls back to hardcoded defaults if fetch fails
   }
 
-  /// Sentry DSN for error reporting
-  String get sentryDnsKey;
+  /// GlitchTip DSN for self-hosted error reporting
+  String get glitchtipDsn;
 
   /// Feature flags
   bool isFeatureEnabled(String featureName);
@@ -110,7 +110,7 @@ if (configService.isFeatureEnabled('new_checkout_flow')) {
 
 ```json
 {
-  "sentryDnsKey": "https://...",
+  "glitchtipDsn": "https://...",
   "features": {
     "new_checkout_flow": true,
     "dark_mode_default": false
@@ -633,7 +633,7 @@ class AnalyticsService {
     } catch (e, st) {
       // Never crash app for analytics failure
       AppLogger.w('Analytics tracking failed: $e');
-      // Optionally report to Sentry (non-blocking)
+      // Optionally report to GlitchTip (non-blocking)
       unawaited(Sentry.captureException(e, stackTrace: st));
     }
   }

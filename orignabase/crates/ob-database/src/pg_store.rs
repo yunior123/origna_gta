@@ -1123,14 +1123,19 @@ impl DatabaseStore for PgDatabaseStore {
 
         let row = sqlx::query(&format!(
             r#"INSERT INTO {table} (id, data) VALUES ($1, $2::jsonb)
-               ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
+               ON CONFLICT (id) DO NOTHING
                RETURNING id, data::TEXT, created_at, updated_at"#
         ))
         .bind(&id)
         .bind(&data_str)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await
-        .map_err(|e| ob_core::Error::Database(format!("Create failed: {e}")))?;
+        .map_err(|e| ob_core::Error::Database(format!("Create failed: {e}")))?
+        .ok_or_else(|| {
+            ob_core::Error::Validation(format!(
+                "Document already exists in collection {collection}: {id}"
+            ))
+        })?;
 
         let mut result: Value = serde_json::from_str(row.get::<String, _>("data").as_str())
             .unwrap_or(Value::Object(Default::default()));
@@ -1704,6 +1709,36 @@ mod tests {
         let fetched = store.get_document("test_users", &id).await.unwrap();
         assert_eq!(fetched["name"], "Test User");
         assert_eq!(fetched["email"], "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_pg_create_rejects_duplicate_id_without_overwriting() {
+        let store = test_store().await;
+        let collection = format!("test_create_duplicate_{}", uuid::Uuid::new_v4().simple());
+        let id = "fixed-id";
+        let original = serde_json::json!({
+            "id": id,
+            "sellerId": "seller-a",
+            "name": "Original"
+        });
+        let replacement = serde_json::json!({
+            "id": id,
+            "sellerId": "seller-b",
+            "name": "Replacement"
+        });
+
+        let created = store.create_document(&collection, original).await.unwrap();
+        assert_eq!(created["sellerId"], "seller-a");
+
+        let duplicate = store.create_document(&collection, replacement).await;
+        assert!(
+            matches!(duplicate, Err(ob_core::Error::Validation(_))),
+            "duplicate create should fail validation, got {duplicate:?}"
+        );
+
+        let fetched = store.get_document(&collection, id).await.unwrap();
+        assert_eq!(fetched["sellerId"], "seller-a");
+        assert_eq!(fetched["name"], "Original");
     }
 
     #[tokio::test]

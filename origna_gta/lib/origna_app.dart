@@ -547,7 +547,7 @@ Page<void> _buildRouterPage(
   );
 }
 
-/// Root widget: configures themes, localization, GoRouter, Riverpod, and Sentry.
+/// Root widget: configures themes, localization, GoRouter, Riverpod, and GlitchTip.
 class OrignaApp extends ConsumerStatefulWidget {
   const OrignaApp({super.key});
 
@@ -610,7 +610,7 @@ class _OrignaAppState extends ConsumerState<OrignaApp>
           supportedLocales: context.supportedLocales,
           locale: context.locale,
           scrollBehavior: const MaterialScrollBehavior().copyWith(
-            // Fix Sentry issue: !identical(kind, PointerDeviceKind.trackpad)
+            // Avoid Flutter web pointer-kind assertions seen in telemetry.
             // Explicitly supports all pointer kinds for modern Flutter Web
             scrollbars: true,
             // ClampingScrollPhysics prevents overscroll crashes on Flutter Web

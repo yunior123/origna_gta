@@ -17,7 +17,7 @@
  * Backend MUST sanitise/escape before any storage — no raw user HTML in SurrealDB.
  */
 
-import { test, expect, describe } from 'bun:test';
+import { afterAll, test, expect, describe } from 'bun:test';
 import {
   callExpectError,
   callCallable,
@@ -29,10 +29,12 @@ import {
 import {
   TEST_ACCOUNTS,
   TEST_UIDS,
+  ORIGNABASE_URL,
 } from '../../lib/config.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const SELLER_EMAIL = TEST_ACCOUNTS.SELLER_EMAIL;
+const suiteStartedAt = new Date(Date.now() - 60_000).toISOString();
 
 // ── Shared XSS / injection payloads ──────────────────────────────────────────
 const XSS_PAYLOADS = [
@@ -48,6 +50,73 @@ const XSS_PAYLOADS = [
 ];
 
 const OVERSIZED_STRING = 'A'.repeat(50_001); // > 50KB text
+
+async function deactivateNoImageProductsCreatedByThisSuite() {
+  const admin = await signIn(TEST_ACCOUNTS.ADMIN_EMAIL);
+  const seller = await signIn(SELLER_EMAIL);
+  const staleIds: string[] = [];
+
+  for (let offset = 0; offset < 500; offset += 100) {
+    const response = await fetch(`${ORIGNABASE_URL}/graphql`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        query:
+          'query($collection:String!,$filters:JSON,$orderBy:String,$descending:Boolean,$limit:Int,$offset:Int){ list(collection:$collection, filters:$filters, orderBy:$orderBy, descending:$descending, limit:$limit, offset:$offset) }',
+        variables: {
+          collection: 'products',
+          filters: { lifecycleStatus: { _eq: 'active' } },
+          orderBy: 'createdAt',
+          descending: true,
+          limit: 100,
+          offset,
+        },
+      }),
+    });
+    const body = await response.json();
+    const products = Array.isArray(body.data?.list) ? body.data.list : [];
+    for (const product of products) {
+      const imageUrls = Array.isArray(product.imageUrls) ? product.imageUrls : [];
+      const createdAt = String(product.createdAt ?? '');
+      if (
+        typeof product.id === 'string' &&
+        product.sellerId === seller.localId &&
+        imageUrls.length === 0 &&
+        createdAt >= suiteStartedAt
+      ) {
+        staleIds.push(product.id);
+      }
+    }
+    if (products.length < 100) break;
+  }
+
+  for (const id of staleIds) {
+    await fetch(`${ORIGNABASE_URL}/graphql`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${admin.idToken}`,
+      },
+      body: JSON.stringify({
+        query:
+          'mutation($collection:String!,$id:String!,$data:JSON!){ update(collection:$collection, id:$id, data:$data) }',
+        variables: {
+          collection: 'products',
+          id,
+          data: {
+            lifecycleStatus: 'deleted',
+            lifecycle_status: 'deleted',
+            is_active: false,
+          },
+        },
+      }),
+    }).catch(() => {});
+  }
+}
+
+afterAll(async () => {
+  await deactivateNoImageProductsCreatedByThisSuite();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. XSS IN PRODUCT CREATE

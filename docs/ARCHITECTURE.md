@@ -280,7 +280,7 @@ for (int i = 0; i < productIds.length; i += 30) {
 }
 ```
 
-### 4.3 Error Handling: `AppError` -> SnackBar / Sentry
+### 4.3 Error Handling: `AppError` -> SnackBar / GlitchTip
 
 **File**: `origna_gta/lib/utils/utils.dart` (lines 852-928)
 
@@ -293,7 +293,7 @@ The `AppError` class provides two static methods used throughout the app:
 
 **`AppError.log(error, {stackTrace, context, extras})`** -- Dual-channel error reporting:
 - Development: logs via `AppLogger.e()` (structured debug output)
-- Production: sends to Sentry via `Sentry.captureException()` with context tags
+- Production: sends to GlitchTip via `Sentry.captureException()` with context tags
 
 Usage pattern in ViewModels:
 
@@ -305,7 +305,7 @@ Usage pattern in ViewModels:
 }
 ```
 
-Screens consume `errorMessage` from state to show SnackBars. The `context` string enables filtering in Sentry dashboards.
+Screens consume `errorMessage` from state to show SnackBars. The `context` string enables filtering in GlitchTip dashboards.
 
 ### 4.4 Money: Integer Cents Everywhere
 

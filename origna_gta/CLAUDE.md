@@ -13,7 +13,7 @@
 - **Feature Slices:** Code organized by feature in `lib/features/`.
 - **Generated Models:** Use `lib/models/generated/` for data structures.
 - **Constants:** Use `lib/core/schema/schema_constants.dart` for all enums and keys.
-- **Error Handling:** Centralized error handling via `AsyncValue` and `Sentry`.
+- **Error Handling:** Centralized error handling via `AsyncValue` and self-hosted GlitchTip.
 
 ## Critical Workflows
 - **Install Dependencies:** `flutter pub get`

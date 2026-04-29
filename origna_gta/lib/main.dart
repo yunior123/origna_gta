@@ -26,7 +26,7 @@ Locale _detectBrowserLocale() {
 /// Without this, ensureSemantics() has no lasting effect.
 SemanticsHandle? _semanticsHandle;
 
-/// PII patterns to redact from Sentry event data.
+/// PII patterns to redact from GlitchTip event data.
 final _emailPattern = RegExp(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}');
 final _phonePattern = RegExp(r'\+?1?\d{10,15}');
 final _postalCodePattern = RegExp(
@@ -42,7 +42,7 @@ String _redactPii(String input) {
       .replaceAll(_postalCodePattern, '[REDACTED_POSTAL]');
 }
 
-/// Scrub PII from Sentry event exceptions and breadcrumbs before sending.
+/// Scrub PII from GlitchTip event exceptions and breadcrumbs before sending.
 SentryEvent _redactPiiFromEvent(SentryEvent event) {
   // Redact exception values
   if (event.exceptions != null) {
@@ -137,7 +137,7 @@ void main() {
       };
 
       // Start runApp immediately so Flutter renders at the earliest possible moment.
-      // Config and Sentry are initialized in background — the app handles "not ready" state.
+      // Config and GlitchTip are initialized in background — the app handles "not ready" state.
       runApp(
         EasyLocalization(
           supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
@@ -166,13 +166,14 @@ void main() {
             }),
       );
 
-      // Background: initialize Sentry after config is likely populated.
-      // Short delay gives config a head-start before reading sentryDnsKey.
+      // Background: initialize GlitchTip after config is likely populated.
+      // GlitchTip uses the Sentry-compatible Flutter SDK.
+      // Short delay gives config a head-start before reading glitchtipDsn.
       unawaited(
         Future.delayed(const Duration(seconds: 2)).then((_) async {
           try {
             await SentryFlutter.init((options) {
-              options.dsn = OrignaBaseConfigService().sentryDnsKey;
+              options.dsn = OrignaBaseConfigService().glitchtipDsn;
               options.environment = envConfig.isProduction
                   ? 'production'
                   : envConfig.isStaging
@@ -180,7 +181,8 @@ void main() {
                   : envConfig.isDev
                   ? 'dev'
                   : 'emulator';
-              options.tracesSampleRate = 0.1;
+              options.tracesSampleRate = envConfig.isProduction ? 0.01 : 0.05;
+              options.enableAutoSessionTracking = false;
               options.beforeSend = (event, hint) {
                 // Strip PII from user data
                 if (event.user != null) {
@@ -200,14 +202,11 @@ void main() {
               if (kIsWeb) {
                 options.enableAutoPerformanceTracing = false;
                 options.enableFramesTracking = false;
-                options.enableAutoSessionTracking = false;
-              } else {
-                options.tracesSampleRate = envConfig.isProduction ? 1.0 : 0.1;
               }
             }).timeout(const Duration(seconds: 10));
           } catch (_) {
             AppLogger.w(
-              'Sentry init failed — continuing without error tracking',
+              'GlitchTip init failed — continuing without error tracking',
               tag: 'init',
             );
           }

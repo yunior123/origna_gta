@@ -2,12 +2,12 @@
 
 ## Purpose
 Autonomous monitoring loop: Claude Code watches `support@orignagta.ca` for errors
-from Sentry, Stripe, GitHub Actions, and customer support — auto-resolves or escalates.
+from GlitchTip, Stripe, GitHub Actions, and customer support — auto-resolves or escalates.
 
 ## Architecture
 
 ```
-[Sentry / Stripe / GitHub Actions / Customers]
+[GlitchTip / Stripe / GitHub Actions / Customers]
           ↓  (email alerts sent to)
   support@orignagta.ca  (Cloudflare Email Routing)
           ↓  (forwards to)
@@ -19,12 +19,12 @@ from Sentry, Stripe, GitHub Actions, and customer support — auto-resolves or e
 ```
 
 ## Email Labels (configure in Gmail)
-- `agent-inbox` — all alerts from Sentry, Stripe, GitHub, customer support
+- `agent-inbox` — all alerts from GlitchTip, Stripe, GitHub, customer support
 - `agent-resolved` — after auto-fix
 - `agent-escalated` — after human escalation
 
 ## Gmail Filter Setup
-Create filter: `(from:sentry.io OR from:stripe.com OR from:github.com OR to:support@orignagta.ca)`
+Create filter: `(from:stripe.com OR from:github.com OR to:support@orignagta.ca)`
 → Apply label: `agent-inbox`, Skip inbox: No
 
 ## Alert Sources
@@ -34,8 +34,8 @@ Create filter: `(from:sentry.io OR from:stripe.com OR from:github.com OR to:supp
 - Endpoint IDs: dev `we_1T2ESaPPD6r8xGIzV45SJGbm`, staging `we_1T5bO3PPD6r8xGIzBmeQRLwK`
 - Auto-resolution: verify endpoint URL vs `api.{env}.orignagta.ca/api/webhooks/stripe`
 
-### Sentry Errors
-- Search: `(from:sentry.io OR from:sentry) label:agent-inbox is:unread`
+### GlitchTip Errors
+- Search: `(from:glitchtip.orignagta.ca) label:agent-inbox is:unread`
 - Triage: stack trace → file/line in Flutter codebase → apply null check or fix
 - Escalate: unknown errors, security-related, payment-critical paths
 
@@ -52,8 +52,8 @@ Create filter: `(from:sentry.io OR from:stripe.com OR from:github.com OR to:supp
 ## Auto-Resolution Playbook
 | Source | Issue | Auto-Fix |
 |--------|-------|----------|
-| Sentry | NullPointerException | Null check at file:line |
-| Sentry | API timeout | Check OrignaBase logs, raise timeout |
+| GlitchTip | NullPointerException | Null check at file:line |
+| GlitchTip | API timeout | Check OrignaBase logs, raise timeout |
 | Stripe | Webhook 400 | Verify endpoint URL + HMAC secret |
 | Stripe | Webhook 404 | Check router path in ob-handlers |
 | GitHub | Analyze failure | `flutter analyze --no-fatal-infos` fix |
@@ -65,7 +65,7 @@ Create filter: `(from:sentry.io OR from:stripe.com OR from:github.com OR to:supp
 ```
 Subject: [ESCALATION] origna_gta — {category} — {brief description}
 
-Alert source: {Stripe/Sentry/GitHub/Customer}
+Alert source: {Stripe/GlitchTip/GitHub/Customer}
 Received at: {timestamp}
 Summary: {1-2 sentence description}
 Attempted resolution: {what was tried}

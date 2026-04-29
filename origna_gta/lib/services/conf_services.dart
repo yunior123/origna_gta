@@ -21,8 +21,12 @@ class ConfigService {
   /// Base URL for serving product images (e.g., Cloudflare R2 public URL).
   String get imageBaseUrl => OrignaBaseConfigService().imageBaseUrl;
 
-  /// Sentry DSN key for error reporting and crash analytics.
-  String get sentryDnsKey => OrignaBaseConfigService().sentryDnsKey;
+  /// GlitchTip DSN key for self-hosted error reporting and crash analytics.
+  String get glitchtipDsn => OrignaBaseConfigService().glitchtipDsn;
+
+  /// Deprecated compatibility alias for callers not yet migrated.
+  @Deprecated('Use glitchtipDsn.')
+  String get sentryDnsKey => glitchtipDsn;
 
   /// Google OAuth web client ID for Sign-In with Google.
   String get googleWebClientId => OrignaBaseConfigService().googleWebClientId;

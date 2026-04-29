@@ -159,7 +159,7 @@ class _CheckoutButton extends ConsumerWidget {
     switch (result) {
       case CheckoutSuccess(:final checkoutUrl):
         // Persist terms acceptance server-side (fire-and-forget — never blocks checkout redirect)
-        // Failures are reported to Sentry so compliance gaps are visible (PIPEDA / CASL audit trail).
+        // Failures are reported to GlitchTip so compliance gaps are visible (PIPEDA / CASL audit trail).
         ref.read(userRepositoryProvider).recordTermsAcceptance().catchError((
           Object e,
           StackTrace st,

@@ -16,15 +16,7 @@ let browser: AgentBrowser;
 
 beforeAll(async () => {
   browser = new AgentBrowser();
-  // Login once for the test suite
-  await browser.open(`${TARGET_URL}/login`);
-  await browser.waitForFlutter();
-
-  await browser.safeFill(/email|login_email|you@example/i, BUYER_EMAIL);
-  await browser.safeFill(/password|login_password|••••••••/i, BUYER_PASS);
-
-  await browser.press('Enter');
-  await browser.waitForFlutter();
+  await browser.loginViaApi(BUYER_EMAIL, BUYER_PASS);
 }, 120_000);
 
 afterAll(async () => {

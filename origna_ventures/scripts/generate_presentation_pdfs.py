@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import io
+import re
 from pathlib import Path
 from typing import Iterable, List
 
@@ -885,6 +886,9 @@ def create_onepager(path: Path) -> None:
 
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
+LIVE_SCREENSHOT_RE = re.compile(
+    r"^\d{3}-live-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
+)
 EXCLUDED_SCREENSHOT_SEGMENTS = {
     "build/",
     "coverage/",
@@ -922,6 +926,8 @@ EXCLUDED_SCREENSHOT_NAME_PARTS = {
 
 
 def is_presentation_screenshot(path: Path) -> bool:
+    if not LIVE_SCREENSHOT_RE.match(path.name):
+        return False
     normalized = path.as_posix().lower()
     if any(segment in normalized for segment in EXCLUDED_SCREENSHOT_SEGMENTS):
         return False
@@ -974,19 +980,33 @@ def create_full_deck(
             f"Full deck requires at least {min_screenshots} valid screenshots; "
             f"found {len(screenshots)}."
         )
+    screenshot_note = (
+        f"{len(screenshots)} validated screenshots attached"
+        if screenshots
+        else "Live screenshot appendix unavailable in this sandbox"
+    )
     w, h = landscape(A4)
     c = canvas.Canvas(str(path), pagesize=landscape(A4))
+
+    def metric_card(x: float, y: float, width: float, height: float, value: str, label: str, color: colors.Color) -> None:
+        rrect(c, x, y, width, height, r=5, fill=colors.white, stroke=color, lw=0.9)
+        c.setFillColor(color)
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(x + width / 2, y + height - 26, value)
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 8.5)
+        c.drawCentredString(x + width / 2, y + 16, label)
 
     draw_header(
         c,
         w,
         h,
         "Origna Ventures Services — Full Presentation",
-        f"{len(screenshots)} validated full-screen screenshots · codebase proof · product overview · investor/demo follow-up deck",
+        f"Investor/demo deck · ownership-first software services · {screenshot_note}",
     )
     c.setFont("Helvetica-Bold", 18)
     c.setFillColor(DARK)
-    c.drawString(26, h - 108, "Why this deck matters")
+    c.drawString(26, h - 108, "Investor Summary")
     c.setFont("Helvetica", 11)
     bullets = [
         "Pricing-first service landing page with direct Stripe checkout from tier cards.",
@@ -1002,6 +1022,21 @@ def create_full_deck(
         c.circle(30, y + 3, 2, stroke=0, fill=1)
         c.drawString(38, y, bullet)
         y -= 22
+
+    metric_card(42, 132, 150, 76, "500 CAD", "Code ownership tier", GRBLUE)
+    metric_card(222, 132, 150, 76, "3,000 CAD", "Launch delivery tier", DKRED)
+    metric_card(402, 132, 150, 76, "1,000 CAD", "Monthly team tier", GREEN_C)
+    rrect(c, 590, 132, 210, 76, r=5, fill=colors.HexColor("#FFF5F5"), stroke=RED, lw=0.8)
+    lt(c, "Positioning", 606, 184, "Helvetica-Bold", 12, RED)
+    fit_text(
+        c,
+        "A productized services company selling owned commerce infrastructure, launch execution, and recurring build capacity.",
+        606,
+        166,
+        178,
+        size=8.5,
+        leading=10.5,
+    )
 
     qrs = [
         ("Pricing", PRICING_URL),
@@ -1019,6 +1054,169 @@ def create_full_deck(
         qx += 95
     c.showPage()
 
+    def footer(page_label: str) -> None:
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 6.5)
+        c.drawString(18, 10, f"{COMPANY} · {SUPPORT_EMAIL}")
+        c.drawRightString(w - 18, 10, f"{page_label} · orignaventures.ca")
+
+    def bullet_block(items: list[str], x: float, y: float, width: float, color: colors.Color = DARK) -> float:
+        cursor = y
+        c.setFillColor(color)
+        for item in items:
+            c.circle(x + 4, cursor + 3, 2, stroke=0, fill=1)
+            c.setFillColor(DARK)
+            cursor = fit_text(c, item, x + 16, cursor, width - 16, size=11.0, leading=14.0)
+            cursor -= 8
+            c.setFillColor(color)
+        return cursor
+
+    structured_slides = [
+        (
+            "Problem",
+            "Small businesses can launch online stores quickly, but they rarely own the technical foundation.",
+            [
+                "Template storefronts keep founders dependent on subscriptions, app marketplaces, and transaction layers.",
+                "AI builders can produce prototypes, but production commerce still needs payments, auth, deployment, QA, support, and mobile packaging.",
+                "Agency quotes are slow and expensive for founders who need a working commerce system now.",
+            ],
+            [
+                ("Platform rent", "Recurring fees continue even when the product stops improving."),
+                ("Limited ownership", "Source export, backend control, and mobile apps are often constrained."),
+                ("Execution gap", "Checkout, support, hosting, store release, and testing still need operators."),
+            ],
+        ),
+        (
+            "Solution",
+            "Origna Ventures sells execution packages around OrignaGTA: code ownership, launch delivery, and monthly builder capacity.",
+            [
+                "OrignaCode gives buyers the source repo for a fixed 500 CAD one-time payment.",
+                "OrignaLaunch turns the same product into a live web, desktop, iOS, and Android launch for 3,000 CAD.",
+                "OrignaTeam gives clients ongoing dedicated development for 1,000 CAD/month.",
+            ],
+            [
+                ("Code", "Full Flutter + Rust + PostgreSQL stack delivery."),
+                ("Launch", "Hosting, QA, Apple, Google Play, and deployment included."),
+                ("Team", "Monthly implementation capacity for ecommerce and product work."),
+            ],
+        ),
+        (
+            "Product",
+            "The product is a working commerce stack, not a static brochure.",
+            [
+                "Buyer flows: browse, product detail, cart, checkout, profile, addresses, favorites, notifications, support, chat.",
+                "Seller flows: products, orders, analytics, warehouses, integrations, bulk upload, product creation.",
+                "Admin flows: users, products, orders, moderation, operational visibility.",
+            ],
+            [
+                ("Frontend", "Flutter web, iOS, Android, desktop from one codebase."),
+                ("Backend", "OrignaBase Rust VPS, PostgreSQL, Meilisearch, structured error events."),
+                ("Payments", "Stripe checkout and webhook-oriented operational flows."),
+            ],
+        ),
+        (
+            "Business Model",
+            "Simple pricing makes the offer easy to buy and easy to explain.",
+            [
+                "500 CAD one-time for code ownership and repo delivery.",
+                "3,000 CAD one-time for launch delivery with first-year infrastructure components included.",
+                "1,000 CAD/month for dedicated implementation support and continuous iteration.",
+            ],
+            [
+                ("No hidden platform fee", "Clients pay for execution, not marketplace lock-in."),
+                ("Upsell path", "Code buyers can become launch clients; launch clients can become team clients."),
+                ("Services-first cash flow", "Revenue starts before a large software-sales motion is required."),
+            ],
+        ),
+        (
+            "Go To Market",
+            "Sell to founders who want ownership but cannot absorb a traditional agency cycle.",
+            [
+                "Primary audience: local retailers, services businesses, marketplace founders, and operators replacing fragile MVPs.",
+                "Acquisition: demo site, QR deck, direct outreach, live proof captures, and payment-first landing page.",
+                "Conversion: Stripe checkout from tier cards, visible support contact, clear refund boundaries, and fast onboarding.",
+            ],
+            [
+                ("Message", "Own your store. Own your code."),
+                ("Proof", "Working app, deck, one-pager, screenshots, and public pricing."),
+                ("Close", "Direct checkout in CAD with immediate follow-up path."),
+            ],
+        ),
+        (
+            "Differentiation",
+            "Origna Ventures competes on ownership and finished delivery, not only page generation.",
+            [
+                "Versus Shopify: more ownership and no platform tax dependency.",
+                "Versus AI builders: stronger production path, mobile packaging, backend, QA, support, and deployment.",
+                "Versus agencies: fixed packages, direct builder relationship, and faster launch motion.",
+            ],
+            [
+                ("Ownership", "Client keeps repo access and roadmap control."),
+                ("Cross-platform", "Web, mobile, and desktop share the same core product."),
+                ("Operator-led", "The same team that sells the product can deploy and support it."),
+            ],
+        ),
+        (
+            "Execution Plan",
+            "Keep the operation focused on a repeatable package before expanding custom scope.",
+            [
+                "Standardize the checkout-to-onboarding process for the three service tiers.",
+                "Keep demo, one-pager, and investor deck current with each product proof update.",
+                "Use OrignaGTA and OrignaBase improvements as reusable assets across future client work.",
+            ],
+            [
+                ("Week 1", "Qualify buyer, collect payment, confirm scope, open onboarding."),
+                ("Weeks 1-2", "Launch package: configure, test, deploy, submit stores where applicable."),
+                ("Month 1+", "Team package: ship improvements with visible weekly progress."),
+            ],
+        ),
+        (
+            "Investor Use",
+            "The current need is distribution and operating leverage, not a new prototype.",
+            [
+                "Use funding or strategic support to acquire clients, harden packaging, and expand support capacity.",
+                "Prioritize repeatable ecommerce launches before broad custom agency work.",
+                "Build a portfolio of owner-controlled commerce deployments that can become proof, referrals, and recurring support revenue.",
+            ],
+            [
+                ("Capital use", "Marketing, QA capacity, deployment operations, and customer success."),
+                ("Milestone", "Repeatable paid launches with documented delivery time and support burden."),
+                ("Long-term", "Productized software services backed by reusable owned infrastructure."),
+            ],
+        ),
+    ]
+
+    for index, (title, subtitle, bullets, cards) in enumerate(structured_slides, start=2):
+        draw_header(c, w, h, f"Origna Ventures — {title}", subtitle)
+        card_gap = 14
+        card_w = (w - 52 - card_gap * 2) / 3
+        card_y = h - 232
+        palette = [RED, CHURCH_C, GREEN_C]
+        for i, (card_title, card_text) in enumerate(cards):
+            x = 26 + i * (card_w + card_gap)
+            rrect(c, x, card_y, card_w, 126, r=5, fill=colors.white, stroke=palette[i % len(palette)], lw=0.9)
+            lt(c, card_title, x + 12, card_y + 94, "Helvetica-Bold", 13, palette[i % len(palette)])
+            fit_text(c, card_text, x + 12, card_y + 72, card_w - 24, size=10.0, leading=12.5)
+        bullet_block(bullets, 42, h - 276, w - 84, RED)
+        if title == "Business Model":
+            metric_card(72, 54, 160, 78, "500 CAD", "OrignaCode one-time", GRBLUE)
+            metric_card(340, 54, 160, 78, "3,000 CAD", "OrignaLaunch one-time", DKRED)
+            metric_card(608, 54, 160, 78, "1,000 CAD", "OrignaTeam monthly", GREEN_C)
+        else:
+            rrect(c, 52, 54, w - 104, 78, r=5, fill=colors.HexColor("#FFF5F5"), stroke=RED, lw=0.7)
+            lt(c, "Investor takeaway", 70, 104, "Helvetica-Bold", 12, RED)
+            fit_text(
+                c,
+                f"{title}: {subtitle}",
+                70,
+                84,
+                w - 140,
+                size=10.5,
+                leading=13.0,
+            )
+        footer(f"Slide {index}")
+        c.showPage()
+
     cols = 3
     rows = 2
     margin_x = 18
@@ -1029,9 +1227,10 @@ def create_full_deck(
     cell_w = (w - margin_x * 2 - gap * (cols - 1)) / cols
     cell_h = (h - header_h - footer_h - margin_y * 2 - gap * (rows - 1)) / rows
 
+    image_render_failures: list[str] = []
     total_pages = (len(screenshots) + cols * rows - 1) // (cols * rows)
     for start in range(0, len(screenshots), cols * rows):
-        page_num = start // (cols * rows) + 2
+        page_num = start // (cols * rows) + len(structured_slides) + 2
         page_files = screenshots[start : start + cols * rows]
         draw_header(
             c,
@@ -1052,7 +1251,6 @@ def create_full_deck(
             c.setFillColor(DARK)
             c.setFont("Helvetica-Bold", 7)
             c.drawString(x + 8, y + cell_h - 12, image_path.name[:60])
-            img_drawn = False
             try:
                 img = ImageReader(str(image_path))
                 iw, ih = img.getSize()
@@ -1072,24 +1270,24 @@ def create_full_deck(
                     preserveAspectRatio=True,
                     mask="auto",
                 )
-                img_drawn = True
-            except Exception:
-                pass
-            if not img_drawn:
-                c.setFillColor(MUTED)
-                c.setFont("Helvetica", 9)
-                c.drawCentredString(
-                    x + cell_w / 2, y + cell_h / 2, "Unable to render screenshot"
-                )
+            except Exception as exc:
+                image_render_failures.append(f"{image_path}: {exc}")
         c.setFillColor(MUTED)
         c.setFont("Helvetica", 6.5)
         c.drawString(margin_x, footer_h / 2 - 2, f"{COMPANY} · {SUPPORT_EMAIL}")
         c.drawRightString(
             w - margin_x,
             footer_h / 2 - 2,
-            f"Page {page_num} of {total_pages + 1} · orignaventures.ca",
+            f"Page {page_num} of {total_pages + len(structured_slides) + 1} · orignaventures.ca",
         )
         c.showPage()
+
+    if image_render_failures:
+        c.save()
+        raise ValueError(
+            "Failed to render screenshot images into deck:\n"
+            + "\n".join(image_render_failures[:20])
+        )
 
     c.save()
 
@@ -1103,14 +1301,18 @@ if __name__ == "__main__":
         "--deck", type=Path, default=Path("output/origna_ventures_full_deck.pdf")
     )
     parser.add_argument("--screenshots", type=Path, nargs="*", default=[])
+    parser.add_argument("--skip-deck", action="store_true")
     parser.add_argument("--max-screenshots", type=int, default=360)
     parser.add_argument("--min-screenshots", type=int, default=300)
     args = parser.parse_args()
     create_onepager(args.onepager)
-    if args.screenshots:
-        create_full_deck(
-            args.deck,
-            args.screenshots,
-            args.max_screenshots,
-            args.min_screenshots,
-        )
+    if args.skip_deck:
+        raise SystemExit(0)
+    if not args.screenshots:
+        raise SystemExit("Full deck generation requires --screenshots, or pass --skip-deck.")
+    create_full_deck(
+        args.deck,
+        args.screenshots,
+        args.max_screenshots,
+        args.min_screenshots,
+    )

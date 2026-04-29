@@ -76,15 +76,14 @@ Last updated: 2026-04-23
   - OrignaBase persists product/user/order documents in PostgreSQL JSONB.
   - Current query-risk areas: numeric casts, `data->>'field'` extraction, and stale Surreal-style syntax in translated SQL.
 
-### Sentry
+### GlitchTip
 - **SDK**: `sentry_flutter`
 - **Key Resources**:
-  - [Sentry Flutter setup](https://docs.sentry.io/platforms/flutter/)
-  - [Sentry Flutter user feedback](https://docs.sentry.io/platforms/dart/guides/flutter/user-feedback)
-  - [Sentry Flutter debug files](https://docs.sentry.io/platforms/flutter/data-management/debug-files/)
+  - [GlitchTip Flutter setup](https://glitchtip.com/sdkdocs/dart-flutter/)
+  - [GlitchTip CLI debug files](https://glitchtip.com/sdkdocs/dart-flutter/)
 - **Operational Notes**:
   - Keep user-facing `ORIGNA-*` codes separate from internal support event IDs.
-  - Pair feedback with the captured Sentry event ID when collecting user crash reports.
+  - Pair feedback with the captured GlitchTip SDK event ID when collecting user crash reports.
 
 ## Working Directories (CRITICAL)
 
@@ -126,7 +125,7 @@ No Firebase. No Cloud Functions. No Firestore. All backend is OrignaBase on the 
 - **PostgreSQL**: Current stable docs are PostgreSQL 18; the official docs page currently lists `18 / Current`, and the release notes call out AIO, skip scan, `uuidv7()`, virtual generated columns, and OAuth support.
 - **Rust**: Current standard docs expose `std::panic` items such as `catch_unwind`, `set_hook`, `take_hook`, and `update_hook`; these are the first references to use when auditing panic handling.
 - **Tokio / tracing**: Tokio's tracing guide still recommends registering a subscriber as early as possible in `main` and using structured spans/events instead of plain logs.
-- **Sentry Flutter**: Sentry's Flutter guide still centers on `sentry_flutter` plus tracing/profiling options; troubleshooting docs note keeping the SDK current for platform-level fixes.
+- **GlitchTip Flutter**: GlitchTip's Flutter guide uses the Sentry-compatible `sentry_flutter` SDK with `enableAutoSessionTracking = false` and low trace sampling.
 - **Google OAuth on web**: OrignaGTA now treats a Google web client ID as valid only when it matches the expected `.apps.googleusercontent.com` shape, and the web deploy must replace `__GOOGLE_WEB_CLIENT_ID__` at build time.
 
 ## Inventory Source Of Truth
@@ -471,7 +470,7 @@ orignabase (single binary, 15 workspace crates)
 
 ### Observability
 
-- **Sentry**: Flutter-side crash capture, breadcrumbs, and release diagnostics
+- **GlitchTip**: Flutter-side crash capture, breadcrumbs, and release diagnostics
 - **Internal error events**: `error_events` collection in OrignaBase
 - **User-facing codes**: `ORIGNA-{DOMAIN}-{NUMBER}`
 - **Internal support IDs**: `SE-YYYYMMDD-XXXXXX`
@@ -628,7 +627,7 @@ Docker Compose at `/opt/orignabase/` on VPS. Binary built with `cargo build --re
 - Postal Send API v3.1: `https://dev.email.com/email/guides/send-api-v31/`
 - PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
 - Meilisearch Search API: `https://www.meilisearch.com/docs/reference/api/search`
-- Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
+- GlitchTip Flutter SDK: `https://glitchtip.com/sdkdocs/dart-flutter/`
 
 ---
 

@@ -2148,6 +2148,7 @@ abstract final class RefundReasonValues {
 abstract final class RemoteConfigKeys {
   static const geoapifyApiKey = 'geoapify_api_key';
   static const imageBaseUrl = 'image_base_url';
+  static const glitchtipDsn = 'glitchtip_dsn';
   static const sentryDnsKey = 'sentry_dns';
   static const googleWebClientId = 'google_web_client_id';
 }

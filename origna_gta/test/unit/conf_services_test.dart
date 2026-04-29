@@ -14,6 +14,7 @@ void main() {
 
       expect(service.geoapifyKey, isA<String>());
       expect(service.imageBaseUrl, isA<String>());
+      expect(service.glitchtipDsn, isA<String>());
       expect(service.sentryDnsKey, isA<String>());
       expect(service.googleWebClientId, isA<String>());
     });

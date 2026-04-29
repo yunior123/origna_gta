@@ -190,7 +190,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
 
 - User-facing codes: `ORIGNA-{DOMAIN}-{NUMBER}`
 - Internal support/debug IDs: `SE-YYYYMMDD-XXXXXX`
-- Flutter app writes structured internal events to OrignaBase `error_events` via `AppError.log()` and also forwards errors to Sentry.
+- Flutter app writes structured internal events to OrignaBase `error_events` via `AppError.log()` and also forwards errors to self-hosted GlitchTip.
 - Reference docs: `docs/ERROR_CODES.md` and `docs/REPO_MAP.md`
 
 ## MCP
@@ -209,3 +209,9 @@ Project `.mcp.json`: dart-mcp, flutter-pilot, github. Cloudflare MCP available v
 ## AI Skills Catalog
 
 See `docs/AI_SKILLS_CATALOG.md` for the complete inventory of all skills, commands, agents, rules, and workflows available to all AI agents.
+
+
+APIs:
+Postal-email
+Meilisearch-search
+Glitchtip-error logging

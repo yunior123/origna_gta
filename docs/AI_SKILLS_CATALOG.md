@@ -36,7 +36,7 @@
 | Command | Purpose |
 |---------|---------|
 | `/add-semantics` | Add agent-browser semantics labels to Flutter screens |
-| `/agent-heartbeat` | Agent email monitoring loop (Gmail, Sentry, Stripe) |
+| `/agent-heartbeat` | Agent email monitoring loop (Gmail, GlitchTip, Stripe) |
 | `/audit-security` | Run comprehensive security audit |
 | `/audit-workflow` | Deep logic audit on a specific workflow (checkout, orders, etc.) |
 | `/channels-setup` | Set up Telegram/Discord channels for Claude Code |
@@ -310,7 +310,7 @@
 | `dart-reviewer` | Senior Dart/Flutter code reviewer — MVVM, Riverpod, null safety | Flutter |
 | `flutter-tester` | Flutter test runner/fixer — analyze + test, identify and fix failures | Testing |
 | `frontend-auditor` | Flutter UI/UX audit — responsive layout, DesignTokens, Semantics | UI/UX |
-| `heartbeat-agent` | Monitoring/triage — Stripe webhooks, Sentry, GitHub Actions, support emails | Operations |
+| `heartbeat-agent` | Monitoring/triage — Stripe webhooks, GlitchTip, GitHub Actions, support emails | Operations |
 | `uiux-expert` | Elite UI/UX designer/implementor — world-class design patterns | Design |
 | `code-explorer` | Deep codebase analysis — trace execution paths, map architecture layers | Analysis |
 | `code-architect` | Feature architecture design — implementation blueprints, data flows | Architecture |
@@ -396,7 +396,7 @@
 | `firebase` | Firebase: auth, Firestore, RTDB, storage, functions, messaging, remote config |
 | `bio-research` | bioRxiv, ChEMBL, clinical trials, PubMed, Open Targets |
 | `slack` | Slack workspace integration |
-| `sentry` | Sentry error tracking |
+| `glitchtip` | Self-hosted GlitchTip error tracking |
 
 ### claude.ai Built-in MCP
 

@@ -204,12 +204,12 @@ Append the code in the error message body so the Flutter SDK surfaces it automat
   - `userId` / `email`
   - `metadata` / `fingerprint` / `createdAt`
 - Recommended flow:
-  - capture the exception in Sentry
+  - capture the exception in GlitchTip
   - persist an `error_events` row with the same fingerprint and a durable internal event ID
   - show only the sanitized `ORIGNA-*` code to the user
-  - if the UI collects feedback, attach `associatedEventId` from Sentry plus the user's contact details and reproduction notes
+  - if the UI collects feedback, attach `associatedEventId` from the GlitchTip SDK event plus the user's contact details and reproduction notes
 - Write path:
-  - `AppError.log()` captures to Sentry and best-effort persists a structured
+  - `AppError.log()` captures to GlitchTip and best-effort persists a structured
     event through `ErrorEventService`
   - top-level unhandled Flutter and zone errors also flow through `AppError.log()`
 
@@ -218,8 +218,8 @@ Append the code in the error message body so the Flutter SDK surfaces it automat
 - Stripe Checkout: `https://docs.stripe.com/payments/checkout`
 - Postal Send API v3.1: `https://dev.postal.com/email/guides/send-api-v31/`
 - PostgreSQL JSON/JSONB: `https://www.postgresql.org/docs/current/datatype-json.html`
-- Sentry Flutter SDK: `https://docs.sentry.io/platforms/dart/guides/flutter/`
-- Sentry user feedback: `https://docs.sentry.io/platforms/dart/guides/flutter/user-feedback`
+- GlitchTip Flutter SDK: `https://glitchtip.com/sdkdocs/dart-flutter/`
+- GlitchTip Flutter SDK: `https://glitchtip.com/sdkdocs/dart-flutter/`
 
 ---
 

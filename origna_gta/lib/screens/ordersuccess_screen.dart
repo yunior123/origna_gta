@@ -30,7 +30,7 @@ class OrderSuccessScreen extends ConsumerStatefulWidget {
   /// True when all items are local-delivery-only (show hours, not days)
   final bool isLocalDelivery;
 
-  /// Preview/test safety switch for analytics + Sentry side effects.
+  /// Preview/test safety switch for analytics + GlitchTip side effects.
   final bool enableSideEffects;
 
   const OrderSuccessScreen({

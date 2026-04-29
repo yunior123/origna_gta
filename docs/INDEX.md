@@ -60,7 +60,7 @@
 |-------|-------------|
 | [Deploy to VPS](./how-to/deploy.md) | Web frontend and backend deployment |
 | [Run E2E Tests Locally](./how-to/e2e-local.md) | agent-browser and agent-browser setup |
-| [Debug Production Issues](./how-to/debug-production.md) | Logs, Sentry, and database queries |
+| [Debug Production Issues](./how-to/debug-production.md) | Logs, GlitchTip, and database queries |
 
 ---
 
