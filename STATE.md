@@ -11,6 +11,18 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+55. **Self-hosted GlitchTip web transport + live payment/cart verification**: Advanced and verified on 2026-04-29/2026-04-30.
+   - deployed OrignaGTA dev web release `20260429220700` to `/var/www/orignagta/dev/current`.
+   - fixed the live payment E2E cart seed to write OrignaBase subcollection ownership fields (`userId: users:<id>`, `parent_id: users:<id>`) so the Flutter cart/detail providers read the same shape as production `addToCart`.
+   - hardened the full payment UI regression to assert no raw translation keys, a two-item cart subtotal, non-zero CAD totals, checkout UI, Stripe checkout-session creation, order creation, and email audit logging.
+   - repaired dev active catalog seed data where older generated test products had empty `imageUrls`, keeping storefront image contracts green.
+   - verified web bundles no longer request or block `browser.sentry-cdn.com`, `sentry-cdn`, or GitHub-hosted Corbado passkeys scripts on `https://dev.orignagta.ca` and `https://orignagta.ca`; GlitchTip remains self-hosted at `https://glitchtip.orignagta.ca`.
+   - verification:
+     - `cd e2e && bun x tsc --noEmit`: passed.
+     - `cd e2e && bun test specs/phase1-api/dev-product-browse-live.spec.ts specs/phase6-stripe/full-payment-ui-flow.spec.ts`: passed, 7 tests, 689 assertions.
+     - `cd e2e && bun test specs/phase1-api/dev-product-browse-live.spec.ts specs/phase4-product-flows/search-filters-sort.spec.ts specs/phase4-product-flows/subcategory-filtering.spec.ts specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts specs/phase6-stripe/full-payment-ui-flow.spec.ts specs/phase2-smoke/investor-deck-regression.spec.ts`: passed, 36 tests, 1034 assertions.
+     - `cd e2e && bun test specs/phase2-smoke/smoke-home-profile.spec.ts -t "A08b"`: passed, 1 test, 6 assertions.
+
 54. **Full payment-flow verification across GTA, Ventures, OrignaBase, and E2E**: Advanced and verified on 2026-04-29.
    - ran GTA local checkout/payment Flutter tests, including checkout providers, order repository payment calls, checkout UI, order success UI, and live-test wrappers.
    - ran GTA live Dart payment/checkout tests with `--dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev`; live checkout, Stripe infrastructure, order repository, stock, coupon, and lifecycle coverage passed.
