@@ -3,6 +3,7 @@
 // Notes:
 // - OrignaBase currently uses `rules <collection> { ... }`, not `collection "name" { ... }`.
 // - Firestore subcollections are represented here as standalone collections: `cart`,
+//   `users__cart`,
 //   `warehouses`, `review_votes`, `chat_conversations`, and `chat_messages`.
 // - The current DSL cannot express Firestore-style cross-document lookups or array-contains
 //   checks, so seller/order rules rely on denormalized per-document fields where available.
@@ -77,6 +78,33 @@ rules cart {
     list: isAuthenticated();
 }
 
+rules users__cart {
+    read: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    );
+    create: isAuthenticated() && (
+        (fieldEqualsAuth("userId") ||
+            fieldEqualsAuth("ownerId") ||
+            fieldEqualsAuth("uid")) &&
+        fieldAbsentOrEqualsAuth("userId") &&
+        fieldAbsentOrEqualsAuth("ownerId") &&
+        fieldAbsentOrEqualsAuth("uid")
+    );
+    update: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    ) && fieldUnchanged("userId") && fieldUnchanged("ownerId") && fieldUnchanged("uid");
+    delete: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    );
+    list: isAuthenticated();
+}
+
 rules warehouses {
     read: isAuthenticated() && (
         hasRole("admin") ||
@@ -119,6 +147,14 @@ rules security_alerts {
     read: hasRole("admin");
     create: false;
     update: false;
+    delete: false;
+    list: hasRole("admin");
+}
+
+rules error_events {
+    read: isAuthenticated() && (hasRole("admin") || isOwner(resource.userId));
+    create: isAuthenticated() && fieldEqualsAuth("userId");
+    update: hasRole("admin");
     delete: false;
     list: hasRole("admin");
 }

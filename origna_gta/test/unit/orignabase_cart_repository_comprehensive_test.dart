@@ -271,7 +271,7 @@ void main() {
       );
       await repository.addToCart('user_1', 'prod_1', 99);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
+      final docRef = cartRef.docsMap['user_1_prod_1']!;
       expect(docRef.lastSetData?[Fields.quantity], 99);
     });
 
@@ -299,8 +299,8 @@ void main() {
       );
       await repository.addToCart('users:user_1', 'prod_1', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastSetData?[Fields.userId], 'users:user_1');
+      final docRef = cartRef.docsMap['user_1_prod_1']!;
+      expect(docRef.lastSetData?[Fields.userId], 'user_1');
       expect(docRef.lastSetData?['parent_id'], 'users:user_1');
     });
 
@@ -314,7 +314,7 @@ void main() {
       );
       await repository.addToCart('user_1', 'prod-special_123', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      expect(cartRef.docsMap.containsKey('prod-special_123'), true);
+      expect(cartRef.docsMap.containsKey('user_1_prod-special_123'), true);
     });
 
     test('preserves createdAt for existing items', () async {
@@ -334,6 +334,7 @@ void main() {
         'parent_id': 'users:user_1',
         Fields.createdAt: existingTimeStr,
       });
+      cartRef.queryDocs = [existingDoc];
       cartRef.setDoc('prod_1', _FakeDocumentRef(doc: existingDoc));
 
       await repository.addToCart('user_1', 'prod_1', 2);
@@ -353,7 +354,7 @@ void main() {
       );
       await repository.addToCart('user_1', 'prod_1', 1);
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
+      final docRef = cartRef.docsMap['user_1_prod_1']!;
       expect(docRef.lastSetData?[Fields.createdAt], isNotNull);
     });
   });

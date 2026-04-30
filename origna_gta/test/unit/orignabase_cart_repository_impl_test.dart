@@ -296,12 +296,12 @@ void main() {
 
       await repository.addToCart('user_1', 'prod_1', 2);
 
-      final docRef = cartRef.docsMap['prod_1'];
+      final docRef = cartRef.docsMap['user_1_prod_1'];
       expect(docRef, isNotNull);
       expect(docRef!.lastSetData, isNotNull);
       expect(docRef.lastSetData?[Fields.productId], 'prod_1');
       expect(docRef.lastSetData?[Fields.quantity], 2);
-      expect(docRef.lastSetData?[Fields.userId], 'users:user_1');
+      expect(docRef.lastSetData?[Fields.userId], 'user_1');
       expect(docRef.lastSetData?['parent_id'], 'users:user_1');
     });
 
@@ -321,12 +321,13 @@ void main() {
         'parent_id': 'users:user_1',
         Fields.createdAt: DateTime.now().toIso8601String(),
       });
+      cartRef.queryDocs = [existingDoc];
       cartRef.setDoc('prod_1', _FakeDocumentRef(doc: existingDoc));
 
       await repository.addToCart('user_1', 'prod_1', 2);
 
       final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastUpdateData?[Fields.quantity].toString(), contains('2'));
+      expect(docRef.lastUpdateData?[Fields.quantity], 5);
       expect(docRef.documentValue?.get<num>(Fields.quantity)?.toInt(), 5);
     });
 
@@ -355,8 +356,8 @@ void main() {
       await repository.addToCart('users:user_1', 'prod_1', 1);
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1']!;
-      expect(docRef.lastSetData?[Fields.userId], 'users:user_1');
+      final docRef = cartRef.docsMap['user_1_prod_1']!;
+      expect(docRef.lastSetData?[Fields.userId], 'user_1');
       expect(docRef.lastSetData?['parent_id'], 'users:user_1');
     });
 
@@ -376,7 +377,7 @@ void main() {
       await repository.addToCart('user_1', 'prod_1', 1, variantId: 'red');
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      expect(cartRef.docsMap.containsKey('prod_1_red'), true);
+      expect(cartRef.docsMap.containsKey('user_1_prod_1_red'), true);
     });
 
     test('includes variant metadata', () async {
@@ -403,7 +404,7 @@ void main() {
       );
 
       final cartRef = fakeOb.usersCollection.cartSubcollection;
-      final docRef = cartRef.docsMap['prod_1_red']!;
+      final docRef = cartRef.docsMap['user_1_prod_1_red']!;
       expect(docRef.lastSetData?[Fields.variantId], 'red');
       expect(docRef.lastSetData?[Fields.variantTitle], 'Red');
       expect(docRef.lastSetData?[Fields.variantSku], 'SKU-RED');
@@ -423,11 +424,12 @@ void main() {
         Fields.quantity: 5,
         'parent_id': 'users:different_user',
       });
+      cartRef.queryDocs = [existingDoc];
       cartRef.setDoc('prod_1', _FakeDocumentRef(doc: existingDoc));
 
       await repository.addToCart('user_1', 'prod_1', 1);
 
-      final docRef = cartRef.docsMap['prod_1']!;
+      final docRef = cartRef.docsMap['user_1_prod_1']!;
       expect(docRef.lastSetData?[Fields.quantity], 1);
     });
   });

@@ -137,6 +137,19 @@ void main() {
       expect(item.productName, 'Snapshot product');
       expect(item.priceSnapshot, 5699);
     });
+
+    test('fromMap tolerates Firestore-shaped stale numeric values', () {
+      final ts = Timestamp.now();
+      final item = CartItemModel.fromMap({
+        Fields.quantity: {'integerValue': '2'},
+        Fields.productId: 'prod_snapshot',
+        Fields.createdAt: ts,
+        Fields.priceSnapshot: {'integerValue': '5699'},
+      }, docId: 'legacy_cart_item');
+
+      expect(item.quantity, 2);
+      expect(item.priceSnapshot, 5699);
+    });
   });
 
   group('CartModel Tests', () {

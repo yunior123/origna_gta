@@ -84,10 +84,23 @@ Current public expectation:
 
 ### 3. Postal remains an operational dependency to verify separately
 
-- Postal is still relevant for confirmations/notifications.
+- Postal is the active self-hosted email API for confirmations/notifications.
+- Current expected surfaces:
+  - contact-form confirmation to the visitor
+  - contact-form notification to `support@orignaventures.ca`
+  - Stripe checkout/payment notification paths
+  - admin `/api/email/test` smoke endpoint
 - Credential validity and delivery behavior should be verified with current production secrets, not stale dev assumptions.
 
-### 4. Stripe-docs alignment verified on 2026-04-22
+### 4. Self-hosted API dependencies to keep in Ventures plans
+
+| API | Purpose | Production expectation | Verification |
+|-----|---------|------------------------|--------------|
+| Postal email | Contact confirmations, admin notices, payment/service notifications | Self-hosted Postal only; no Firebase/SendGrid/Mailgun fallback | `origna-ventures-contact-live.spec.ts` and admin `/api/email/test` |
+| Meilisearch search | OrignaGTA product discovery proof used by the Ventures sales/deck story | Search is served by self-hosted OrignaBase/Meilisearch, not hosted Algolia/Elastic Cloud | `selfhosted-integrations.spec.ts` product search assertions |
+| GlitchTip error logging | Error visibility for Flutter/OrignaBase support IDs and structured `error_events` | Self-hosted GlitchTip DSN from OrignaBase public config | `selfhosted-integrations.spec.ts` GlitchTip DSN and error-event assertions |
+
+### 5. Stripe-docs alignment verified on 2026-04-22
 
 Official Stripe docs checked during this pass:
 
@@ -131,7 +144,7 @@ Repo-wide audit notes:
 
 1. Keep public PDFs and homepage pricing copy regenerated together after any tier change.
 2. Keep legacy contract/admin flows documented as internal/backoffice only.
-3. Add explicit evidence links/logs when live Stripe or Postal passes are re-run.
+3. Add explicit evidence links/logs when live Stripe, Postal, Meilisearch, or GlitchTip passes are re-run.
 
 ## Files involved
 

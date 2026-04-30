@@ -100,7 +100,8 @@ void main() {
         // Add to cart
         await repo.addToCart(buyerId, productId, quantity);
 
-        // Get the cart item ID (same as productId for products without variants)
+        // Get the cart item ID from the backend row; users__cart IDs are
+        // buyer-scoped to avoid cross-buyer product collisions.
         final cartItems = await repo
             .watchCart(buyerId)
             .first
@@ -108,7 +109,7 @@ void main() {
         final cartItem = cartItems.firstWhere(
           (item) => item.productId == productId,
         );
-        final cartItemId = cartItem.productId;
+        final cartItemId = cartItem.cartItemId;
 
         // Remove from cart
         await repo.removeFromCart(buyerId, cartItemId);
@@ -147,7 +148,7 @@ void main() {
         final cartItem = cartItems.firstWhere(
           (item) => item.productId == productId,
         );
-        final cartItemId = cartItem.productId;
+        final cartItemId = cartItem.cartItemId;
 
         // Update quantity to 3
         await repo.updateQuantity(buyerId, cartItemId, 3);

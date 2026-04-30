@@ -2496,3 +2496,22 @@ The following items were verified as done and are no longer reusable as active t
   - Deploy script ran `flutter pub get`, `flutter analyze --no-fatal-infos`, `flutter build web --release --dart-define=ENVIRONMENT=production`, rsync to `/var/www/orignaventures/production/current`, and the live Ventures scroll/contact regression -> passed.
   - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf` -> HTTP 200, `content-type: application/pdf`, `last-modified: Thu, 30 Apr 2026 04:40:56 GMT`.
   - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_onepager.pdf` -> HTTP 200, `content-type: application/pdf`, `last-modified: Thu, 30 Apr 2026 04:40:43 GMT`.
+
+116. **Live cart updates and Ventures self-hosted API plan reverified on 2026-04-30**:
+- Fixed live GTA cart persistence found by real UI taps:
+  - `users__cart` writes are buyer-scoped by deterministic buyer/product doc IDs.
+  - Cart rows now store bare user IDs to match OrignaBase JWT subjects and security rules.
+  - Duplicate add-to-cart writes explicit numeric quantities instead of PostgreSQL-unimplemented `FieldValue.increment` markers.
+  - Cart model parsing tolerates stale Firestore-shaped numeric maps so old rows do not crash cart streams.
+- Added live E2E coverage for tapping add-to-cart twice, opening the real cart page, pressing quantity plus/minus, and verifying OrignaBase `users__cart` quantities after each interaction.
+- Fixed OrignaBase dev public config for `glitchtip_dsn` by reading `_config` via direct document lookup, then redeployed OrignaBase dev.
+- Added `error_events` rules: authenticated users can create/read their own structured events, admins can list/read/update, deletes remain blocked.
+- Updated Ventures planning docs to explicitly track self-hosted Postal email, Meilisearch search, and GlitchTip error logging.
+- Deployed GTA dev web release `20260430021456`; deploy script passed build/analyze/home tests and the fixed focused cart E2E passed after deployment.
+- Verification:
+  - `cd origna_gta && flutter test test/unit/orignabase_cart_repository_impl_test.dart test/unit/orignabase_cart_repository_comprehensive_test.dart test/models/models_test.dart` -> passed, 77 tests.
+  - `cd origna_gta && flutter test test/live/cart_repository_integration_test.dart --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev` -> passed, 7 tests.
+  - `cd orignabase && cargo test -p ob-admin` -> passed, 67 tests, 1 ignored.
+  - `cd e2e && bun x tsc --noEmit && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 7 expect calls.
+  - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts` -> passed, 5 tests / 26 expect calls.
+  - `curl https://api.dev.orignagta.ca/config/glitchtip_dsn` -> returned self-hosted `glitchtip.orignagta.ca` DSN.

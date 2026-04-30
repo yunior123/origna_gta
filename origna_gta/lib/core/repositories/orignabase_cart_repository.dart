@@ -7,7 +7,8 @@ import 'package:origna_gta/models/models.dart';
 ///
 /// This repository manages the buyer's shopping cart using OrignaBase subcollections.
 /// Cart items are stored under `users/{userId}/cart/{docId}`, where `docId` is
-/// deterministic (either the product ID or `productId_variantId`).
+/// deterministic and buyer-scoped (`userId_productId` or
+/// `userId_productId_variantId`).
 ///
 /// Deterministic IDs allow for simple upserts and prevent duplicate entries for
 /// the same product/variant without requiring complex transactional logic.
@@ -58,6 +59,22 @@ class OrignaBaseCartRepository implements CartRepository {
         .subcollection(bareId, Collections.cart);
   }
 
+  String _cartDocId(String bareUserId, String productId, String? variantId) {
+    final itemKey = variantId != null ? '${productId}_$variantId' : productId;
+    return '${bareUserId}_$itemKey';
+  }
+
+  int _intValue(Object? value) {
+    if (value is num) return value.toInt();
+    if (value is Map) {
+      for (final key in const ['integerValue', 'doubleValue', 'stringValue']) {
+        final nested = value[key];
+        if (nested != null) return _intValue(nested);
+      }
+    }
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
   /// Adds a specified quantity of a product (or variant) to the user's cart.
   ///
   /// Parameters:
@@ -93,7 +110,7 @@ class OrignaBaseCartRepository implements CartRepository {
     if (quantity < minCartItemQuantity) return;
 
     final cartRef = _cartRef(userId);
-    final docId = variantId != null ? '${productId}_$variantId' : productId;
+    final bareUserId = userId.contains(':') ? userId.split(':').last : userId;
 
     // Verify product exists
     final productDoc = await _ob
@@ -133,17 +150,23 @@ class OrignaBaseCartRepository implements CartRepository {
     );
     final priceSnapshot = (productDoc.get<num>(Fields.priceCents))?.toInt();
 
-    // Read existing cart entry to compute total requested quantity
-    // Read-then-write: OrignaBase does not have client-side transactions yet.
-    // Use deterministic doc ID to avoid duplicates.
-    final existing = await cartRef.doc(docId).get();
-    final bareUserId = userId.contains(':') ? userId.split(':').last : userId;
-    // Reconstruct full userId for rule check: auth.uid == incoming.userId.
-    // auth.uid = JWT sub = 'users:bareId'. incoming.userId must match.
-    final fullUserId = userId.contains(':')
-        ? userId
-        : '${Collections.users}:$userId';
     final parentId = '${Collections.users}:$bareUserId';
+    final existingSnapshot = await cartRef
+        .where(Fields.productId, isEqualTo: productId)
+        .get();
+    final existing = existingSnapshot.docs.cast<Document?>().firstWhere(
+      (doc) =>
+          doc != null &&
+          doc.exists &&
+          doc.data[Fields.parentId] == parentId &&
+          doc.get<String>(Fields.variantId) == variantId,
+      orElse: () => null,
+    );
+    final docId = existing == null
+        ? _cartDocId(bareUserId, productId, variantId)
+        : (existing.id.contains(':')
+              ? existing.id.split(':').last
+              : existing.id);
 
     // Compute quantity: accumulate if valid existing doc (has parent_id from this user).
     final bool hasValidExisting =
@@ -151,7 +174,7 @@ class OrignaBaseCartRepository implements CartRepository {
         existing.exists &&
         existing.data[Fields.parentId] == parentId;
     final currentQty = hasValidExisting
-        ? (existing.get<num>(Fields.quantity))?.toInt() ?? 0
+        ? _intValue(existing.data[Fields.quantity])
         : 0;
 
     // Stock check must account for quantity already in cart
@@ -171,8 +194,12 @@ class OrignaBaseCartRepository implements CartRepository {
     // Always use set (upsert) to ensure parent_id and userId are written.
     // update() would 403 on stale docs that lack userId/parent_id.
     if (hasValidExisting) {
+      final nextQty = currentQty + quantity;
       await cartRef.doc(docId).update({
-        Fields.quantity: FieldValue.increment(quantity),
+        // PostgreSQL-backed OrignaBase currently stores FieldValue.increment
+        // markers as JSON when called through GraphQL. Write the computed
+        // integer explicitly so cart totals stay numeric in live checkout.
+        Fields.quantity: nextQty,
         Fields.priceSnapshot: priceSnapshot,
         ...?variantId == null ? null : {Fields.variantId: variantId},
         ...?variantTitle == null ? null : {Fields.variantTitle: variantTitle},
@@ -182,14 +209,12 @@ class OrignaBaseCartRepository implements CartRepository {
         ...?variantSku == null ? null : {Fields.variantSku: variantSku},
       });
 
-      final updated = await cartRef.doc(docId).get();
-      final updatedQty = (updated?.get<num>(Fields.quantity))?.toInt() ?? 0;
-      if (updatedQty > effectiveCap) {
+      if (nextQty > effectiveCap) {
         await cartRef.doc(docId).update({Fields.quantity: effectiveCap});
         _throwStockConflict(
           availableStock: effectiveCap,
           currentQty: currentQty,
-          requestedQty: updatedQty,
+          requestedQty: nextQty,
         );
       }
       return;
@@ -210,7 +235,7 @@ class OrignaBaseCartRepository implements CartRepository {
         imageUrls: imageUrls,
       ).toMap(),
       // userId required by cart create rule: auth.uid == incoming.userId.
-      Fields.userId: fullUserId,
+      Fields.userId: bareUserId,
       // parent_id required by SubcollectionRef.get() which filters by it.
       // doc().set() does not inject parent_id automatically (only add() does).
       // Must match SubcollectionRef._parentFilterValue = '$parentCollection:$parentId'.

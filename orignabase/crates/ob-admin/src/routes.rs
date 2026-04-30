@@ -330,25 +330,18 @@ async fn config_get(
 ) -> Result<([(header::HeaderName, &'static str); 1], Json<Value>)> {
     let rows = state
         .db
-        .query_bind_value(
-            "SELECT data->>'key' AS key, data->'value' AS value FROM _config WHERE data->>'key' = $key LIMIT 1",
-            serde_json::json!({"key": key}),
-        )
+        .get_document("_config", &key)
         .await
         .unwrap_or_else(|e| {
             tracing::warn!("Failed to load config key: {e}");
-            vec![]
+            Value::Null
         });
 
     let value = rows
-        .first()
-        .filter(|item| {
-            item.get(f::KEY)
-                .and_then(|v| v.as_str())
-                .map(|cfg_key| PUBLIC_CONFIG_KEYS.contains(&cfg_key))
-                .unwrap_or(false)
-        })
-        .and_then(|item| item.get(f::VALUE))
+        .get(f::KEY)
+        .and_then(|v| v.as_str())
+        .filter(|cfg_key| PUBLIC_CONFIG_KEYS.contains(cfg_key))
+        .and_then(|_| rows.get(f::VALUE))
         .cloned()
         .unwrap_or(Value::Null);
 

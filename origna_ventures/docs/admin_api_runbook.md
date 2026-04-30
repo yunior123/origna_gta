@@ -1,6 +1,6 @@
 # OrignaVentures Admin API Runbook
 
-Last verified: 2026-04-21
+Last verified: 2026-04-30
 
 ## Purpose
 
@@ -64,6 +64,23 @@ Success response:
 
 ```json
 {"success": true}
+```
+
+## Related self-hosted APIs in the Ventures plan
+
+Ventures should continue to describe these dependencies as self-hosted Origna infrastructure:
+
+| API | Owner | Used by Ventures | Notes |
+|-----|-------|------------------|-------|
+| Postal email | Origna VPS | Contact confirmations, support notifications, service/payment emails, `/api/email/test` | Postal response bodies stay server-side; public/admin endpoints return sanitized success/failure only. |
+| Meilisearch search | OrignaBase VPS | Product/search proof for OrignaGTA demos and investor deck claims | Search checks run through OrignaBase; do not add hosted Algolia/Elastic Cloud to the plan. |
+| GlitchTip error logging | Origna VPS | Error visibility for Flutter and backend incidents, support/debug IDs, `error_events` persistence | Flutter uses the Sentry-compatible SDK with the self-hosted GlitchTip DSN from OrignaBase public config. |
+
+Operational check bundle:
+
+```bash
+cd e2e
+bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts
 ```
 
 ## Smoke checks
@@ -130,3 +147,10 @@ Verified on 2026-04-23:
 - `/api/email/test` returns `401` without bearer auth
 - `/api/email/test` returns `200` with the configured bearer token
 - backend health returns `{"status":"ok"}`
+
+Verified on 2026-04-30:
+
+- Ventures plan/runbook keeps Postal, Meilisearch, and GlitchTip documented as self-hosted APIs.
+- Focused E2E ownership remains:
+  - Postal: `specs/phase6-stripe/origna-ventures-contact-live.spec.ts`
+  - Meilisearch and GlitchTip: `specs/phase1-api/selfhosted-integrations.spec.ts`

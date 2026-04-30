@@ -34,6 +34,21 @@ DateTime _parseDateTimeRequired(dynamic value) {
   return parseDateTimeRequired(value);
 }
 
+int? _parseOptionalInt(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  if (value is Map) {
+    for (final key in const ['integerValue', 'doubleValue', 'stringValue']) {
+      final nested = value[key];
+      if (nested != null) return _parseOptionalInt(nested);
+    }
+    return null;
+  }
+  return int.tryParse(value.toString());
+}
+
+int _parseIntOrZero(dynamic value) => _parseOptionalInt(value) ?? 0;
+
 /// Physical address model used for shipping, billing, and seller warehouse locations.
 ///
 /// [state] is the Canadian province code (e.g., 'ON', 'QC', 'BC').
@@ -418,7 +433,7 @@ class CartItemModel {
   factory CartItemModel.fromMap(Map<String, dynamic> map, {String? docId}) {
     return CartItemModel(
       cartItemId: docId ?? (map[Fields.cartItemId] as String? ?? ''),
-      quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
+      quantity: _parseIntOrZero(map[Fields.quantity]),
       productId: (map[Fields.productId] as String?) ?? '',
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
       productName:
@@ -427,8 +442,8 @@ class CartItemModel {
       imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
       buyerNote: map[Fields.buyerNote] as String?,
       priceSnapshot:
-          (map[Fields.priceSnapshot] as num?)?.toInt() ??
-          (map[Fields.priceCents] as num?)?.toInt(),
+          _parseOptionalInt(map[Fields.priceSnapshot]) ??
+          _parseOptionalInt(map[Fields.priceCents]),
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
       variantOptions: map[Fields.variantOptions] != null
