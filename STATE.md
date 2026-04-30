@@ -2508,10 +2508,12 @@ The following items were verified as done and are no longer reusable as active t
 - Added `error_events` rules: authenticated users can create/read their own structured events, admins can list/read/update, deletes remain blocked.
 - Updated Ventures planning docs to explicitly track self-hosted Postal email, Meilisearch search, and GlitchTip error logging.
 - Deployed GTA dev web release `20260430021456`; deploy script passed build/analyze/home tests and the fixed focused cart E2E passed after deployment.
+- Deployed GTA production web release `20260430033412`; deploy script passed build/analyze/home tests and production solar live post-deploy checks.
 - Verification:
   - `cd origna_gta && flutter test test/unit/orignabase_cart_repository_impl_test.dart test/unit/orignabase_cart_repository_comprehensive_test.dart test/models/models_test.dart` -> passed, 77 tests.
   - `cd origna_gta && flutter test test/live/cart_repository_integration_test.dart --dart-define=RUN_ORIGNABASE_LIVE_TESTS=true --dart-define=ENVIRONMENT=dev` -> passed, 7 tests.
   - `cd orignabase && cargo test -p ob-admin` -> passed, 67 tests, 1 ignored.
   - `cd e2e && bun x tsc --noEmit && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 7 expect calls.
   - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts` -> passed, 5 tests / 26 expect calls.
+  - `VPS_HOST=root@204.168.137.16 GOOGLE_WEB_CLIENT_ID=<keychain value> ./scripts/deploy_web.sh production` -> passed; post-deploy `prod-solar-product-live.spec.ts` passed, 2 tests / 27 expect calls.
   - `curl https://api.dev.orignagta.ca/config/glitchtip_dsn` -> returned self-hosted `glitchtip.orignagta.ca` DSN.
