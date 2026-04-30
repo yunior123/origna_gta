@@ -81,5 +81,39 @@ void main() {
       expect(es['admin.security.enable_mfa'], 'Activar MFA');
       expect(es['common.go_shopping'], 'Empezar a comprar');
     });
+
+    test('critical buyer, admin, and payment labels are translated', () {
+      final en = _loadLocale('en');
+      final fr = _loadLocale('fr');
+      final es = _loadLocale('es');
+      const criticalKeys = [
+        'admin.loading_panel',
+        'admin.users.make_admin',
+        'admin.users.confirm_grant_admin',
+        'admin.sellers.suspend_seller_confirm',
+        'orders.my_orders',
+        'orders.no_orders',
+        'orders.no_orders_desc',
+        'orders.view_my_orders',
+        'orders.unable_to_load',
+        'orders.orders_need_approval',
+        'orders.no_orders_match',
+        'payment.check_orders_later',
+        'payment.verification_delayed',
+        'chat.inbox_subtitle',
+        'chat.tap_to_chat',
+        'security.title',
+        'security.enable_mfa',
+        'start_shopping',
+      ];
+
+      for (final key in criticalKeys) {
+        expect(fr[key], isNotNull, reason: 'fr missing $key');
+        expect(es[key], isNotNull, reason: 'es missing $key');
+        expect(fr[key], isNot(en[key]), reason: 'fr left English for $key');
+        expect(es[key], isNot(en[key]), reason: 'es left English for $key');
+        expect(es[key], isNot(key), reason: 'es rendered raw key for $key');
+      }
+    });
   });
 }

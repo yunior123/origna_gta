@@ -373,6 +373,36 @@ final cartWithDetailsProvider =
                   variantOptions: cartItem.variantOptions,
                 ),
               );
+            } else {
+              final snapshotPriceCents = cartItem.priceSnapshot ?? 0;
+              final hasSnapshotContent =
+                  cartItem.productName?.trim().isNotEmpty == true ||
+                  cartItem.productDescription?.trim().isNotEmpty == true ||
+                  cartItem.imageUrls.isNotEmpty ||
+                  snapshotPriceCents > 0;
+              if (hasSnapshotContent) {
+                results.add(
+                  CartItemDetailModel(
+                    productId: cartItem.productId,
+                    name: cartItem.productName?.trim().isNotEmpty == true
+                        ? cartItem.productName!.trim()
+                        : 'product.product_fallback'.tr(),
+                    description: cartItem.productDescription ?? '',
+                    price: snapshotPriceCents / 100,
+                    priceCents: snapshotPriceCents,
+                    imageUrls: cartItem.imageUrls,
+                    quantity: cartItem.quantity,
+                    createdAt: cartItem.createdAt,
+                    sellerAddress: Address.empty(),
+                    sellerId: '',
+                    sellerName: '',
+                    buyerNote: cartItem.buyerNote,
+                    variantId: cartItem.variantId,
+                    variantTitle: cartItem.variantTitle,
+                    variantOptions: cartItem.variantOptions,
+                  ),
+                );
+              }
             }
           }
 

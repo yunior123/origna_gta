@@ -43,316 +43,337 @@ class CartItemScreen extends StatelessWidget {
     final isDigital = item[Fields.isDigital] as bool? ?? false;
     final buyerNote = item[Fields.buyerNote] as String?;
 
-    return Dismissible(
-      key: ValueKey('dismiss_$cartItemId'),
-      direction: DismissDirection.endToStart,
-      onDismissed: (_) => onRemove(),
-      confirmDismiss: (_) async {
-        HapticFeedback.mediumImpact();
-        return true;
-      },
-      background: Container(
-        margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              DesignTokens.error.withValues(alpha: 0.8),
-              DesignTokens.error,
-            ],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-        ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        child: const Icon(
-          Icons.delete_rounded,
-          color: DesignTokens.white,
-          size: 28,
-        ),
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
-        padding: const EdgeInsets.all(DesignTokens.spacing12),
-        decoration: BoxDecoration(
-          color: isDark ? DesignTokens.darkCard : DesignTokens.white,
-          borderRadius: BorderRadius.circular(DesignTokens.radius16),
-          border: Border.all(
-            color: isDark
-                ? DesignTokens.white.withValues(alpha: 0.06)
-                : DesignTokens.outline.withValues(alpha: 0.5),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: DesignTokens.primary.withValues(
-                alpha: isDark ? 0.08 : 0.04,
-              ),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Semantics(
+      container: true,
+      label:
+          'cart-item-$productId $name ${(unitPriceCents / 100).toStringAsFixed(2)}',
+      child: Dismissible(
+        key: ValueKey('dismiss_$cartItemId'),
+        direction: DismissDirection.endToStart,
+        onDismissed: (_) => onRemove(),
+        confirmDismiss: (_) async {
+          HapticFeedback.mediumImpact();
+          return true;
+        },
+        background: Container(
+          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                DesignTokens.error.withValues(alpha: 0.8),
+                DesignTokens.error,
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
             ),
-            BoxShadow(
-              color: DesignTokens.black.withValues(alpha: isDark ? 0.2 : 0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+          ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          child: const Icon(
+            Icons.delete_rounded,
+            color: DesignTokens.white,
+            size: 28,
+          ),
         ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Product image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                  child: SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: _buildImage(imageUrlsList, isDark),
-                  ),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: DesignTokens.spacing12),
+          padding: const EdgeInsets.all(DesignTokens.spacing12),
+          decoration: BoxDecoration(
+            color: isDark ? DesignTokens.darkCard : DesignTokens.white,
+            borderRadius: BorderRadius.circular(DesignTokens.radius16),
+            border: Border.all(
+              color: isDark
+                  ? DesignTokens.white.withValues(alpha: 0.06)
+                  : DesignTokens.outline.withValues(alpha: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: DesignTokens.primary.withValues(
+                  alpha: isDark ? 0.08 : 0.04,
                 ),
-                const SizedBox(width: DesignTokens.spacing12),
-                // Name + price
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: isDark
-                              ? DesignTokens.white
-                              : DesignTokens.textPrimary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (description != null && description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: DesignTokens.black.withValues(
+                  alpha: isDark ? 0.2 : 0.03,
+                ),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  // Product image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                    child: SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: _buildImage(imageUrlsList, isDark),
+                    ),
+                  ),
+                  const SizedBox(width: DesignTokens.spacing12),
+                  // Name + price
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          description,
+                          name,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                             color: isDark
-                                ? DesignTokens.textOnDarkSecondary
-                                : DesignTokens.textSecondary,
-                            height: 1.35,
+                                ? DesignTokens.white
+                                : DesignTokens.textPrimary,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                      if (isDigital) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.download_outlined,
-                              size: 11,
-                              color: DesignTokens.digital.withValues(
-                                alpha: 0.8,
-                              ),
+                        if (description != null && description.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? DesignTokens.textOnDarkSecondary
+                                  : DesignTokens.textSecondary,
+                              height: 1.35,
                             ),
-                            const SizedBox(width: 3),
-                            Text(
-                              'cart.digital_instant_delivery'.tr(),
-                              style: TextStyle(
-                                fontSize: 11,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (isDigital) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.download_outlined,
+                                size: 11,
                                 color: DesignTokens.digital.withValues(
                                   alpha: 0.8,
                                 ),
-                                fontWeight: FontWeight.w500,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 3),
+                              Text(
+                                'cart.digital_instant_delivery'.tr(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: DesignTokens.digital.withValues(
+                                    alpha: 0.8,
+                                  ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        // Price display wrapped in Consumer - only this rebuilds when quantity changes
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final quantityAsync = ref.watch(
+                              cartItemQuantityProvider(cartItemId),
+                            );
+                            final quantity = quantityAsync.valueOrNull ?? 1;
+                            final totalCents = unitPriceCents * quantity;
+                            return ShaderMask(
+                              shaderCallback: (bounds) => DesignTokens
+                                  .primaryGradient
+                                  .createShader(bounds),
+                              child: Text(
+                                '\$${(totalCents / 100).toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: DesignTokens.white,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Unit price hint when qty > 1
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final quantityAsync = ref.watch(
+                              cartItemQuantityProvider(cartItemId),
+                            );
+                            final quantity = quantityAsync.valueOrNull ?? 1;
+                            if (quantity <= 1) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                '\$${(unitPriceCents / 100).toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: DesignTokens.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
-                      const SizedBox(height: 6),
-                      // Price display wrapped in Consumer - only this rebuilds when quantity changes
+                    ),
+                  ),
+                  // Quantity controls + delete
+                  Column(
+                    children: [
                       Consumer(
                         builder: (context, ref, _) {
                           final quantityAsync = ref.watch(
                             cartItemQuantityProvider(cartItemId),
                           );
-                          final quantity = quantityAsync.valueOrNull ?? 1;
-                          final totalCents = unitPriceCents * quantity;
-                          return ShaderMask(
-                            shaderCallback: (bounds) => DesignTokens
-                                .primaryGradient
-                                .createShader(bounds),
-                            child: Text(
-                              '\$${(totalCents / 100).toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: DesignTokens.white,
+                          final quantity = quantityAsync.valueOrNull ?? 0;
+                          final cartController = ref.read(
+                            cartControllerProvider,
+                          );
+
+                          if (quantity <= 0) return const SizedBox.shrink();
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? DesignTokens.white.withValues(alpha: 0.06)
+                                  : DesignTokens.surfaceVariant,
+                              borderRadius: BorderRadius.circular(
+                                DesignTokens.radius12,
                               ),
+                              border: Border.all(
+                                color: isDark
+                                    ? DesignTokens.white.withValues(alpha: 0.1)
+                                    : DesignTokens.outline.withValues(
+                                        alpha: 0.6,
+                                      ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                QuantityButton(
+                                  key: Key('cart_qty_minus_$cartItemId'),
+                                  icon: Icons.remove_rounded,
+                                  onPressed: quantity > 1
+                                      ? () => cartController.updateQuantity(
+                                          cartItemId,
+                                          quantity - 1,
+                                        )
+                                      : null,
+                                  isDark: isDark,
+                                  useHaptic: true,
+                                  semanticLabel: 'btn-cart-qty-minus',
+                                ),
+                                AnimatedSwitcher(
+                                  duration: DesignTokens.durationFast,
+                                  transitionBuilder: (child, anim) =>
+                                      ScaleTransition(
+                                        scale: anim,
+                                        child: child,
+                                      ),
+                                  child: Padding(
+                                    key: ValueKey(quantity),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    child: Text(
+                                      '$quantity',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: isDark
+                                            ? DesignTokens.white
+                                            : DesignTokens.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                QuantityButton(
+                                  key: Key('cart_qty_plus_$cartItemId'),
+                                  icon: Icons.add_rounded,
+                                  onPressed: () async {
+                                    // AUDIT FIX (H6): Show feedback if stock limit reached
+                                    final success = await cartController
+                                        .updateQuantity(
+                                          cartItemId,
+                                          quantity + 1,
+                                        );
+                                    if (!success && context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'cart.stock_limit_reached'.tr(),
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  isDark: isDark,
+                                  useHaptic: true,
+                                  semanticLabel: 'btn-cart-qty-plus',
+                                ),
+                              ],
                             ),
                           );
                         },
                       ),
-                      // Unit price hint when qty > 1
+                      const SizedBox(height: DesignTokens.spacing8),
+                      IconButton(
+                        tooltip: 'btn-remove-cart-item',
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: DesignTokens.error.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
+                        onPressed: onRemove,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        splashRadius: 18,
+                      ),
+                      const SizedBox(height: DesignTokens.spacing4),
                       Consumer(
                         builder: (context, ref, _) {
-                          final quantityAsync = ref.watch(
-                            cartItemQuantityProvider(cartItemId),
-                          );
-                          final quantity = quantityAsync.valueOrNull ?? 1;
-                          if (quantity <= 1) return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              '\$${(unitPriceCents / 100).toStringAsFixed(2)} ${'cart.each_suffix'.tr()}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: DesignTokens.textSecondary,
-                                fontWeight: FontWeight.w500,
+                          return IconButton(
+                            tooltip: 'btn-save-for-later',
+                            icon: Icon(
+                              Icons.bookmark_outline_rounded,
+                              color: DesignTokens.primary.withValues(
+                                alpha: 0.8,
                               ),
+                              size: 20,
                             ),
+                            onPressed: () => _saveForLater(
+                              context,
+                              ref,
+                              productId,
+                              cartItemId,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            splashRadius: 18,
                           );
                         },
                       ),
                     ],
                   ),
-                ),
-                // Quantity controls + delete
-                Column(
-                  children: [
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final quantityAsync = ref.watch(
-                          cartItemQuantityProvider(cartItemId),
-                        );
-                        final quantity = quantityAsync.valueOrNull ?? 0;
-                        final cartController = ref.read(cartControllerProvider);
-
-                        if (quantity <= 0) return const SizedBox.shrink();
-
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? DesignTokens.white.withValues(alpha: 0.06)
-                                : DesignTokens.surfaceVariant,
-                            borderRadius: BorderRadius.circular(
-                              DesignTokens.radius12,
-                            ),
-                            border: Border.all(
-                              color: isDark
-                                  ? DesignTokens.white.withValues(alpha: 0.1)
-                                  : DesignTokens.outline.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              QuantityButton(
-                                key: Key('cart_qty_minus_$cartItemId'),
-                                icon: Icons.remove_rounded,
-                                onPressed: quantity > 1
-                                    ? () => cartController.updateQuantity(
-                                        cartItemId,
-                                        quantity - 1,
-                                      )
-                                    : null,
-                                isDark: isDark,
-                                useHaptic: true,
-                                semanticLabel: 'btn-cart-qty-minus',
-                              ),
-                              AnimatedSwitcher(
-                                duration: DesignTokens.durationFast,
-                                transitionBuilder: (child, anim) =>
-                                    ScaleTransition(scale: anim, child: child),
-                                child: Padding(
-                                  key: ValueKey(quantity),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  child: Text(
-                                    '$quantity',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
-                                      color: isDark
-                                          ? DesignTokens.white
-                                          : DesignTokens.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              QuantityButton(
-                                key: Key('cart_qty_plus_$cartItemId'),
-                                icon: Icons.add_rounded,
-                                onPressed: () async {
-                                  // AUDIT FIX (H6): Show feedback if stock limit reached
-                                  final success = await cartController
-                                      .updateQuantity(cartItemId, quantity + 1);
-                                  if (!success && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'cart.stock_limit_reached'.tr(),
-                                        ),
-                                        duration: const Duration(seconds: 2),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                },
-                                isDark: isDark,
-                                useHaptic: true,
-                                semanticLabel: 'btn-cart-qty-plus',
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: DesignTokens.spacing8),
-                    IconButton(
-                      tooltip: 'btn-remove-cart-item',
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        color: DesignTokens.error.withValues(alpha: 0.7),
-                        size: 20,
-                      ),
-                      onPressed: onRemove,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      splashRadius: 18,
-                    ),
-                    const SizedBox(height: DesignTokens.spacing4),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        return IconButton(
-                          tooltip: 'btn-save-for-later',
-                          icon: Icon(
-                            Icons.bookmark_outline_rounded,
-                            color: DesignTokens.primary.withValues(alpha: 0.8),
-                            size: 20,
-                          ),
-                          onPressed: () => _saveForLater(
-                            context,
-                            ref,
-                            productId,
-                            cartItemId,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          splashRadius: 18,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            _buildNoteRow(context, isDark, buyerNote),
-          ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              _buildNoteRow(context, isDark, buyerNote),
+            ],
+          ),
         ),
       ),
     );

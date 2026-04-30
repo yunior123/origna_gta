@@ -30,7 +30,26 @@ const requiredTranslationKeys = [
   'admin.security.title',
   'admin.security.enable_mfa',
   'common.go_shopping',
+  'orders.no_orders',
+  'orders.view_my_orders',
+  'payment.check_orders_later',
+  'chat.inbox_subtitle',
+  'chat.tap_to_chat',
 ] as const;
+
+const spanishCriticalTranslations: Record<string, string> = {
+  'start_shopping': 'Empezar a comprar',
+  'security.title': 'Seguridad',
+  'security.enable_mfa': 'Activar MFA',
+  'admin.security.enable_mfa': 'Activar MFA',
+  'admin.users.make_admin': 'Convertir en administrador',
+  'admin.users.confirm_grant_admin': 'Conceder acceso de administrador',
+  'orders.no_orders': 'Aún no hay pedidos',
+  'orders.view_my_orders': 'Ver mis pedidos',
+  'payment.check_orders_later': 'Revisa tu página de pedidos en unos minutos.',
+  'chat.inbox_subtitle': 'Conversaciones premium',
+  'chat.tap_to_chat': 'Toca para abrir la conversación',
+};
 
 function flattenTranslations(
   value: Record<string, unknown>,
@@ -60,6 +79,8 @@ describe('Investor deck regression guard', () => {
   });
 
   test('known raw translation keys are present in every locale', () => {
+    const enPath = join(repoRoot, 'origna_gta/assets/translations/en.json');
+    const en = flattenTranslations(JSON.parse(readFileSync(enPath, 'utf8')));
     for (const locale of ['en', 'fr', 'es']) {
       const path = join(
         repoRoot,
@@ -69,7 +90,16 @@ describe('Investor deck regression guard', () => {
       for (const key of requiredTranslationKeys) {
         expect(translations[key], `${locale} missing ${key}`).toBeTruthy();
         expect(translations[key]).not.toBe(key);
+        if (locale !== 'en') {
+          expect(translations[key], `${locale} left English for ${key}`).not.toBe(en[key]);
+        }
       }
+    }
+
+    const esPath = join(repoRoot, 'origna_gta/assets/translations/es.json');
+    const es = flattenTranslations(JSON.parse(readFileSync(esPath, 'utf8')));
+    for (const [key, expected] of Object.entries(spanishCriticalTranslations)) {
+      expect(es[key], `es mismatch for ${key}`).toBe(expected);
     }
   });
 

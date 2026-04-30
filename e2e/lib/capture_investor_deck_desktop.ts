@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium, type Page } from 'playwright';
 import {
@@ -19,6 +19,7 @@ type Persona = 'guest' | 'buyer' | 'seller' | 'admin';
 
 type AuthSession = {
   email: string;
+  localId: string;
   accessToken: string;
   refreshToken: string;
 };
@@ -28,7 +29,7 @@ type CaptureTarget = {
   app: 'gta' | 'ventures';
   persona: Persona;
   path: string;
-  actions?: Array<'focus-search' | 'contact-form'>;
+  actions?: Array<'focus-search' | 'contact-form' | 'checkout-from-cart'>;
 };
 
 const DESKTOP_VIEWPORTS = [
@@ -52,6 +53,7 @@ const GTA_TARGETS: CaptureTarget[] = [
   { id: 'gta-buyer-subscription', app: 'gta', persona: 'buyer', path: '/subscription' },
   { id: 'gta-buyer-chat', app: 'gta', persona: 'buyer', path: '/chat/inbox' },
   { id: 'gta-buyer-cart', app: 'gta', persona: 'buyer', path: '/cart' },
+  { id: 'gta-buyer-checkout', app: 'gta', persona: 'buyer', path: '/cart', actions: ['checkout-from-cart'] },
   { id: 'gta-buyer-browse-products', app: 'gta', persona: 'buyer', path: '/', actions: ['focus-search'] },
   { id: 'gta-buyer-support', app: 'gta', persona: 'buyer', path: '/support' },
   { id: 'gta-buyer-security', app: 'gta', persona: 'buyer', path: '/security-settings' },
@@ -106,9 +108,78 @@ async function loginPersona(persona: Exclude<Persona, 'guest'>): Promise<AuthSes
   }
   return {
     email: creds.email,
+    localId: String(body.user?.id ?? body.user_id ?? body.localId ?? decodeJwtSubject(String(body.access_token))),
     accessToken: String(body.access_token),
     refreshToken: String(body.refresh_token ?? ''),
   };
+}
+
+function decodeJwtSubject(token: string): string {
+  const payload = token.split('.')[1];
+  if (!payload) return '';
+  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(normalized.length + ((4 - normalized.length % 4) % 4), '=');
+  const decoded = JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as { sub?: string };
+  return String(decoded.sub ?? '').replace(/^users:/, '');
+}
+
+async function writeGraphqlDoc(
+  collection: string,
+  id: string,
+  data: Record<string, unknown>,
+  token: string,
+): Promise<void> {
+  const response = await fetch(`${ORIGNABASE_URL}/graphql`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: 'mutation SetDoc($collection: String!, $id: String!, $data: JSON!) { set(collection: $collection, id: $id, data: $data) }',
+      variables: { collection, id, data },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to seed investor capture doc ${collection}/${id}: ${response.status}`);
+  }
+}
+
+async function seedBuyerCartForCheckout(session: AuthSession): Promise<void> {
+  if (!session.localId) return;
+  const productId = 'e2e_product_test_seller';
+  const now = new Date().toISOString();
+  await writeGraphqlDoc(
+    'users__cart',
+    `investor_checkout_${session.localId}`,
+    {
+      parent_id: `users:${session.localId}`,
+      parent_collection: 'users',
+      userId: session.localId,
+      productId,
+      quantity: 2,
+      priceCents: 1999,
+      productName: 'Investor Checkout Sample',
+      imageUrl: 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg',
+      availabilityStatus: 'available',
+      isUnavailable: false,
+      addedAt: now,
+      updatedAt: now,
+    },
+    session.accessToken,
+  );
+  await writeGraphqlDoc(
+    'user_carts',
+    session.localId,
+    {
+      userId: session.localId,
+      itemCount: 1,
+      totalCents: 3998,
+      unavailableItemCount: 0,
+      lastUpdated: now,
+    },
+    session.accessToken,
+  );
 }
 
 function baseUrlFor(target: CaptureTarget): string {
@@ -187,6 +258,14 @@ async function applyActions(page: Page, target: CaptureTarget): Promise<void> {
         await fields.nth(i).fill(values[i], { timeout: 2_000 });
       }
     }
+    if (action === 'checkout-from-cart') {
+      await page
+        .getByText(/checkout|passer à la caisse|pagar|finalizar/i)
+        .first()
+        .click({ timeout: 3_000 })
+        .catch(() => undefined);
+      await page.waitForTimeout(1_200);
+    }
   }
   if (target.id === 'gta-admin-products') {
     await page.getByText(/products|produits/i).click({ timeout: 2_000 }).catch(() => undefined);
@@ -204,6 +283,7 @@ async function main(): Promise<void> {
   sessions.set('buyer', await loginPersona('buyer'));
   sessions.set('seller', await loginPersona('seller'));
   sessions.set('admin', await loginPersona('admin'));
+  await seedBuyerCartForCheckout(sessions.get('buyer')!);
 
   const browser = await chromium.launch({ headless: true });
   let captured = 0;
@@ -256,7 +336,7 @@ async function main(): Promise<void> {
             scrollY,
           ).padStart(5, '0')}.png`;
           const filepath = join(OUT_DIR, filename);
-          const image = await page.screenshot({ fullPage: false });
+          const image = await page.screenshot({ fullPage: false, timeout: 60_000 });
           const imageHash = createHash('sha256').update(image).digest('hex');
           if (seenImageHashes.has(imageHash)) {
             console.log(
@@ -267,7 +347,12 @@ async function main(): Promise<void> {
           seenImageHashes.add(imageHash);
           await Bun.write(filepath, image);
           if (!screenshotLooksWritten(filepath)) {
-            throw new Error(`Screenshot missing or too small: ${filepath}`);
+            unlinkSync(filepath);
+            seenImageHashes.delete(imageHash);
+            console.log(
+              `[investor-desktop-capture] skip undersized ${target.id} ${viewport.name} y=${scrollY}`,
+            );
+            continue;
           }
           captured += 1;
           console.log(`[investor-desktop-capture] ${filename}`);

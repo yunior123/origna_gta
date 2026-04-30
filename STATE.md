@@ -2436,3 +2436,22 @@ The following items were verified as done and are no longer reusable as active t
   - `curl https://api.dev.orignagta.ca/config`, `curl https://api.staging.orignagta.ca/config`, and `curl https://api.orignagta.ca/config` -> all returned public config JSON without 500s.
   - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase2-smoke/investor-deck-regression.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts` -> passed, 8 tests / 215 expect calls.
   - `cargo test -p ob-admin -p ob-graphql` was started but stopped after the command sat idle with no active compiler/test process; targeted `cargo check` and live E2E covered this blocker.
+
+114. **Cart/payment UI, localization, and OrignaBase cart rules hardened on 2026-04-30**:
+- Added a live payment UI regression that seeds a buyer cart, opens the real cart and checkout routes, creates a Stripe checkout session, and audits order/email plumbing.
+- Fixed production cart subcollection access in OrignaBase:
+  - `users__cart` rules now cover owned cart docs and authenticated list.
+  - `isOwner()` now treats record references like `users:<uid>` as matching JWT bare UUID subjects.
+  - GraphQL `list()` now evaluates the `list` permission instead of `read`, so owner-scoped list filters can work.
+- Fixed GTA cart snapshot fallback so cart rows with valid snapshot data still contribute to visible item detail and subtotal when the catalog join is missing or not active.
+- Added cart item semantic labels for accessible product/price verification.
+- Expanded investor screenshot regression coverage and duplicate detection; regenerated the live desktop screenshot set to 64 unique screenshots.
+- Audited critical EN/FR/ES translation keys and fixed Spanish raw/English leakage for security/admin/orders/payment/chat labels.
+- Verification:
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd e2e && bun test specs/phase2-smoke/investor-deck-regression.spec.ts` -> passed.
+  - `cd e2e && MIN_INVESTOR_SCREENSHOTS=64 bun run lib/capture_investor_deck_desktop.ts` -> passed, 64 screenshots.
+  - `cd origna_gta && flutter analyze --no-fatal-infos && flutter test --exclude-tags golden` -> passed, 4,788 tests.
+  - `cd origna_ventures/backend && ./.venv/bin/python -m pytest -q` -> passed, 36 tests.
+  - `cd ../orignabase && cargo fmt --check && cargo test -p ob-auth --lib -p ob-graphql -p ob-security` -> passed; full workspace initially found and fixed a JWT expiry leeway test, then a second full workspace run was blocked by local disk exhaustion during linker output, not by test failure.
+  - Live OrignaBase probe after deploy: authenticated buyer cart `write`, `get`, and subcollection `list` all passed against production.
