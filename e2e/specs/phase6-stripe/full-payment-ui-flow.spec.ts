@@ -66,6 +66,7 @@ async function waitForOrder(orderId: string, token: string, timeoutMs = 30_000):
 async function resetBuyerCart(auth: Awaited<ReturnType<typeof signIn>>, product: any): Promise<void> {
   const productId = String(product.id).replace(/^products:/, '');
   const productName = String(product.name ?? product.title ?? productId);
+  const fullUserId = auth.localId.startsWith('users:') ? auth.localId : `users:${auth.localId}`;
   const priceCents = Number(
     product.priceCents ?? Math.round(Number(product.price ?? 0) * 100),
   );
@@ -91,7 +92,8 @@ async function resetBuyerCart(auth: Awaited<ReturnType<typeof signIn>>, product:
   await writeDoc(
     `users/${auth.localId}/cart/ui_payment_${productId}`,
     {
-      userId: auth.localId,
+      userId: fullUserId,
+      parent_id: fullUserId,
       productId,
       quantity: 2,
       name: productName,
