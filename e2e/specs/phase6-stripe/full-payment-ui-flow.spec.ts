@@ -152,7 +152,8 @@ describe('Full payment UI flow regression', () => {
 
       const cartText = await pageText(page);
       expect(cartText).not.toMatch(/start_shoping|security\.title|security\.enable_mfa|secirity/i);
-      expect(cartText.toLowerCase()).toContain(productName.toLowerCase().slice(0, 12));
+      expect(cartText).toMatch(/subtotal\s*\(2 items\)/i);
+      expect(cartText).toMatch(/CAD \$\s*(?!0\.00)\d/i);
       expect(cartText).toMatch(/cart|panier|carrito|checkout|total|\$/i);
 
       const checkoutCta = page
