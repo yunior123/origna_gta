@@ -421,11 +421,14 @@ class CartItemModel {
       quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
       productId: (map[Fields.productId] as String?) ?? '',
       createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
-      productName: map[Fields.name] as String?,
+      productName:
+          map[Fields.name] as String? ?? map[Fields.productName] as String?,
       productDescription: map[Fields.description] as String?,
       imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
       buyerNote: map[Fields.buyerNote] as String?,
-      priceSnapshot: (map[Fields.priceSnapshot] as num?)?.toInt(),
+      priceSnapshot:
+          (map[Fields.priceSnapshot] as num?)?.toInt() ??
+          (map[Fields.priceCents] as num?)?.toInt(),
       variantId: map[Fields.variantId] as String?,
       variantTitle: map[Fields.variantTitle] as String?,
       variantOptions: map[Fields.variantOptions] != null

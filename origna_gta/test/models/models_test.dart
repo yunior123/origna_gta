@@ -121,6 +121,22 @@ void main() {
       expect(toMap[Fields.quantity], 3);
       expect(toMap[Fields.buyerNote], 'Note');
     });
+
+    test('fromMap reads production cart snapshot fallbacks', () {
+      final ts = Timestamp.now();
+      final item = CartItemModel.fromMap({
+        Fields.quantity: 2,
+        Fields.productId: 'prod_snapshot',
+        Fields.createdAt: ts,
+        Fields.productName: 'Snapshot product',
+        Fields.priceCents: 5699,
+      }, docId: 'ui_payment_prod_snapshot');
+
+      expect(item.cartItemId, 'ui_payment_prod_snapshot');
+      expect(item.productId, 'prod_snapshot');
+      expect(item.productName, 'Snapshot product');
+      expect(item.priceSnapshot, 5699);
+    });
   });
 
   group('CartModel Tests', () {

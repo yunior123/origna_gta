@@ -76,19 +76,16 @@ final cartItemDetailProvider = FutureProvider.autoDispose
       final createdAt = ref.watch(cartItemDateProvider(cartItemDocId));
       if (createdAt == null) return null;
 
-      // Extract productId: doc ID is "productId" or "productId_variantId"
-      // Database auto-IDs use Base62 (no underscores), so the first segment is always productId.
-      final productId = cartItemDocId.split('_').first;
-
-      // Pull from batch-fetched product cache (single whereIn query for all cart items)
-      final productCache = await ref.watch(_cartProductsBatchProvider.future);
-      final productData = productCache[productId];
-
       // Find the exact cart item to get variant info — await to ensure state is fully resolved
       final cartItems = await ref.watch(cartItemsProvider.future);
       final cartItem = cartItems
           .where((i) => i.cartItemId == cartItemDocId)
           .firstOrNull;
+      final productId = cartItem?.productId ?? cartItemDocId.split('_').first;
+
+      // Pull from batch-fetched product cache (single whereIn query for all cart items)
+      final productCache = await ref.watch(_cartProductsBatchProvider.future);
+      final productData = productCache[productId];
 
       final isUnavailable =
           productData == null ||
