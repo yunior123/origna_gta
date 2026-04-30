@@ -887,7 +887,7 @@ def create_onepager(path: Path) -> None:
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 LIVE_SCREENSHOT_RE = re.compile(
-    r"^\d{3}-live-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
+    r"^\d{3}-(?:live|mockup)-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
 )
 EXCLUDED_SCREENSHOT_SEGMENTS = {
     "build/",
@@ -1249,8 +1249,8 @@ def create_full_deck(
             c.setStrokeColor(BORDER)
             c.roundRect(x, y, cell_w, cell_h, 10, stroke=1, fill=0)
             c.setFillColor(DARK)
-            c.setFont("Helvetica-Bold", 7)
-            c.drawString(x + 8, y + cell_h - 12, image_path.name[:60])
+            c.setFont("Helvetica-Bold", 5.2)
+            c.drawString(x + 8, y + cell_h - 12, image_path.name)
             try:
                 img = ImageReader(str(image_path))
                 iw, ih = img.getSize()

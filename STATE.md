@@ -2467,3 +2467,27 @@ The following items were verified as done and are no longer reusable as active t
   - `cd origna_ventures/backend && ./.venv/bin/python -m pytest -q` -> passed, 36 tests.
   - `cd ../orignabase && cargo fmt --check && cargo test -p ob-auth --lib -p ob-graphql -p ob-security` -> passed; full workspace initially found and fixed a JWT expiry leeway test, then a second full workspace run was blocked by local disk exhaustion during linker output, not by test failure.
   - Live OrignaBase probe after deploy: authenticated buyer cart `write`, `get`, and subcollection `list` all passed against production.
+
+115. **Investor PDFs regenerated with full visual coverage on 2026-04-30**:
+- Regenerated the investor screenshot set to 122 unique desktop PNGs with no duplicate hashes, no bad dimensions, no blank frames, and no undersized files.
+- Added explicit mockup backfills for protected/disabled surfaces that cannot reliably render sample data live:
+  - Buyer: cart with sample items, checkout flow, notification samples, chat samples.
+  - Seller: orders, analytics, integration, warehouses, bulk upload.
+  - Admin: users/permissions, product moderation, payment monitor, security, search index, email audit.
+  - Ventures: service tiers, project intake, delivery tracker, payment handoff.
+- Live screenshots still cover guest, buyer, seller product/add-product, admin panel/users/products/orders/seller-products, Ventures landing, and Ventures contact form.
+- Regenerated checked-in PDFs:
+  - `origna_ventures/web/docs/origna_ventures_onepager.pdf`
+  - `origna_ventures/web/docs/origna_ventures_full_presentation.pdf`
+- Also regenerated ignored output copies:
+  - `origna_ventures/output/origna_ventures_onepager.pdf`
+  - `origna_ventures/output/origna_ventures_full_deck.pdf`
+- Full deck PDFs now validate at 30 pages with all 122 screenshot names embedded.
+- Verification:
+  - `cd e2e && MIN_INVESTOR_SCREENSHOTS=112 bun run lib/capture_investor_deck_desktop.ts` -> passed, 122 screenshots.
+  - Local image audit over `origna_ventures/output/desktop-screenshots` -> passed, 0 issues.
+  - Manual visual review of representative buyer orders/cart/checkout/security/chat/notifications, seller mockups, admin payment, and buyer sample mockups completed; live cart/chat/notification permission gaps are covered by sample mockups.
+  - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/web/docs/origna_ventures_onepager.pdf --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 140 --min-screenshots 122` -> passed.
+  - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/output/origna_ventures_onepager.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 140 --min-screenshots 122` -> passed.
+  - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --expected-count 122 --expected-pages 30` -> passed.
+  - `cd e2e && bun x tsc --noEmit && bun test specs/phase2-smoke/investor-deck-regression.spec.ts` -> passed, 3 tests / 410 expect calls.

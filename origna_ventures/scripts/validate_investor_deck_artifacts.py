@@ -9,11 +9,11 @@ import fitz
 from PIL import Image, ImageStat
 
 SCREENSHOT_RE = re.compile(
-    r"^\d{3}-live-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
+    r"^\d{3}-(?:live|mockup)-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
 )
-PDF_NAME_RE = re.compile(r"\d{3}-live-[^\s]+?\.png")
+PDF_NAME_RE = re.compile(r"\d{3}-(?:live|mockup)-[^\s]+?\.png")
 BAD_NAME_RE = re.compile(
-    r"artifact|extracted|mascot|product-placeholder|design-token|checkout|pricing-fr|pricing-es",
+    r"artifact|extracted|mascot|product-placeholder|design-token|pricing-fr|pricing-es",
     re.IGNORECASE,
 )
 REQUIRED_SCREENSHOT_TARGETS = (
@@ -21,12 +21,32 @@ REQUIRED_SCREENSHOT_TARGETS = (
     "gta-buyer-notifications",
     "gta-buyer-chat",
     "gta-buyer-cart",
+    "gta-buyer-cart-full",
+    "gta-buyer-checkout",
+    "gta-buyer-checkout-flow",
+    "gta-buyer-notifications-samples",
+    "gta-buyer-chat-samples",
     "gta-buyer-support",
     "gta-buyer-security",
     "gta-seller-products",
+    "gta-seller-orders",
+    "gta-seller-analytics",
+    "gta-seller-integration",
+    "gta-seller-warehouses",
+    "gta-seller-bulk-upload",
+    "gta-seller-add-product",
     "gta-admin-panel",
+    "gta-admin-users",
+    "gta-admin-products",
     "gta-admin-orders",
+    "gta-admin-seller-products",
+    "gta-admin-payment-monitor",
+    "gta-admin-security",
     "ventures-contact-form",
+    "ventures-service-tiers",
+    "ventures-project-intake",
+    "ventures-delivery-tracker",
+    "ventures-payment-handoff",
 )
 
 

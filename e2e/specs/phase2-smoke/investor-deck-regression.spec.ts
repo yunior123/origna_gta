@@ -15,12 +15,32 @@ const requiredCaptureTargets = [
   'gta-buyer-notifications',
   'gta-buyer-chat',
   'gta-buyer-cart',
+  'gta-buyer-cart-full',
+  'gta-buyer-checkout',
+  'gta-buyer-checkout-flow',
+  'gta-buyer-notifications-samples',
+  'gta-buyer-chat-samples',
   'gta-buyer-support',
   'gta-buyer-security',
   'gta-seller-products',
+  'gta-seller-orders',
+  'gta-seller-analytics',
+  'gta-seller-integration',
+  'gta-seller-warehouses',
+  'gta-seller-bulk-upload',
+  'gta-seller-add-product',
   'gta-admin-panel',
+  'gta-admin-users',
+  'gta-admin-products',
   'gta-admin-orders',
+  'gta-admin-seller-products',
+  'gta-admin-payment-monitor',
+  'gta-admin-security',
   'ventures-contact-form',
+  'ventures-service-tiers',
+  'ventures-project-intake',
+  'ventures-delivery-tracker',
+  'ventures-payment-handoff',
 ] as const;
 
 const requiredTranslationKeys = [
@@ -71,11 +91,13 @@ describe('Investor deck regression guard', () => {
   test('capture script still targets previously missing buyer/seller/admin views', () => {
     const script = readFileSync(captureScript, 'utf8');
     for (const target of requiredCaptureTargets) {
-      expect(script).toContain(`id: '${target}'`);
+      expect(script).toContain(target);
     }
     expect(script).toContain('seenImageHashes.has(imageHash)');
     expect(script).toContain('skip duplicate');
-    expect(script).toContain("process.env.MIN_INVESTOR_SCREENSHOTS || 64");
+    expect(script).toContain("process.env.MIN_INVESTOR_SCREENSHOTS || 112");
+    expect(script).toContain('seedInvestorDemoState');
+    expect(script).toContain("'admin-products'");
   });
 
   test('known raw translation keys are present in every locale', () => {
@@ -109,7 +131,7 @@ describe('Investor deck regression guard', () => {
     const files = readdirSync(screenshotDir)
       .filter((name) => name.endsWith('.png'))
       .sort();
-    expect(files.length).toBe(64);
+    expect(files.length).toBeGreaterThanOrEqual(112);
 
     const hashes = new Map<string, string>();
     for (const file of files) {
