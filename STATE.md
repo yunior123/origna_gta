@@ -2530,7 +2530,7 @@ The following items were verified as done and are no longer reusable as active t
   - Switched the Flutter OrignaBase SDK realtime client from `IOWebSocketChannel` to cross-platform `WebSocketChannel.connect`, so web builds can receive events.
   - Moved notifications and orders to explicit realtime clients; orders now also has a bounded polling refresh fallback.
   - Added stable order action semantics with the order ID for live E2E assertions.
-- Deployed OrignaBase dev/staging/prod containers from rebuilt source and deployed GTA dev web releases through `20260430114238`.
+- Deployed OrignaBase dev/staging/prod containers from rebuilt source, deployed GTA dev web releases through `20260430114238`, and deployed GTA production web release `20260430114816`.
 - Verification:
   - `cd orignabase && cargo test -p ob-security` -> passed, 169 tests.
   - `cd orignabase && cargo test -p ob-realtime` -> passed, 81 tests.
@@ -2539,3 +2539,4 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun x tsc --noEmit` -> passed.
   - `cd e2e && bun test specs/phase5-complex-flows/realtime-live-updates.spec.ts` -> passed, 4 tests.
   - `cd e2e && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 7 expect calls.
+  - `GOOGLE_WEB_CLIENT_ID=<keychain value> VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh production` -> passed; post-deploy `prod-solar-product-live.spec.ts` passed, 2 tests / 27 expect calls.
