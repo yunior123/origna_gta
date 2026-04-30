@@ -2517,3 +2517,25 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-contact-live.spec.ts` -> passed, 5 tests / 26 expect calls.
   - `VPS_HOST=root@204.168.137.16 GOOGLE_WEB_CLIENT_ID=<keychain value> ./scripts/deploy_web.sh production` -> passed; post-deploy `prod-solar-product-live.spec.ts` passed, 2 tests / 27 expect calls.
   - `curl https://api.dev.orignagta.ca/config/glitchtip_dsn` -> returned self-hosted `glitchtip.orignagta.ca` DSN.
+
+117. **Live realtime update audit fixed and deployed on 2026-04-30**:
+- Added live browser E2E coverage that opens the real dev UI, mutates OrignaBase while the page is already open, and verifies updates without refresh for:
+  - `users__notifications` -> notifications page unread action appears live.
+  - `favorites` -> favorites page product appears live.
+  - `orders` -> buyer orders page exposes the inserted order action live.
+  - `users__cart` -> cart badge and cart quantity controls update from UI taps.
+- Fixed self-hosted realtime blockers found by the audit:
+  - Added `users__notifications` security rules.
+  - Expanded the OrignaBase WebSocket allowlist for app realtime collections: `users__cart`, `favorites`, `users__notifications`, and `product_questions`.
+  - Switched the Flutter OrignaBase SDK realtime client from `IOWebSocketChannel` to cross-platform `WebSocketChannel.connect`, so web builds can receive events.
+  - Moved notifications and orders to explicit realtime clients; orders now also has a bounded polling refresh fallback.
+  - Added stable order action semantics with the order ID for live E2E assertions.
+- Deployed OrignaBase dev/staging/prod containers from rebuilt source and deployed GTA dev web releases through `20260430114238`.
+- Verification:
+  - `cd orignabase && cargo test -p ob-security` -> passed, 169 tests.
+  - `cd orignabase && cargo test -p ob-realtime` -> passed, 81 tests.
+  - Direct WebSocket probes for `users__notifications` and `orders` -> subscribed and received live create events.
+  - `cd origna_gta && flutter analyze --no-fatal-infos lib/core/repositories/notification_repository.dart lib/core/repositories/order_query_helpers.dart lib/widgets/order_widgets.dart` -> passed.
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd e2e && bun test specs/phase5-complex-flows/realtime-live-updates.spec.ts` -> passed, 4 tests.
+  - `cd e2e && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 7 expect calls.

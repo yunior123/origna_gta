@@ -356,6 +356,33 @@ rules notifications {
     list: isAuthenticated();
 }
 
+rules users__notifications {
+    read: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    );
+    create: isAuthenticated() && (
+        (fieldEqualsAuth("userId") ||
+            fieldEqualsAuth("ownerId") ||
+            fieldEqualsAuth("uid")) &&
+        fieldAbsentOrEqualsAuth("userId") &&
+        fieldAbsentOrEqualsAuth("ownerId") &&
+        fieldAbsentOrEqualsAuth("uid")
+    );
+    update: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    ) && fieldUnchanged("userId") && fieldUnchanged("ownerId") && fieldUnchanged("uid");
+    delete: isAuthenticated() && (
+        isOwner(resource.userId) ||
+        isOwner(resource.ownerId) ||
+        isOwner(resource.uid)
+    );
+    list: isAuthenticated();
+}
+
 rules seller_profiles {
     read: true;
     create: isAuthenticated() && fieldEqualsAuth("uid");

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:web_socket_channel/io.dart';
 
 import 'client.dart';
 import 'document.dart';
@@ -106,7 +105,7 @@ class RealtimeClient {
     );
 
     try {
-      _channel = IOWebSocketChannel.connect(wsUri);
+      _channel = WebSocketChannel.connect(wsUri);
       _listener = _channel!.stream.listen(
         _handleMessage,
         onDone: _scheduleReconnect,

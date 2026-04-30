@@ -784,195 +784,210 @@ class _BuyerOrderCardState extends ConsumerState<BuyerOrderCard> {
       OrderStatus.partiallyRefunded,
     ].contains(order.orderStatus);
 
-    return Container(
-      margin: widget.isDetailView
-          ? EdgeInsets.zero
-          : const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: isDark ? DesignTokens.darkCard : DesignTokens.white,
-        borderRadius: BorderRadius.circular(DesignTokens.radius20),
-        border: Border.all(
-          color: isDark
-              ? DesignTokens.white.withValues(alpha: 0.08)
-              : DesignTokens.primary.withValues(alpha: 0.12),
-          width: 1,
+    return Semantics(
+      button: true,
+      container: true,
+      label:
+          'order-card-${order.orderId} ${order.items.map((item) => item.name).join(' ')}',
+      child: Container(
+        margin: widget.isDetailView
+            ? EdgeInsets.zero
+            : const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: isDark ? DesignTokens.darkCard : DesignTokens.white,
+          borderRadius: BorderRadius.circular(DesignTokens.radius20),
+          border: Border.all(
+            color: isDark
+                ? DesignTokens.white.withValues(alpha: 0.08)
+                : DesignTokens.primary.withValues(alpha: 0.12),
+            width: 1,
+          ),
+          boxShadow: widget.isDetailView
+              ? []
+              : [
+                  BoxShadow(
+                    color: DesignTokens.primary.withValues(
+                      alpha: isDark ? 0.15 : 0.08,
+                    ),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: DesignTokens.textPrimary.withValues(
+                      alpha: isDark ? 0.3 : 0.04,
+                    ),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
-        boxShadow: widget.isDetailView
-            ? []
-            : [
-                BoxShadow(
-                  color: DesignTokens.primary.withValues(
-                    alpha: isDark ? 0.15 : 0.08,
-                  ),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: DesignTokens.textPrimary.withValues(
-                    alpha: isDark ? 0.3 : 0.04,
-                  ),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ─── ORDER HEADER ───────────────────────────────────
-          _buildHeader(order, statusConfig, isDark),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── ORDER HEADER ───────────────────────────────────
+            _buildHeader(order, statusConfig, isDark),
 
-          // ─── TERMINAL BADGE (cancelled / failed / refunded) ─────────
-          if (isTerminal) _buildTerminalBadge(statusConfig, isDark),
+            // ─── TERMINAL BADGE (cancelled / failed / refunded) ─────────
+            if (isTerminal) _buildTerminalBadge(statusConfig, isDark),
 
-          // ─── STATUS DESCRIPTION ─────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    statusConfig.color.withValues(alpha: 0.1),
-                    statusConfig.color.withValues(alpha: 0.04),
+            // ─── STATUS DESCRIPTION ─────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      statusConfig.color.withValues(alpha: 0.1),
+                      statusConfig.color.withValues(alpha: 0.04),
+                    ],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(DesignTokens.radius12),
+                  border: Border.all(
+                    color: statusConfig.color.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      statusConfig.icon,
+                      size: 18,
+                      color: statusConfig.color,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        statusConfig.description,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: statusConfig.color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(DesignTokens.radius12),
-                border: Border.all(
-                  color: statusConfig.color.withValues(alpha: 0.2),
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(statusConfig.icon, size: 18, color: statusConfig.color),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      statusConfig.description,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: statusConfig.color,
-                        fontWeight: FontWeight.w600,
+            ),
+
+            // ─── PAYMENT BANNER (authorized orders, NOT delivered/terminal) ──
+            if (isAuthorized &&
+                !isTerminal &&
+                order.orderStatus != OrderStatus.delivered)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: _buildPaymentStatusBanner(isPendingApproval),
+              ),
+
+            // ─── DIVIDER ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Divider(
+                height: 1,
+                color:
+                    (isDark ? DesignTokens.white : DesignTokens.textSecondary)
+                        .withValues(alpha: 0.1),
+              ),
+            ),
+
+            // ─── SELLER PACKAGES (Amazon-style per-seller grouping) ─────
+            _buildSellerPackages(order, isDark),
+
+            // ─── PRICE BREAKDOWN ─────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: _buildPriceBreakdown(order, isDark),
+            ),
+
+            // ─── CANCEL ORDER (pending / confirmed only) ─────────
+            if (order.orderStatus == OrderStatus.pending ||
+                order.orderStatus == OrderStatus.confirmed)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Semantics(
+                    button: true,
+                    label: 'btn-cancel-order-${order.orderId}',
+                    child: _actionButton(
+                      icon: Icons.cancel_outlined,
+                      label: 'orders.cancel_order'.tr(),
+                      color: DesignTokens.error,
+                      onTap: () => _confirmCancelOrder(context, order),
+                    ),
+                  ),
+                ),
+              ),
+
+            // ─── BUY AGAIN (delivered orders only) ──────────────
+            if (order.orderStatus == OrderStatus.delivered)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: _actionButton(
+                    icon: Icons.replay_rounded,
+                    label: 'orders.buy_again'.tr(),
+                    color: DesignTokens.primary,
+                    onTap: () => _reorderItems(order),
+                  ),
+                ),
+              ),
+
+            // ─── REQUEST RETURN (delivered orders within return window) ──
+            if (_isReturnEligible(order))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Semantics(
+                    button: true,
+                    label: 'btn-request-return',
+                    child: _actionButton(
+                      icon: Icons.assignment_return_outlined,
+                      label: 'returns.request_return'.tr(),
+                      color: DesignTokens.warning,
+                      onTap: () => appPushNamed(
+                        context,
+                        AppRoutes.returnRequest,
+                        arguments: ReturnRequestArgs(orderId: order.orderId),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // ─── PAYMENT BANNER (authorized orders, NOT delivered/terminal) ──
-          if (isAuthorized &&
-              !isTerminal &&
-              order.orderStatus != OrderStatus.delivered)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: _buildPaymentStatusBanner(isPendingApproval),
-            ),
-
-          // ─── DIVIDER ────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Divider(
-              height: 1,
-              color: (isDark ? DesignTokens.white : DesignTokens.textSecondary)
-                  .withValues(alpha: 0.1),
-            ),
-          ),
-
-          // ─── SELLER PACKAGES (Amazon-style per-seller grouping) ─────
-          _buildSellerPackages(order, isDark),
-
-          // ─── PRICE BREAKDOWN ─────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-            child: _buildPriceBreakdown(order, isDark),
-          ),
-
-          // ─── CANCEL ORDER (pending / confirmed only) ─────────
-          if (order.orderStatus == OrderStatus.pending ||
-              order.orderStatus == OrderStatus.confirmed)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: Semantics(
-                  button: true,
-                  label: 'btn-cancel-order',
-                  child: _actionButton(
-                    icon: Icons.cancel_outlined,
-                    label: 'orders.cancel_order'.tr(),
-                    color: DesignTokens.error,
-                    onTap: () => _confirmCancelOrder(context, order),
-                  ),
                 ),
               ),
-            ),
 
-          // ─── BUY AGAIN (delivered orders only) ──────────────
-          if (order.orderStatus == OrderStatus.delivered)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: _actionButton(
-                  icon: Icons.replay_rounded,
-                  label: 'orders.buy_again'.tr(),
-                  color: DesignTokens.primary,
-                  onTap: () => _reorderItems(order),
+            // ─── RETURN STATUS TRACKING ──────────────────────────
+            if (widget.isDetailView)
+              _ReturnStatusSection(orderId: order.orderId),
+
+            // ─── DELIVERY ADDRESS ───────────────────────────────
+            if (order.shippingAddress != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: _buildAddressSection(order.shippingAddress!, isDark),
+              ),
+
+            // ─── DELIVERY INSTRUCTIONS ───────────────────────────
+            if (order.deliveryInstructions != null &&
+                order.deliveryInstructions!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                child: _buildDeliveryInstructionsSection(
+                  order.deliveryInstructions!,
+                  isDark,
                 ),
-              ),
-            ),
-
-          // ─── REQUEST RETURN (delivered orders within return window) ──
-          if (_isReturnEligible(order))
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-              child: SizedBox(
-                width: double.infinity,
-                child: Semantics(
-                  button: true,
-                  label: 'btn-request-return',
-                  child: _actionButton(
-                    icon: Icons.assignment_return_outlined,
-                    label: 'returns.request_return'.tr(),
-                    color: DesignTokens.warning,
-                    onTap: () => appPushNamed(
-                      context,
-                      AppRoutes.returnRequest,
-                      arguments: ReturnRequestArgs(orderId: order.orderId),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // ─── RETURN STATUS TRACKING ──────────────────────────
-          if (widget.isDetailView) _ReturnStatusSection(orderId: order.orderId),
-
-          // ─── DELIVERY ADDRESS ───────────────────────────────
-          if (order.shippingAddress != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: _buildAddressSection(order.shippingAddress!, isDark),
-            ),
-
-          // ─── DELIVERY INSTRUCTIONS ───────────────────────────
-          if (order.deliveryInstructions != null &&
-              order.deliveryInstructions!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              child: _buildDeliveryInstructionsSection(
-                order.deliveryInstructions!,
-                isDark,
-              ),
-            )
-          else
-            const SizedBox(height: 20),
-        ],
+              )
+            else
+              const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

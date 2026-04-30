@@ -124,13 +124,20 @@ mixin OrderQueryHelpers {
     }
 
     StreamSubscription<DocumentChange>? wsSub;
+    RealtimeClient? realtime;
+    Timer? refreshTimer;
 
     controller
       ..onListen = () async {
         await seed();
-        wsSub = ob
-            .collection(Collections.orders)
-            .snapshots()
+        refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+          if (!controller.isClosed) {
+            seed();
+          }
+        });
+        realtime = RealtimeClient(ob)..connect();
+        wsSub = realtime!
+            .subscribe(Collections.orders)
             .listen(
               (change) {
                 if (controller.isClosed) return;
@@ -156,7 +163,9 @@ mixin OrderQueryHelpers {
             );
       }
       ..onCancel = () {
+        refreshTimer?.cancel();
         wsSub?.cancel();
+        realtime?.disconnect();
       };
 
     return controller.stream;

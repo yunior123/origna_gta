@@ -94,14 +94,24 @@ class NotificationRepository {
         controller.addError(error, stackTrace);
       }
 
-      final subscription = subcollection
-          .snapshots()
-          .asyncMap((_) {
-            return fetchOrderedNotifications();
-          })
-          .listen(controller.add, onError: controller.addError);
+      final realtime = RealtimeClient(_ob);
+      realtime.connect();
+      final subscription = realtime
+          .subscribe('${Collections.users}__${Collections.notifications}')
+          .listen((change) async {
+            final parentRef = change.document.data['parent_id'] as String?;
+            if (parentRef != '${Collections.users}:$uid') return;
+            try {
+              controller.add(await fetchOrderedNotifications());
+            } catch (error, stackTrace) {
+              controller.addError(error, stackTrace);
+            }
+          }, onError: controller.addError);
 
-      controller.onCancel = () => subscription.cancel();
+      controller.onCancel = () {
+        subscription.cancel();
+        realtime.disconnect();
+      };
     });
   }
 }
