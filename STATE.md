@@ -2491,3 +2491,8 @@ The following items were verified as done and are no longer reusable as active t
   - `python3 origna_ventures/scripts/generate_presentation_pdfs.py --onepager origna_ventures/output/origna_ventures_onepager.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --screenshots origna_ventures/output/desktop-screenshots --max-screenshots 140 --min-screenshots 122` -> passed.
   - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --expected-count 122 --expected-pages 30` -> passed.
   - `cd e2e && bun x tsc --noEmit && bun test specs/phase2-smoke/investor-deck-regression.spec.ts` -> passed, 3 tests / 410 expect calls.
+- Deployed the regenerated PDFs with the OrignaVentures frontend/docs:
+  - `cd origna_ventures && ./deploy.sh --frontend-only` -> passed.
+  - Deploy script ran `flutter pub get`, `flutter analyze --no-fatal-infos`, `flutter build web --release --dart-define=ENVIRONMENT=production`, rsync to `/var/www/orignaventures/production/current`, and the live Ventures scroll/contact regression -> passed.
+  - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf` -> HTTP 200, `content-type: application/pdf`, `last-modified: Thu, 30 Apr 2026 04:40:56 GMT`.
+  - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_onepager.pdf` -> HTTP 200, `content-type: application/pdf`, `last-modified: Thu, 30 Apr 2026 04:40:43 GMT`.
