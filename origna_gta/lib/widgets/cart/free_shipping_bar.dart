@@ -16,7 +16,8 @@ class FreeShippingBar extends ConsumerWidget {
         (async) => async.whenData(
           (items) => items.fold(
             0.0,
-            (total, item) => total + (item.price * item.quantity),
+            (total, item) =>
+                total + ((item.priceCents * item.quantity) / 100.0),
           ),
         ),
       ),

@@ -223,7 +223,11 @@ void main() {
       WidgetTester tester,
     ) async {
       setupScreenSize(tester);
-      final expensiveProduct = testProduct.copyWith(price: 1000.0, quantity: 1);
+      final expensiveProduct = testProduct.copyWith(
+        price: 1000.0,
+        priceCents: 100000,
+        quantity: 1,
+      );
       final expensiveItem = CartItemModel(
         cartItemId: 'item_1',
         productId: 'prod_1',

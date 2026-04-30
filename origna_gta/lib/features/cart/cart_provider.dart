@@ -305,12 +305,14 @@ final cartWithDetailsProvider =
                   name: (productData[Fields.name] as String?) ?? '',
                   description:
                       (productData[Fields.description] as String?) ?? '',
-                  price: ((productData[Fields.price] as num?) ?? 0).toDouble(),
                   priceCents: productData[Fields.priceCents] != null
                       ? (productData[Fields.priceCents] as num).toInt()
                       : (((productData[Fields.price] as num?) ?? 0).toDouble() *
                                 100)
                             .round(),
+                  price: productData[Fields.priceCents] != null
+                      ? (productData[Fields.priceCents] as num).toDouble() / 100
+                      : ((productData[Fields.price] as num?) ?? 0).toDouble(),
                   imageUrls: List<String>.from(
                     productData[Fields.imageUrls] as Iterable? ?? [],
                   ),

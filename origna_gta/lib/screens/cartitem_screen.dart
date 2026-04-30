@@ -123,17 +123,20 @@ class CartItemScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: isDark
-                                ? DesignTokens.white
-                                : DesignTokens.textPrimary,
+                        Semantics(
+                          label: 'cart-item-name-$productId $name',
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: isDark
+                                  ? DesignTokens.white
+                                  : DesignTokens.textPrimary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         if (description != null && description.isNotEmpty) ...[
                           const SizedBox(height: 4),
@@ -184,16 +187,21 @@ class CartItemScreen extends StatelessWidget {
                             );
                             final quantity = quantityAsync.valueOrNull ?? 1;
                             final totalCents = unitPriceCents * quantity;
-                            return ShaderMask(
-                              shaderCallback: (bounds) => DesignTokens
-                                  .primaryGradient
-                                  .createShader(bounds),
-                              child: Text(
-                                '\$${(totalCents / 100).toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w800,
-                                  color: DesignTokens.white,
+                            final totalLabel =
+                                '\$${(totalCents / 100).toStringAsFixed(2)}';
+                            return Semantics(
+                              label: 'cart-item-total-$productId $totalLabel',
+                              child: ShaderMask(
+                                shaderCallback: (bounds) => DesignTokens
+                                    .primaryGradient
+                                    .createShader(bounds),
+                                child: Text(
+                                  totalLabel,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: DesignTokens.white,
+                                  ),
                                 ),
                               ),
                             );

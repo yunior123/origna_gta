@@ -172,6 +172,36 @@ void main() {
       unawaited(
         Future.delayed(const Duration(seconds: 2)).then((_) async {
           try {
+            if (kIsWeb) {
+              await Sentry.init((options) {
+                options.dsn = OrignaBaseConfigService().glitchtipDsn;
+                options.environment = envConfig.isProduction
+                    ? 'production'
+                    : envConfig.isStaging
+                    ? 'staging'
+                    : envConfig.isDev
+                    ? 'dev'
+                    : 'emulator';
+                options.tracesSampleRate = envConfig.isProduction ? 0.01 : 0.05;
+                options.beforeSend = (event, hint) {
+                  // Strip PII from user data
+                  if (event.user != null) {
+                    final user = event.user!;
+                    event.user = SentryUser(
+                      id: user.id,
+                      // Strip email/username — may contain PII
+                      username: null,
+                      ipAddress: null,
+                      email: null,
+                      data: null, // user.data may contain PII (address, phone)
+                    );
+                  }
+                  // Redact PII patterns from exception messages
+                  return _redactPiiFromEvent(event);
+                };
+              }).timeout(const Duration(seconds: 10));
+              return;
+            }
             await SentryFlutter.init((options) {
               options.dsn = OrignaBaseConfigService().glitchtipDsn;
               options.environment = envConfig.isProduction
@@ -199,10 +229,6 @@ void main() {
                 // Redact PII patterns from exception messages
                 return _redactPiiFromEvent(event);
               };
-              if (kIsWeb) {
-                options.enableAutoPerformanceTracing = false;
-                options.enableFramesTracking = false;
-              }
             }).timeout(const Duration(seconds: 10));
           } catch (_) {
             AppLogger.w(
