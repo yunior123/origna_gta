@@ -21,6 +21,11 @@ import { writeDoc } from './api-client.js';
 const _orignabaseUiAccountCache = new Map<string, { email: string; password: string }>();
 let _orignabaseBootstrapAdminToken: string | null | undefined;
 
+function authPayload(fields: Record<string, unknown>): Record<string, unknown> {
+  const turnstileToken = process.env.E2E_AUTH_TURNSTILE_TOKEN?.trim();
+  return turnstileToken ? { ...fields, turnstile_token: turnstileToken } : fields;
+}
+
 type OrignaBaseUserSummary = {
   id: string;
   email: string;
@@ -305,20 +310,20 @@ export async function ensureOrignaBaseUiAccount(email: string, password: string)
     loginRes = await fetchWithRetry(`${ORIGNABASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail, password }),
+      body: JSON.stringify(authPayload({ email: normalizedEmail, password })),
     });
 
     if (loginRes.status >= 400) {
       await fetchWithRetry(`${ORIGNABASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password }),
+        body: JSON.stringify(authPayload({ email: normalizedEmail, password })),
       }).catch(() => {});
 
       loginRes = await fetchWithRetry(`${ORIGNABASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password }),
+        body: JSON.stringify(authPayload({ email: normalizedEmail, password })),
       });
     }
 
@@ -402,20 +407,20 @@ export async function signInOrignaBase(email: string, password: string): Promise
   let loginRes = await fetchWithRetry(`${ORIGNABASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: normalizedEmail, password }),
+    body: JSON.stringify(authPayload({ email: normalizedEmail, password })),
   });
 
   if (loginRes.status >= 400) {
     await fetchWithRetry(`${ORIGNABASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail, password, display_name: displayName }),
+      body: JSON.stringify(authPayload({ email: normalizedEmail, password, display_name: displayName })),
     }).catch(() => {});
 
     loginRes = await fetchWithRetry(`${ORIGNABASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: normalizedEmail, password }),
+      body: JSON.stringify(authPayload({ email: normalizedEmail, password })),
     });
   }
 

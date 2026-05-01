@@ -8,12 +8,17 @@
 import { signIn } from './lib/auth';
 import { TEST_ACCOUNTS, DEFAULT_PASS } from './lib/config';
 
-// Clear stale cache
-try {
-  const fs = require('fs');
-  fs.unlinkSync('/tmp/origna_e2e_tokens.json');
-} catch {
-  // No cache file yet — that's fine
+const usePreseededTokenCache = process.env.E2E_USE_PRESEEDED_TOKEN_CACHE === '1';
+
+// Clear stale cache unless a caller intentionally generated short-lived tokens
+// for an environment where direct auth is protected by Turnstile.
+if (!usePreseededTokenCache) {
+  try {
+    const fs = require('fs');
+    fs.unlinkSync('/tmp/origna_e2e_tokens.json');
+  } catch {
+    // No cache file yet — that's fine
+  }
 }
 
 // Sign in all accounts sequentially to avoid quota
@@ -25,15 +30,19 @@ const timeoutPromise = (ms: number) => new Promise((_, reject) =>
 );
 
 try {
-  await Promise.race([
-    (async () => {
-      await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
-      await signIn(TEST_ACCOUNTS.SELLER_EMAIL, DEFAULT_PASS);
-      await signIn(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
-    })(),
-    timeoutPromise(30_000)  // 30s total timeout for all 3 sign-ins
-  ]);
-  console.log('✅ Auth tokens cached to disk for all workers');
+  if (usePreseededTokenCache) {
+    console.log('✅ Using preseeded auth token cache');
+  } else {
+    await Promise.race([
+      (async () => {
+        await signIn(TEST_ACCOUNTS.ADMIN_EMAIL, TEST_ACCOUNTS.ADMIN_PASS);
+        await signIn(TEST_ACCOUNTS.SELLER_EMAIL, DEFAULT_PASS);
+        await signIn(TEST_ACCOUNTS.BUYER_EMAIL, DEFAULT_PASS);
+      })(),
+      timeoutPromise(30_000)  // 30s total timeout for all 3 sign-ins
+    ]);
+    console.log('✅ Auth tokens cached to disk for all workers');
+  }
 } catch (e) {
   const err = e as Error;
   if (err.message === 'Pre-warming timeout') {
