@@ -1001,12 +1001,12 @@ def create_full_deck(
         c,
         w,
         h,
-        "Origna Ventures Services — Full Presentation",
-        f"Investor/demo deck · ownership-first software services · {screenshot_note}",
+        "OrignaGTA — Ecommerce Deck",
+        f"Ecommerce deck · ownership-first marketplace software · {screenshot_note}",
     )
     c.setFont("Helvetica-Bold", 18)
     c.setFillColor(DARK)
-    c.drawString(26, h - 108, "Investor Summary")
+    c.drawString(26, h - 108, "Ecommerce Summary")
     c.setFont("Helvetica", 11)
     bullets = [
         "Pricing-first service landing page with direct Stripe checkout from tier cards.",
@@ -1088,7 +1088,7 @@ def create_full_deck(
         ),
         (
             "Solution",
-            "Origna Ventures sells execution packages around OrignaGTA: code ownership, launch delivery, and monthly builder capacity.",
+            "OrignaGTA is a working ecommerce marketplace stack with buyer, seller, admin, payment, search, email, and observability flows.",
             [
                 "OrignaCode gives buyers the source repo for a fixed 500 CAD one-time payment.",
                 "OrignaLaunch turns the same product into a live web, desktop, iOS, and Android launch for 3,000 CAD.",
@@ -1144,7 +1144,7 @@ def create_full_deck(
         ),
         (
             "Differentiation",
-            "Origna Ventures competes on ownership and finished delivery, not only page generation.",
+            "OrignaGTA competes on ownership and finished ecommerce delivery, not only page generation.",
             [
                 "Versus Shopify: more ownership and no platform tax dependency.",
                 "Versus AI builders: stronger production path, mobile packaging, backend, QA, support, and deployment.",
@@ -1161,7 +1161,7 @@ def create_full_deck(
             "Keep the operation focused on a repeatable package before expanding custom scope.",
             [
                 "Standardize the checkout-to-onboarding process for the three service tiers.",
-                "Keep demo, one-pager, and investor deck current with each product proof update.",
+                "Keep demo, one-pager, and ecommerce deck current with each product proof update.",
                 "Use OrignaGTA and OrignaBase improvements as reusable assets across future client work.",
             ],
             [
@@ -1171,7 +1171,7 @@ def create_full_deck(
             ],
         ),
         (
-            "Investor Use",
+            "Ecommerce Use",
             "The current need is distribution and operating leverage, not a new prototype.",
             [
                 "Use funding or strategic support to acquire clients, harden packaging, and expand support capacity.",
@@ -1187,7 +1187,7 @@ def create_full_deck(
     ]
 
     for index, (title, subtitle, bullets, cards) in enumerate(structured_slides, start=2):
-        draw_header(c, w, h, f"Origna Ventures — {title}", subtitle)
+        draw_header(c, w, h, f"OrignaGTA Ecommerce — {title}", subtitle)
         card_gap = 14
         card_w = (w - 52 - card_gap * 2) / 3
         card_y = h - 232
@@ -1204,7 +1204,7 @@ def create_full_deck(
             metric_card(608, 54, 160, 78, "1,000 CAD", "OrignaTeam monthly", GREEN_C)
         else:
             rrect(c, 52, 54, w - 104, 78, r=5, fill=colors.HexColor("#FFF5F5"), stroke=RED, lw=0.7)
-            lt(c, "Investor takeaway", 70, 104, "Helvetica-Bold", 12, RED)
+            lt(c, "Ecommerce takeaway", 70, 104, "Helvetica-Bold", 12, RED)
             fit_text(
                 c,
                 f"{title}: {subtitle}",

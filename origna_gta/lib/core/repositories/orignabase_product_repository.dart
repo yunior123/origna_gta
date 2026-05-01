@@ -566,24 +566,27 @@ class OrignaBaseProductRepository
     if (offset > 0) {
       favoritesQuery = favoritesQuery.offset(offset);
     }
-    final Set<String> favorites = {};
+    final favorites = <String>{};
     final controller = StreamController<Set<String>>();
+    Timer? refreshTimer;
 
-    favoritesQuery
-        .get()
-        .then((snapshot) {
-          favorites
-            ..clear()
-            ..addAll(
-              snapshot.docs
-                  .map((doc) => doc.data[Fields.productId] as String?)
-                  .whereType<String>(),
-            );
-          controller.add(Set<String>.from(favorites));
-        })
-        .catchError((Object error, StackTrace stackTrace) {
-          controller.addError(error, stackTrace);
-        });
+    Future<void> fetchAndEmit() async {
+      try {
+        final snapshot = await favoritesQuery.get();
+        favorites
+          ..clear()
+          ..addAll(
+            snapshot.docs
+                .map((doc) => doc.data[Fields.productId] as String?)
+                .whereType<String>(),
+          );
+        if (!controller.isClosed) controller.add(Set<String>.from(favorites));
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) controller.addError(error, stackTrace);
+      }
+    }
+
+    unawaited(fetchAndEmit());
 
     final realtime = RealtimeClient(_ob);
     realtime.connect();
@@ -603,6 +606,9 @@ class OrignaBaseProductRepository
         }
         controller.add(Set<String>.from(favorites));
       }, onError: controller.addError);
+      refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        unawaited(fetchAndEmit());
+      });
     } catch (e, st) {
       controller.addError(e, st);
       controller.close();
@@ -610,6 +616,7 @@ class OrignaBaseProductRepository
     }
 
     controller.onCancel = () {
+      refreshTimer?.cancel();
       sub.cancel();
       realtime.disconnect();
     };

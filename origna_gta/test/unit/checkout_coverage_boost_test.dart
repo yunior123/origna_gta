@@ -47,6 +47,7 @@ void main() {
         userRepositoryProvider.overrideWithValue(mockUserRepo),
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         obUserIdProvider.overrideWithValue('user_123'),
+        cartWithDetailsProvider.overrideWith((ref) async => []),
         cartSubtotalProvider.overrideWithValue(10000),
       ],
     );

@@ -2540,3 +2540,21 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun test specs/phase5-complex-flows/realtime-live-updates.spec.ts` -> passed, 4 tests.
   - `cd e2e && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 7 expect calls.
   - `GOOGLE_WEB_CLIENT_ID=<keychain value> VPS_HOST=root@204.168.137.16 ./scripts/deploy_web.sh production` -> passed; post-deploy `prod-solar-product-live.spec.ts` passed, 2 tests / 27 expect calls.
+
+118. **Mobile home filter no-scroll regression verified on 2026-04-30**:
+- Confirmed the mobile web product-filter bug is covered by both app logic and browser E2E:
+  - `HomeViewModel` now loads ahead when client-side filters leave the current page with no visible products.
+  - Unit regression: `onToggleCanadaOnly loads ahead when current page has no visible products`.
+  - E2E regression: `T12b: Mobile Canada filter keeps products visible before scrolling and sort stays stable`.
+- The mobile E2E opens the real home page at a 390x844 viewport, waits for initial products, taps the Made in Canada filter, and asserts products are visible before any scroll. It also opens the sort sheet afterward and asserts the home shell did not reload or collapse to an empty state.
+- Fixed test fallout from realtime/cart watcher changes:
+  - `watchOrdersImpl` accepts an injected realtime change stream for unit tests while production still uses the self-hosted OrignaBase realtime client.
+  - Checkout and auth wrapper tests override cart providers with empty deterministic data to avoid accidental WebSocket connections.
+- GlitchTip self-hosted routing was verified live: `orignagta-flutter` alerts have an email recipient, `support@orignaventures.ca` is a verified team member with project alerts enabled, and DSN ingestion accepts Sentry-compatible events.
+- Verification:
+  - `cd origna_gta && flutter analyze --no-fatal-infos` -> passed.
+  - `cd origna_gta && flutter test --exclude-tags golden --reporter=compact` -> passed, 4,791 tests.
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd e2e && bun test specs/phase4-product-flows/search-filters-sort.spec.ts -t "Mobile Canada"` -> passed, 1 test / 14 expect calls.
+  - `cd e2e && bun test specs/phase4-product-flows/search-filters-sort.spec.ts` -> passed, 15 tests / 54 expect calls.
+  - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts` -> passed after a transient Postal retry, 3 tests.

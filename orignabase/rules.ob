@@ -233,6 +233,19 @@ rules stock_notifications {
     list: isAuthenticated();
 }
 
+rules subscriptions {
+    read: isAuthenticated() && (
+        hasRole("admin") ||
+        isOwner(resource.userId) ||
+        isOwner(resource.uid) ||
+        isOwner(resource.ownerId)
+    );
+    create: hasRole("admin");
+    update: hasRole("admin");
+    delete: hasRole("admin");
+    list: hasRole("admin");
+}
+
 rules chat_conversations {
     read: isAuthenticated() && (
         hasRole("admin") ||
@@ -253,7 +266,49 @@ rules chat_conversations {
     list: isAuthenticated();
 }
 
+rules chats {
+    read: isAuthenticated() && (
+        hasRole("admin") ||
+        isOwner(resource.buyerId) ||
+        isOwner(resource.sellerId)
+    );
+    create: isAuthenticated() && (
+        fieldEqualsAuth("buyerId") ||
+        (hasRole("seller") && fieldEqualsAuth("sellerId"))
+    );
+    update: isAuthenticated() && (
+        hasRole("admin") ||
+        ((isOwner(resource.buyerId) || isOwner(resource.sellerId)) &&
+            fieldUnchanged("buyerId") &&
+            fieldUnchanged("sellerId"))
+    );
+    delete: false;
+    list: isAuthenticated();
+}
+
 rules chat_messages {
+    read: isAuthenticated() && (
+        hasRole("admin") ||
+        isOwner(resource.buyerId) ||
+        isOwner(resource.sellerId) ||
+        isOwner(resource.senderId)
+    );
+    create: isAuthenticated() && fieldEqualsAuth("senderId") && (
+        fieldEqualsAuth("buyerId") ||
+        (hasRole("seller") && fieldEqualsAuth("sellerId"))
+    );
+    update: isAuthenticated() && (
+        hasRole("admin") ||
+        (isOwner(resource.senderId) &&
+            fieldUnchanged("senderId") &&
+            fieldUnchanged("buyerId") &&
+            fieldUnchanged("sellerId"))
+    );
+    delete: false;
+    list: isAuthenticated();
+}
+
+rules chats__messages {
     read: isAuthenticated() && (
         hasRole("admin") ||
         isOwner(resource.buyerId) ||

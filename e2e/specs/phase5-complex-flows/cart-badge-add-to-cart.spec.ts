@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:tes
 
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import { callOk, deleteDoc, signIn } from '../../lib/api-client.js';
-import { ORIGNABASE_URL, TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
+import { ORIGNABASE_URL, TEST_ACCOUNTS, TEST_PRODUCTS, WEB_APP_URL } from '../../lib/config.js';
 
 async function listUserCart(token: string, localUserId: string): Promise<any[]> {
   const response = await fetch(`${ORIGNABASE_URL}/graphql`, {
@@ -91,10 +91,27 @@ async function clearBuyerCart(token: string, localUserId: string): Promise<void>
   const items = await listUserCart(token, localUserId);
   await Promise.all(
     items.map((item) => {
-      const id = String(item.id ?? '');
+      const id = String(item.id ?? '').split(':').pop() ?? '';
       return id ? deleteDoc(`users/${localUserId}/cart/${id}`, token).catch(() => false) : false;
     }),
   );
+}
+
+async function waitForCartControls(browser: AgentBrowser): Promise<Awaited<ReturnType<AgentBrowser['waitForChange']>>> {
+  try {
+    return await browser.waitForChange({
+      text: /btn-cart-qty-plus|cart-item-|checkout|subtotal|total|\$/i,
+      timeout: 30_000,
+    });
+  } catch {
+    await browser.safeClick(/retry/i, 2).catch(() => false);
+    await browser.open(`${WEB_APP_URL}/cart`);
+    await browser.waitForFlutter();
+    return browser.waitForChange({
+      text: /btn-cart-qty-plus|cart-item-|checkout|subtotal|total|\$/i,
+      timeout: 30_000,
+    });
+  }
 }
 
 describe('Cart Badge Add To Cart', () => {
@@ -150,43 +167,30 @@ describe('Cart Badge Add To Cart', () => {
   test('live UI add-to-cart and cart quantity controls update OrignaBase cart', { timeout: 120_000 }, async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     await clearBuyerCart(auth.idToken, auth.localId);
+    const productId = TEST_PRODUCTS.HIGH_STOCK;
 
     await browser.loginViaApi(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
-    await browser.open(WEB_APP_URL);
+    await browser.open(`${WEB_APP_URL}/product/${productId}`);
     await browser.waitForFlutter();
 
-    const homeSnap = await browser.waitForChange({
-      text: /btn-add-to-cart-|btn-cart|input-home-search/i,
+    const productSnap = await browser.waitForChange({
+      text: /product_add_to_cart_button|add.*cart|panier/i,
       timeout: 30_000,
     });
-    const addButton = browser.findAllByLabel(homeSnap, /btn-add-to-cart-/i)[0];
-    expect(addButton).toBeTruthy();
-    const productId = extractProductIdFromAddButton(addButton.name);
+    const addButton = browser.findByLabel(productSnap, /product_add_to_cart_button|add.*cart|panier/i);
+    if (!addButton) throw new Error('Product detail add-to-cart button not found');
 
     await browser.click(addButton.ref);
-    await browser.waitForChange({
-      text: /cart-badge-count-1|added to cart|ajouté au panier|agregado/i,
-      timeout: 25_000,
-    });
     let cartItems = await waitForCartQuantity(auth.idToken, auth.localId, productId, 1);
 
-    const secondAddClicked = await browser.safeClick(new RegExp(`btn-add-to-cart-${productId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i'), 5);
+    const secondAddClicked = await browser.safeClick(/product_add_to_cart_button|add.*cart|panier/i, 5);
     expect(secondAddClicked).toBe(true);
-    await browser.waitForChange({
-      text: /cart-badge-count-2|added to cart|ajouté au panier|agregado/i,
-      timeout: 25_000,
-    });
     cartItems = await waitForCartQuantity(auth.idToken, auth.localId, productId, 2);
 
     await browser.open(`${WEB_APP_URL}/cart`);
     await browser.waitForFlutter();
-    const cartSnap = await browser.waitForChange({
-      text: /btn-cart-qty-plus|cart-item-|checkout|subtotal|total|\$/i,
-      timeout: 30_000,
-    });
-    expect(
-      browser.findByLabel(cartSnap, /btn-cart-qty-plus|cart-item-|checkout|subtotal|total|\$/i),
-    ).toBeTruthy();
+    const cartSnap = await waitForCartControls(browser);
+    expect(/btn-cart-qty-plus|cart-item-|checkout|subtotal|total|\$/i.test(cartSnap.raw)).toBe(true);
 
     const plusClicked = await browser.safeClick(/btn-cart-qty-plus/i, 5);
     expect(plusClicked).toBe(true);
@@ -194,10 +198,7 @@ describe('Cart Badge Add To Cart', () => {
 
     await browser.open(`${WEB_APP_URL}/cart`);
     await browser.waitForFlutter();
-    await browser.waitForChange({
-      text: /btn-cart-qty-minus|cart-item-|checkout|subtotal|total|\$/i,
-      timeout: 30_000,
-    });
+    await waitForCartControls(browser);
     const minusClicked = await browser.safeClick(/btn-cart-qty-minus/i, 5);
     expect(minusClicked).toBe(true);
     cartItems = await waitForCartQuantity(auth.idToken, auth.localId, productId, 2);

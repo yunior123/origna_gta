@@ -3,6 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
@@ -44,6 +45,7 @@ void main() {
         authRepositoryProvider.overrideWithValue(mockAuthRepo),
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         obUserIdProvider.overrideWithValue('user_123'),
+        cartWithDetailsProvider.overrideWith((ref) async => []),
       ],
     );
   });

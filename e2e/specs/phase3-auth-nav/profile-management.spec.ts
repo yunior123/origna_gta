@@ -8,7 +8,7 @@ import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:tes
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
   signIn, callOk, callExpectError,
-  listUserAddresses, getBootstrapAdminAccessToken, uid,
+  uid,
 } from '../../lib/api-client.js';
 import { TEST_ACCOUNTS, DEFAULT_PASS, WEB_APP_URL } from '../../lib/config.js';
 
@@ -33,14 +33,17 @@ describe('Profile Management — API Tests', () => {
   let buyerToken: string;
   let buyerUid: string;
   let buyerEmail: string;
-  let adminToken: string;
+
+  async function listOwnAddresses(): Promise<any[]> {
+    const listed = await callOk('get_user_addresses', {}, buyerToken);
+    return listed.addresses || listed.items || listed || [];
+  }
 
   beforeAll(async () => {
     const buyer = await signIn(BUYER_EMAIL);
     buyerToken = buyer.idToken;
     buyerUid = authUserIdFromToken(buyer.idToken) || buyer.localId;
     buyerEmail = buyer.email;
-    adminToken = await getBootstrapAdminAccessToken();
   });
 
   afterAll(async () => {
@@ -84,7 +87,7 @@ describe('Profile Management — API Tests', () => {
 
   test('T04: Add first address — auto-default, verify via list', { timeout: 120_000 }, async () => {
     // Clean up existing addresses
-    const existing = await listUserAddresses(buyerUid, adminToken);
+    const existing = await listOwnAddresses();
     for (const doc of existing) {
       const addrId = doc.id || doc.addressId;
       if (addrId) {
@@ -106,7 +109,7 @@ describe('Profile Management — API Tests', () => {
     expect(result.addressId).toBeTruthy();
     createdAddressIds.push(result.addressId);
 
-    const addresses = await listUserAddresses(buyerUid, adminToken);
+    const addresses = await listOwnAddresses();
     const doc = addresses.find((a: any) => (a.id || a.addressId) === result.addressId);
     expect(doc).toBeTruthy();
     const addr = doc.address ?? doc;
@@ -128,7 +131,7 @@ describe('Profile Management — API Tests', () => {
     expect(result.success).toBe(true);
     createdAddressIds.push(result.addressId);
 
-    const addresses = await listUserAddresses(buyerUid, adminToken);
+    const addresses = await listOwnAddresses();
     const doc = addresses.find((a: any) => (a.id || a.addressId) === result.addressId);
     expect(doc).toBeTruthy();
     const addr2 = doc.address ?? doc;
@@ -142,7 +145,7 @@ describe('Profile Management — API Tests', () => {
     }, buyerToken);
     expect(result.success).toBe(true);
 
-    const addresses = await listUserAddresses(buyerUid, adminToken);
+    const addresses = await listOwnAddresses();
     const newDefault = addresses.find((a: any) => (a.id || a.addressId) === secondAddrId);
     expect(newDefault?.isDefault).toBe(true);
 
@@ -158,7 +161,7 @@ describe('Profile Management — API Tests', () => {
     }, buyerToken);
     expect(result.success).toBe(true);
 
-    const addresses = await listUserAddresses(buyerUid, adminToken);
+    const addresses = await listOwnAddresses();
     const doc = addresses.find((a: any) => (a.id || a.addressId) === addrToDelete);
     expect(doc).toBeFalsy();
   });

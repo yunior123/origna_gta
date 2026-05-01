@@ -25,7 +25,7 @@ function normalizeSearchHits(value: unknown): any[] {
 }
 
 describe('Self-hosted integration regressions', () => {
-  test('Postal contact delivery reports provider-backed support and confirmation emails', async () => {
+  test('Postal contact delivery reports provider-backed support email without fake confirmation traffic', async () => {
     const unique = Date.now();
     const response = await fetch(`${VENTURES_API_BASE}/api/contact`, {
       method: 'POST',
@@ -35,7 +35,7 @@ describe('Self-hosted integration regressions', () => {
       },
       body: JSON.stringify({
         name: `Postal E2E ${unique}`,
-        email: 'e2e-contact@orignaventures.ca',
+        email: 'support@orignaventures.ca',
         company: 'Origna E2E',
         service: 'origna_launch',
         message: `Postal provider regression ${unique}. Ignore this automated check.`,
@@ -47,8 +47,7 @@ describe('Self-hosted integration regressions', () => {
     expect(body?.status).toBe('ok');
     expect(body?.emails?.support?.status).toBe('sent');
     expect(body?.emails?.support?.provider).toBe('postal');
-    expect(body?.emails?.confirmation?.status).toBe('sent');
-    expect(body?.emails?.confirmation?.provider).toBe('postal');
+    expect(body?.emails?.confirmation).toBeUndefined();
   }, 30_000);
 
   test('Meilisearch-backed GraphQL search returns known seeded products', async () => {
@@ -82,6 +81,26 @@ describe('Self-hosted integration regressions', () => {
 
     const glitchtipResponse = await fetch('https://glitchtip.orignagta.ca', { method: 'GET' });
     expect(glitchtipResponse.status).toBeLessThan(500);
+
+    const sentryEventId = crypto.randomUUID().replace(/-/g, '');
+    const storeResponse = await fetch(`${dsnUrl.protocol}//${dsnUrl.host}/api${dsnUrl.pathname}/store/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sentry-Auth': `Sentry sentry_version=7, sentry_client=origna-e2e/1.0, sentry_key=${dsnUrl.username}`,
+      },
+      body: JSON.stringify({
+        event_id: sentryEventId,
+        timestamp: new Date().toISOString(),
+        platform: 'javascript',
+        logger: 'e2e',
+        level: 'error',
+        message: `GlitchTip E2E support routing check ${sentryEventId}`,
+      }),
+    });
+    expect([200, 201]).toContain(storeResponse.status);
+    const storeBody = await storeResponse.json();
+    expect(storeBody?.event_id).toBe(sentryEventId);
 
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     const id = `e2e_glitchtip_error_${Date.now()}`;

@@ -184,7 +184,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoadingMore: false,
       errorMessage: null,
     );
-    loadProducts();
+    unawaited(_loadProductsAndFillVisibleClientFilters());
   }
 
   // ---------------------------------------------------------------------------
@@ -203,7 +203,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoadingMore: false,
       errorMessage: null,
     );
-    loadProducts();
+    unawaited(_loadProductsAndFillVisibleClientFilters());
   }
 
   void clearPriceFilter() => onPriceFilterChanged(null, null);
@@ -215,6 +215,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
   void onToggleCanadaOnly() {
     if (!mounted) return;
     state = state.copyWith(canadaOnly: !state.canadaOnly);
+    unawaited(_fillVisibleClientFiltersIfNeeded());
   }
 
   // ---------------------------------------------------------------------------
@@ -320,6 +321,28 @@ class HomeViewModel extends StateNotifier<HomeState> {
     }
   }
 
+  Future<void> _loadProductsAndFillVisibleClientFilters() async {
+    await loadProducts();
+    await _fillVisibleClientFiltersIfNeeded();
+  }
+
+  Future<void> _fillVisibleClientFiltersIfNeeded() async {
+    const maxLookaheadPages = 5;
+    var pagesLoaded = 0;
+
+    while (mounted &&
+        state.canadaOnly &&
+        state.products.isNotEmpty &&
+        state.displayedProducts.isEmpty &&
+        state.hasMore &&
+        !state.isLoading &&
+        !state.isLoadingMore &&
+        pagesLoaded < maxLookaheadPages) {
+      pagesLoaded += 1;
+      await loadProducts();
+    }
+  }
+
   void onCategorySelected(int? categoryId) {
     if (!mounted) return;
     state = state.copyWith(
@@ -332,7 +355,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoadingMore: false,
       errorMessage: null,
     );
-    loadProducts();
+    unawaited(_loadProductsAndFillVisibleClientFilters());
   }
 
   void onSubcategorySelected(String? subcategory) {
@@ -346,7 +369,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoadingMore: false,
       errorMessage: null,
     );
-    loadProducts();
+    unawaited(_loadProductsAndFillVisibleClientFilters());
   }
 
   /// Handles search input changes with debouncing.
@@ -378,7 +401,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
           isLoadingMore: false,
           errorMessage: null,
         );
-        loadProducts();
+        unawaited(_loadProductsAndFillVisibleClientFilters());
       });
     } else {
       // Show loading immediately while debouncing so the grid shows shimmer
@@ -397,7 +420,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
           isLoadingMore: false,
           errorMessage: null,
         );
-        loadProducts();
+        unawaited(_loadProductsAndFillVisibleClientFilters());
       });
     }
   }
@@ -417,7 +440,7 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoadingMore: false,
       errorMessage: null,
     );
-    loadProducts();
+    unawaited(_loadProductsAndFillVisibleClientFilters());
   }
 
   /// Resets the product list and re-fetches from the beginning.
@@ -431,6 +454,6 @@ class HomeViewModel extends StateNotifier<HomeState> {
       isLoading: false,
       isLoadingMore: false,
     );
-    await loadProducts();
+    await _loadProductsAndFillVisibleClientFilters();
   }
 }

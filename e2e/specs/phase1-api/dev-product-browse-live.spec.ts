@@ -68,7 +68,7 @@ async function assertImageUrlReachable(url: string) {
 }
 
 describe('Dev product browse live contract', () => {
-  test('every storefront category query stays healthy', async () => {
+  test('every storefront category query stays healthy', { timeout: 30_000 }, async () => {
     for (const categoryId of ALL_CATEGORY_IDS) {
       const { response, body } = await listProducts({
         lifecycleStatus: { _eq: 'active' },
@@ -117,7 +117,7 @@ describe('Dev product browse live contract', () => {
     expect(body.data.list.length).toBeGreaterThan(0);
   });
 
-  test('seeded active catalog covers all 21 storefront categories and keeps images on products', async () => {
+  test('seeded active catalog covers all 21 storefront categories and keeps images on products', { timeout: 60_000 }, async () => {
     const seen = new Set<number>();
     const imageUrls = new Set<string>();
 

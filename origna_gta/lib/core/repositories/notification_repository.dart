@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/orignabase_provider.dart';
@@ -13,10 +15,12 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 /// which uses the flat `notifications` collection with a `userId` field.
 class NotificationRepository {
   /// Creates a notification repository with the given OrignaBase [client].
-  NotificationRepository(this._ob);
+  NotificationRepository(this._ob, {bool enableRealtime = true})
+      : _enableRealtime = enableRealtime;
 
   /// The OrignaBase client used for database operations.
   final OrignaBase _ob;
+  final bool _enableRealtime;
 
   /// Marks all unread notifications as read for the given user.
   ///
@@ -26,17 +30,25 @@ class NotificationRepository {
   /// Uses a batch update for efficiency. Silently succeeds if there are
   /// no unread notifications.
   Future<void> markAllRead(String uid) async {
-    final snap = await _ob
+    final collectionRef = _ob
         .collection(Collections.users)
         .doc(uid)
-        .subcollection(Collections.notifications)
+        .subcollection(Collections.notifications);
+    final unread = await collectionRef
         .where(Fields.isRead, isEqualTo: false)
         .get();
-    if (snap.isEmpty) return;
+    final legacyUnread = await collectionRef
+        .where('isRead', isEqualTo: false)
+        .get();
+    final docsById = {
+      for (final doc in unread.docs) doc.id: doc,
+      for (final doc in legacyUnread.docs) doc.id: doc,
+    };
+    if (docsById.isEmpty) return;
     final batch = _ob.batch();
     final collection = '${Collections.users}__${Collections.notifications}';
-    for (final doc in snap.docs) {
-      batch.update(collection, doc.id, {Fields.isRead: true});
+    for (final doc in docsById.values) {
+      batch.update(collection, doc.id, {Fields.isRead: true, 'isRead': true});
     }
     await batch.commit();
   }
@@ -52,7 +64,7 @@ class NotificationRepository {
         .doc(uid)
         .subcollection(Collections.notifications)
         .doc(notificationId)
-        .update({Fields.isRead: true});
+        .update({Fields.isRead: true, 'isRead': true});
   }
 
   /// Provides a realtime stream of notifications for the user, newest first.
@@ -87,16 +99,35 @@ class NotificationRepository {
           .toList();
     }
 
-    return Stream.multi((controller) async {
-      try {
-        controller.add(await fetchOrderedNotifications());
-      } catch (error, stackTrace) {
-        controller.addError(error, stackTrace);
-      }
+    if (!_enableRealtime) {
+      return Stream.fromFuture(fetchOrderedNotifications());
+    }
 
-      final realtime = RealtimeClient(_ob);
+    return Stream.multi((controller) async {
+      Timer? refreshTimer;
+      StreamSubscription<DocumentChange>? subscription;
+      RealtimeClient? realtime;
+
+      controller.onCancel = () {
+        refreshTimer?.cancel();
+        subscription?.cancel();
+        realtime?.disconnect();
+      };
+
+      realtime = RealtimeClient(_ob);
       realtime.connect();
-      final subscription = realtime
+      refreshTimer = Timer.periodic(const Duration(seconds: 3), (
+        _,
+      ) async {
+        try {
+          if (!controller.isClosed) {
+            controller.add(await fetchOrderedNotifications());
+          }
+        } catch (error, stackTrace) {
+          if (!controller.isClosed) controller.addError(error, stackTrace);
+        }
+      });
+      subscription = realtime
           .subscribe('${Collections.users}__${Collections.notifications}')
           .listen((change) async {
             final parentRef = change.document.data['parent_id'] as String?;
@@ -108,10 +139,13 @@ class NotificationRepository {
             }
           }, onError: controller.addError);
 
-      controller.onCancel = () {
-        subscription.cancel();
-        realtime.disconnect();
-      };
+      try {
+        if (!controller.isClosed) {
+          controller.add(await fetchOrderedNotifications());
+        }
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) controller.addError(error, stackTrace);
+      }
     });
   }
 }

@@ -22,6 +22,25 @@ function parseAgentEvalJson(raw: string): any {
   return typeof parsed === 'string' ? JSON.parse(parsed) : parsed;
 }
 
+const mobileHomeProductStateScript = `JSON.stringify((() => {
+  const text = document.body.innerText || '';
+  const labels = Array.from(document.querySelectorAll('*'))
+    .map((node) => [
+      node.getAttribute?.('aria-label') || '',
+      node.getAttribute?.('name') || '',
+      node.textContent || '',
+    ].join(' '))
+    .join('\\n');
+  const haystack = [text, labels].join('\\n');
+  return {
+    href: window.location.href,
+    splash: !!document.getElementById('splash'),
+    productMarkers: (haystack.match(/product-card-|btn-add-to-cart-/gi) || []).length,
+    hasProductText: /solar|iphone|macbook|lamp|watch|speaker|add to cart|ajouter au panier|añadir al carrito/i.test(haystack),
+    noProducts: /no products found|aucun produit|no se encontraron productos/i.test(haystack),
+  };
+})())`;
+
 // ═══ API-DRIVEN TESTS ═══
 
 describe('Search Filters & Sort — API', () => {
@@ -231,6 +250,65 @@ describe('Search Filters & Sort — UI', () => {
     expect(state?.splash).toBe(false);
   });
 
+  test('T12b: Mobile Canada filter keeps products visible before scrolling and sort stays stable', { timeout: 90_000 }, async () => {
+    browser.run(['set', 'viewport', '390', '844']);
+    await browser.open(HOME_URL);
+    await browser.waitForFlutter();
+    await browser.enableAccessibilityIfPresent().catch(() => false);
+    await browser.waitForChange({ text: /product-card-|btn-add-to-cart-|btn-home-canada-only/i, timeout: 15_000 });
+
+    const initialState = parseAgentEvalJson(browser.run(['eval', mobileHomeProductStateScript], 5_000));
+    expect(initialState?.href).toBe(HOME_URL);
+    expect(initialState?.splash).toBe(false);
+    expect(initialState?.noProducts).toBe(false);
+    expect(initialState?.productMarkers > 0 || initialState?.hasProductText).toBe(true);
+
+    const snap = await browser.snapshot({ interactive: true, compact: true });
+    const canadaChip = browser.findByLabel(snap, /btn-home-canada-only/i);
+    expect(canadaChip).toBeTruthy();
+    await browser.click(canadaChip!.ref);
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await browser.waitForFlutter(10_000);
+
+    const canadaState = parseAgentEvalJson(browser.run(['eval', mobileHomeProductStateScript], 5_000));
+    expect(canadaState?.href).toBe(HOME_URL);
+    expect(canadaState?.splash).toBe(false);
+    expect(canadaState?.noProducts).toBe(false);
+    expect(canadaState?.productMarkers > 0 || canadaState?.hasProductText).toBe(true);
+
+    const openedSort = await browser.safeClick(/btn-home-sort|sort/i);
+    expect(openedSort).toBe(true);
+    await browser.waitForChange({
+      text: /price:\s*high to low|prix.*décroiss|prix.*decroiss|most relevant|newest/i,
+      timeout: 10_000,
+    });
+    const selectedDescending = parseAgentEvalJson(browser.run([
+      'eval',
+      `JSON.stringify((() => {
+        const pattern = /price:\\s*high to low|prix.*décroiss|prix.*decroiss/i;
+        const target = Array.from(document.querySelectorAll('*')).find((node) => {
+          const text = [
+            node.getAttribute?.('aria-label') ?? '',
+            node.getAttribute?.('name') ?? '',
+            node.textContent ?? '',
+          ].join(' ');
+          return pattern.test(text);
+        });
+        if (!(target instanceof HTMLElement)) return false;
+        target.click();
+        return true;
+      })())`,
+    ], 5_000));
+    expect(selectedDescending).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await browser.waitForFlutter(10_000);
+
+    const sortedState = parseAgentEvalJson(browser.run(['eval', mobileHomeProductStateScript], 5_000));
+    expect(sortedState?.href).toBe(HOME_URL);
+    expect(sortedState?.splash).toBe(false);
+    expect(sortedState?.noProducts).toBe(false);
+  });
+
   test('T13: Price descending sort leaves home stable without reloading the app shell', { timeout: 60_000 }, async () => {
     await browser.open(HOME_URL);
     await browser.waitForFlutter();
@@ -282,25 +360,35 @@ describe('Search Filters & Sort — UI', () => {
     expect(browser.findByLabel(snap, /btn-home-sort|product-card-|input-home-search/i) || snap.refs.length > 0).toBeTruthy();
   });
 
-  test('T14: Repeated fast home-feed scrolling never reloads the web shell or resurfaces splash', { timeout: 90_000 }, async () => {
+  test('T14: Repeated fast home-feed scrolling never reloads the web shell or resurfaces splash', { timeout: 150_000 }, async () => {
     await browser.open(HOME_URL);
     await browser.waitForFlutter();
     await browser.enableAccessibilityIfPresent().catch(() => false);
 
-    for (let attempt = 0; attempt < 6; attempt += 1) {
+    const before = parseAgentEvalJson(browser.run([
+      'eval',
+      'JSON.stringify({marker:"home-fast-scroll",timeOrigin:performance.timeOrigin,href:window.location.href,splash:!!document.getElementById("splash")})',
+    ], 5_000));
+    browser.run([
+      'eval',
+      'window.__orignaHomeFastScrollMarker="home-fast-scroll"; true',
+    ], 5_000);
+
+    for (let attempt = 0; attempt < 12; attempt += 1) {
       await browser.scrollAndWait('down', 9_000);
     }
 
-    const state = parseAgentEvalJson(Bun.spawnSync(
-      ['agent-browser', 'eval', 'JSON.stringify({href:window.location.href,splash:!!document.getElementById("splash"),title:document.title})'],
-      {
-        env: { ...process.env, AGENT_BROWSER_ENGINE: process.env.AGENT_BROWSER_ENGINE ?? 'chrome' },
-        timeout: 5_000,
-      },
-    ).stdout.toString().trim());
+    const state = parseAgentEvalJson(browser.run([
+      'eval',
+      'JSON.stringify({href:window.location.href,splash:!!document.getElementById("splash"),title:document.title,timeOrigin:performance.timeOrigin,marker:window.__orignaHomeFastScrollMarker||null})',
+    ], 5_000));
 
+    expect(before?.href).toBe(HOME_URL);
+    expect(before?.splash).toBe(false);
     expect(state?.href).toBe(HOME_URL);
     expect(state?.splash).toBe(false);
+    expect(state?.marker).toBe('home-fast-scroll');
+    expect(state?.timeOrigin).toBe(before?.timeOrigin);
 
     const snap = await browser.snapshot({ interactive: true, compact: true });
     const raw = (snap.raw || '').toLowerCase();

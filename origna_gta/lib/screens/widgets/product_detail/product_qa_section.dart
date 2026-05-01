@@ -94,6 +94,7 @@ class _QASectionState extends ConsumerState<QASection> {
                 if (!isSeller && currentUserId != null)
                   ModernButton(
                     label: 'qa.ask_question'.tr(),
+                    semanticsLabel: 'btn-ask-qa-question',
                     icon: isPremium ? Icons.help_outline : Icons.lock_rounded,
                     isPrimary: isPremium,
                     isOutlined: !isPremium,
@@ -172,6 +173,7 @@ class _QASectionState extends ConsumerState<QASection> {
             const SizedBox(height: 16),
             ModernButton(
               label: 'qa.ask_question'.tr(),
+              semanticsLabel: 'btn-ask-qa-question',
               icon: isPremium ? Icons.help_outline : Icons.lock_rounded,
               isPrimary: isPremium,
               isOutlined: !isPremium,
@@ -314,11 +316,14 @@ class _QACard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      qa.question,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
+                    Semantics(
+                      label: 'qa-question-${qa.id}: ${qa.question}',
+                      child: Text(
+                        qa.question,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 4),

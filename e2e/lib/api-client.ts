@@ -2916,29 +2916,40 @@ export async function listUserAddresses(
   userId: string,
   token?: string,
 ): Promise<any[]> {
+  const shortUserId = userId.includes(":") ? userId.split(":").pop()! : userId;
   const query = `
     query ListAddresses($collection: String!, $filters: JSON) {
       list(collection: $collection, filters: $filters, limit: 200)
     }
   `;
-  const result = await obGraphQL(
-    query,
-    {
-      collection: "addresses",
-      filters: { userId: { _eq: userId } },
-    },
-    token,
-  );
-  if (!result.ok) return [];
-  const raw = parseGraphQLValue(result.body?.data?.list);
-  if (!Array.isArray(raw)) return [];
-  return raw
+  const rows: any[] = [];
+  for (const candidateUserId of [shortUserId, `users:${shortUserId}`]) {
+    const result = await obGraphQL(
+      query,
+      {
+        collection: "addresses",
+        filters: { userId: { _eq: candidateUserId } },
+      },
+      token,
+    );
+    if (!result.ok) continue;
+    const raw = parseGraphQLValue(result.body?.data?.list);
+    if (Array.isArray(raw)) rows.push(...raw);
+  }
+  const seen = new Set<string>();
+  return rows
     .filter((doc: any) => doc && typeof doc === "object")
     .map((doc: any) => {
       const { id, _id, _rev, _created, _updated, ...rest } = doc;
       const strippedId =
         typeof id === "string" && id.includes(":") ? id.split(":", 2)[1] : id;
-      return strippedId ? { id: strippedId, ...rest } : rest;
+      return strippedId ? { id: strippedId, addressId: strippedId, ...rest } : rest;
+    })
+    .filter((doc: any) => {
+      const key = String(doc.id ?? doc.addressId ?? JSON.stringify(doc));
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
 }
 

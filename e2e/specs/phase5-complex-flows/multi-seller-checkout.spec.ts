@@ -9,31 +9,23 @@
 import { test, expect, describe, beforeAll, beforeEach, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
 import {
-  signIn, callOk, callCallable, callExpectError,
-  writeDoc, deleteDoc, readDoc,
-  discoverProducts, getOrder,
-  fullMultiSellerCheckoutAndPay,
-  buildCheckoutPayload,
+  signIn, callExpectError,
+  writeDoc,
+  deleteDoc,
+  discoverProducts,
   buildMultiSellerPayload,
 } from '../../lib/api-client.js';
-import { TEST_ACCOUNTS, TEST_UIDS, WEB_APP_URL } from '../../lib/config.js';
+import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
 const BUYER_EMAIL = TEST_ACCOUNTS.BUYER_EMAIL;
 const BUYER_PASSWORD = TEST_ACCOUNTS.BUYER_PASS;
-const BUYER_BARE_ID = TEST_UIDS.BUYER.includes(':')
-  ? TEST_UIDS.BUYER.split(':')[1]
-  : TEST_UIDS.BUYER;
 
 // Stable E2E products from different sellers
 const ADMIN_PRODUCT_ID = 'e2e_product_admin_seller';   // sold by ADMIN
 const SELLER_PRODUCT_ID = 'e2e_product_test_seller';    // sold by SELLER
 
-function isRateLimited(e: any): boolean {
-  return /rate limit|duplicate order|not available|too many|province/i.test(String(e?.message ?? e ?? ''));
-}
-
-function isTransientError(e: any): boolean {
-  return /agent-browser.*failed|snapshot failed|exit null|internal error|Connection refused/i.test(String(e?.message ?? e ?? ''));
+function cartDocPath(localId: string, productId: string): string {
+  return `users/${localId}/cart/${localId}_${productId}`;
 }
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
@@ -44,7 +36,6 @@ async function loginAs(browser: AgentBrowser, email: string, password: string) {
 
 describe('Multi-Seller Checkout', () => {
   let browser: AgentBrowser;
-  let buyerToken: string;
   let adminProduct: { id: string; sellerId: string } | null = null;
   let sellerProduct: { id: string; sellerId: string } | null = null;
 
@@ -52,7 +43,6 @@ describe('Multi-Seller Checkout', () => {
     browser = new AgentBrowser();
 
     const auth = await signIn(BUYER_EMAIL);
-    buyerToken = auth.idToken;
 
     // Discover products to verify both sellers exist
     const products = await discoverProducts(auth.idToken);
@@ -70,8 +60,8 @@ describe('Multi-Seller Checkout', () => {
     // Clean up cart items
     try {
       const auth = await signIn(BUYER_EMAIL);
-      await deleteDoc(`users/${BUYER_BARE_ID}/cart/${ADMIN_PRODUCT_ID}`, auth.idToken).catch(() => {});
-      await deleteDoc(`users/${BUYER_BARE_ID}/cart/${SELLER_PRODUCT_ID}`, auth.idToken).catch(() => {});
+      await deleteDoc(cartDocPath(auth.localId, ADMIN_PRODUCT_ID), auth.idToken).catch(() => {});
+      await deleteDoc(cartDocPath(auth.localId, SELLER_PRODUCT_ID), auth.idToken).catch(() => {});
     } catch { /* best-effort cleanup */ }
     await browser.close();
   });
@@ -85,50 +75,56 @@ describe('Multi-Seller Checkout', () => {
   test('Buyer can add items from multiple sellers to cart via API', { timeout: 60_000 }, async () => {
     const auth = await signIn(BUYER_EMAIL);
 
-    // Clear cart first
-    await deleteDoc(`users/${BUYER_BARE_ID}/cart/${ADMIN_PRODUCT_ID}`, auth.idToken).catch(() => {});
-    await deleteDoc(`users/${BUYER_BARE_ID}/cart/${SELLER_PRODUCT_ID}`, auth.idToken).catch(() => {});
+    await deleteDoc(cartDocPath(auth.localId, ADMIN_PRODUCT_ID), auth.idToken).catch(() => {});
+    await deleteDoc(cartDocPath(auth.localId, SELLER_PRODUCT_ID), auth.idToken).catch(() => {});
 
-    // Add admin product to cart
-    const cartItem1 = {
-      productId: ADMIN_PRODUCT_ID,
+    const cartBase = {
       quantity: 1,
+      createdAt: new Date().toISOString(),
       dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER,
-      parent_id: TEST_UIDS.BUYER,
+      userId: auth.localId,
     };
-    const written1 = await writeDoc(`users/${BUYER_BARE_ID}/cart/${ADMIN_PRODUCT_ID}`, cartItem1, auth.idToken, false);
+    const written1 = await writeDoc(
+      cartDocPath(auth.localId, ADMIN_PRODUCT_ID),
+      { ...cartBase, productId: ADMIN_PRODUCT_ID },
+      auth.idToken,
+      false,
+    );
     expect(written1).toBe(true);
 
-    // Add seller product to cart
-    const cartItem2 = {
-      productId: SELLER_PRODUCT_ID,
-      quantity: 1,
-      dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER,
-      parent_id: TEST_UIDS.BUYER,
-    };
-    const written2 = await writeDoc(`users/${BUYER_BARE_ID}/cart/${SELLER_PRODUCT_ID}`, cartItem2, auth.idToken, false);
+    const written2 = await writeDoc(
+      cartDocPath(auth.localId, SELLER_PRODUCT_ID),
+      { ...cartBase, productId: SELLER_PRODUCT_ID },
+      auth.idToken,
+      false,
+    );
     expect(written2).toBe(true);
   });
 
   test('Cart UI shows items from multiple sellers', { timeout: 90_000 }, async () => {
     // First add items via API
     const auth = await signIn(BUYER_EMAIL);
-    await deleteDoc(`users/${BUYER_BARE_ID}/cart/${ADMIN_PRODUCT_ID}`, auth.idToken).catch(() => {});
-    await deleteDoc(`users/${BUYER_BARE_ID}/cart/${SELLER_PRODUCT_ID}`, auth.idToken).catch(() => {});
+    await deleteDoc(cartDocPath(auth.localId, ADMIN_PRODUCT_ID), auth.idToken).catch(() => {});
+    await deleteDoc(cartDocPath(auth.localId, SELLER_PRODUCT_ID), auth.idToken).catch(() => {});
 
-    await writeDoc(`users/${BUYER_BARE_ID}/cart/${ADMIN_PRODUCT_ID}`, {
-      productId: ADMIN_PRODUCT_ID, quantity: 1,
+    const cartBase = {
+      quantity: 1,
+      createdAt: new Date().toISOString(),
       dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER, parent_id: TEST_UIDS.BUYER,
-    }, auth.idToken, false);
-
-    await writeDoc(`users/${BUYER_BARE_ID}/cart/${SELLER_PRODUCT_ID}`, {
-      productId: SELLER_PRODUCT_ID, quantity: 1,
-      dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER, parent_id: TEST_UIDS.BUYER,
-    }, auth.idToken, false);
+      userId: auth.localId,
+    };
+    await writeDoc(
+      cartDocPath(auth.localId, ADMIN_PRODUCT_ID),
+      { ...cartBase, productId: ADMIN_PRODUCT_ID },
+      auth.idToken,
+      false,
+    );
+    await writeDoc(
+      cartDocPath(auth.localId, SELLER_PRODUCT_ID),
+      { ...cartBase, productId: SELLER_PRODUCT_ID },
+      auth.idToken,
+      false,
+    );
 
     // Login and navigate to cart
     await loginAs(browser, BUYER_EMAIL, BUYER_PASSWORD);
@@ -147,7 +143,6 @@ describe('Multi-Seller Checkout', () => {
 
   test('Multi-seller checkout is rejected until buyers split checkout per seller', { timeout: 120_000 }, async () => {
     if (!adminProduct || !sellerProduct) {
-      console.log('Skipped: multi-seller products not available');
       return;
     }
 

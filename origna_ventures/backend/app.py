@@ -79,6 +79,10 @@ class Settings:
         "https://orignaventures.ca,https://www.orignaventures.ca,http://localhost:3000,http://localhost:5000,http://localhost:8080",
     )
     support_email: str = os.getenv("ORIGNA_SUPPORT_EMAIL", "support@orignaventures.ca")
+    support_delivery_email: str = os.getenv(
+        "ORIGNA_SUPPORT_DELIVERY_EMAIL",
+        os.getenv("ORIGNA_SUPPORT_EMAIL", "support@orignaventures.ca"),
+    )
     support_phone: str = os.getenv("ORIGNA_SUPPORT_PHONE", "4167865517")
     company_legal_name: str = os.getenv(
         "ORIGNA_COMPANY_LEGAL_NAME", "1001475263 ONTARIO CORPORATION"
@@ -178,31 +182,6 @@ def render_contact_support_email(
     safe_message: str,
     ip: str,
 ) -> tuple[str, str]:
-    html_body = (
-        "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;"
-        "padding:24px;'>"
-        "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;"
-        "padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
-        "<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;"
-        "letter-spacing:0.12em;text-transform:uppercase;'>New contact form submission</p>"
-        f"<h2 style='margin:0 0 18px;font-size:28px;line-height:1.2;'>{safe_name}</h2>"
-        "<table style='width:100%;border-collapse:collapse;margin:0 0 18px;'>"
-        f"<tr><td style='padding:8px 0;color:#9aa3c7;'>Email</td><td style='padding:8px 0;"
-        f"color:#ffffff;text-align:right;'>{safe_email}</td></tr>"
-        f"<tr><td style='padding:8px 0;color:#9aa3c7;'>Company</td><td style='padding:8px 0;"
-        f"color:#ffffff;text-align:right;'>{safe_company or 'N/A'}</td></tr>"
-        f"<tr><td style='padding:8px 0;color:#9aa3c7;'>Service</td><td style='padding:8px 0;"
-        f"color:#ffffff;text-align:right;'>{safe_service}</td></tr>"
-        "</table>"
-        "<div style='padding:18px;border-radius:14px;background:#101227;border:1px solid "
-        "rgba(255,255,255,0.06);margin:0 0 18px;'>"
-        "<p style='margin:0 0 8px;color:#9aa3c7;font-size:12px;text-transform:uppercase;"
-        "letter-spacing:0.08em;'>Message</p>"
-        f"<p style='margin:0;white-space:pre-wrap;line-height:1.6;color:#ffffff;'>{safe_message}</p>"
-        "</div>"
-        f"<p style='margin:0;color:#8b90aa;font-size:12px;'>IP: {ip} · Time: {utc_now()}</p>"
-        "</div></div>"
-    )
     text_body = (
         f"New contact form submission\n\n"
         f"Name: {safe_name}\n"
@@ -213,41 +192,13 @@ def render_contact_support_email(
         f"IP: {ip}\n"
         f"Time: {utc_now()}"
     )
-    return html_body, text_body
-
-
-def render_contact_confirmation_email(
-    *, safe_name: str, safe_service: str, safe_message: str
-) -> tuple[str, str]:
     html_body = (
-        "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;"
-        "padding:24px;'>"
-        "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;"
-        "padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
-        "<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;"
-        "letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures</p>"
-        f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>Thanks, {safe_name}.</h2>"
-        "<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>"
-        "We received your message and sent it directly to our support desk at "
-        f"{html_escape(settings.support_email)}. A human reply should reach you within 24 hours."
-        "</p>"
-        "<div style='padding:18px;border-radius:14px;background:#101227;border:1px solid "
-        "rgba(255,255,255,0.06);margin:0 0 18px;'>"
-        f"<p style='margin:0 0 8px;color:#9aa3c7;'><strong>Service interest:</strong> {safe_service}</p>"
-        f"<p style='margin:0;white-space:pre-wrap;line-height:1.6;color:#ffffff;'>{safe_message}</p>"
-        "</div>"
-        "<p style='margin:0;color:#9aa3c7;line-height:1.6;'>"
-        "If your request is urgent, reply to this email or contact support@orignaventures.ca."
-        "</p>"
-        "</div></div>"
-    )
-    text_body = (
-        f"Thanks, {safe_name}.\n\n"
-        "We received your message and sent it to our support team.\n"
-        f"Service interest: {safe_service}\n\n"
-        f"Your message:\n{safe_message}\n\n"
-        "We aim to reply within 24 hours.\n"
-        f"Support: {settings.support_email}\n"
+        "<div style='font-family:Arial,sans-serif;background:#f5f7fb;color:#111827;padding:24px;'>"
+        "<div style='max-width:640px;margin:0 auto;background:#ffffff;border-radius:8px;padding:24px;border:1px solid #e5e7eb;'>"
+        f"{render_email_brand_header()}"
+        "<pre style='font-family:Arial,sans-serif;white-space:pre-wrap;color:#111827;margin:0;'>"
+        + text_body
+        + "</pre></div></div>"
     )
     return html_body, text_body
 
@@ -323,6 +274,7 @@ def render_payment_receipt_email(
             "padding:24px;'>"
             "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;"
             "padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+            f"{render_email_brand_header()}"
             f"<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;"
             f"letter-spacing:0.12em;text-transform:uppercase;'>{html_escape(subject)}</p>"
             f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>{html_escape(heading)}</h2>"
@@ -373,6 +325,7 @@ def render_payment_receipt_email(
         html_body = (
             "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;padding:24px;'>"
             "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+            f"{render_email_brand_header()}"
             "<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures</p>"
             "<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>Payment receipt / Recu de paiement</h2>"
             "<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>English and French summary below.</p>"
@@ -449,6 +402,7 @@ def render_support_payment_notification_email(
     html_body = (
         "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;padding:24px;'>"
         "<div style='max-width:680px;margin:0 auto;background:#171933;border-radius:18px;padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+        f"{render_email_brand_header()}"
         "<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures payment notification</p>"
         f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>{html_escape(service_name)}</h2>"
         "<table style='width:100%;border-collapse:collapse;margin:0 0 18px;'>"
@@ -539,6 +493,7 @@ def render_subscription_lifecycle_email(
         html_body = (
             "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;padding:24px;'>"
             "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+            f"{render_email_brand_header()}"
             f"<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures</p>"
             f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>{html_escape(heading_fr)}</h2>"
             f"<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>{html_escape(body_fr)}</p>"
@@ -553,6 +508,7 @@ def render_subscription_lifecycle_email(
         html_body = (
             "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;padding:24px;'>"
             "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+            f"{render_email_brand_header()}"
             f"<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures</p>"
             f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>{html_escape(heading_en)}</h2>"
             f"<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>{html_escape(body_en)}</p>"
@@ -566,6 +522,7 @@ def render_subscription_lifecycle_email(
     html_body = (
         "<div style='font-family:Arial,sans-serif;background:#0f1022;color:#f5f7ff;padding:24px;'>"
         "<div style='max-width:640px;margin:0 auto;background:#171933;border-radius:18px;padding:28px;border:1px solid rgba(255,255,255,0.08);'>"
+        f"{render_email_brand_header()}"
         f"<p style='margin:0 0 10px;color:#8ea0ff;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;'>Origna Ventures</p>"
         f"<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>{html_escape(heading_en)}</h2>"
         f"<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>{html_escape(body_en)}</p>"
@@ -1140,7 +1097,7 @@ def submit_contact(payload: ContactFormRequest, request: Request) -> Dict[str, A
     safe_company = html_escape(payload.company)
     safe_service = html_escape(payload.service)
     safe_message = html_escape(payload.message)
-    subject = f"Contact form: {safe_service} — {safe_name}"
+    subject = "New Origna Ventures inquiry"
     support_html, support_text = render_contact_support_email(
         safe_name=safe_name,
         safe_email=safe_email,
@@ -1149,41 +1106,19 @@ def submit_contact(payload: ContactFormRequest, request: Request) -> Dict[str, A
         safe_message=safe_message,
         ip=ip,
     )
-    confirmation_html, confirmation_text = render_contact_confirmation_email(
-        safe_name=safe_name,
-        safe_service=safe_service,
-        safe_message=safe_message,
-    )
-    email_results = {
-        entry["to_email"]: entry["result"]
-        for entry in dispatch_email_jobs(
-            [
-                {
-                    "to_email": settings.support_email,
-                    "subject": subject,
-                    "html_body": support_html,
-                    "text_body": support_text,
-                    "reply_to_email": payload.email,
-                    "reply_to_name": payload.name,
-                },
-                {
-                    "to_email": payload.email,
-                    "subject": "We received your message — Origna Ventures",
-                    "html_body": confirmation_html,
-                    "text_body": confirmation_text,
-                    "reply_to_email": settings.support_email,
-                    "reply_to_name": settings.postal_from_name,
-                },
-            ]
-        )
-    }
-    support_email_result = email_results.get(
-        settings.support_email,
-        {"status": "failed", "reason": "dispatch_missing"},
-    )
-    confirmation_email_result = email_results.get(
-        payload.email,
-        {"status": "failed", "reason": "dispatch_missing"},
+    email_jobs = [
+        {
+            "to_email": settings.support_delivery_email,
+            "subject": subject,
+            "html_body": support_html,
+            "text_body": support_text,
+        },
+    ]
+    email_results = dispatch_email_jobs(email_jobs)
+    support_email_result = (
+        email_results[0]["result"]
+        if len(email_results) > 0
+        else {"status": "failed", "reason": "dispatch_missing"}
     )
     with db_conn() as conn:
         conn.execute(
@@ -1210,9 +1145,6 @@ def submit_contact(payload: ContactFormRequest, request: Request) -> Dict[str, A
         "emails": {
             "support": {
                 k: v for k, v in support_email_result.items() if k != "response"
-            },
-            "confirmation": {
-                k: v for k, v in confirmation_email_result.items() if k != "response"
             },
         },
     }
@@ -1298,6 +1230,22 @@ def enforce_rate_limit(key: str, limit: int, window_seconds: int) -> None:
 
 def html_escape(value: str) -> str:
     return html.escape(value, quote=True)
+
+
+_EMAIL_LOGO_URL = "https://orignaventures.ca/brand/origna-ventures-logo-192.png"
+
+
+def render_email_brand_header() -> str:
+    return (
+        "<div style='display:flex;align-items:center;gap:12px;margin:0 0 22px;'>"
+        f"<img src='{_EMAIL_LOGO_URL}' alt='Origna Ventures' width='48' height='48' "
+        "style='display:block;width:48px;height:48px;border-radius:12px;'>"
+        "<div>"
+        "<p style='margin:0;color:#ffffff;font-size:16px;font-weight:800;'>Origna Ventures</p>"
+        "<p style='margin:3px 0 0;color:#9aa3c7;font-size:12px;'>Software services and ecommerce systems</p>"
+        "</div>"
+        "</div>"
+    )
 
 
 def normalize_email_attachments(
@@ -1759,7 +1707,7 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
                 if not payment_already_paid:
                     pending_emails.append(
                         {
-                            "to_email": settings.support_email,
+                            "to_email": settings.support_delivery_email,
                             "subject": support_subject,
                             "html_body": support_html,
                             "text_body": support_text,

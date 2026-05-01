@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:origna_gta/features/checkout/checkout_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/core/repositories/order_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -35,6 +36,7 @@ void main() {
         userRepositoryProvider.overrideWithValue(mockUserRepo),
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         obUserIdProvider.overrideWithValue('user_123'),
+        cartWithDetailsProvider.overrideWith((ref) async => []),
       ],
     );
   });

@@ -43,6 +43,37 @@ void main() {
       expect(model.answeredBy, 'seller1');
     });
 
+    test('fromMap parses snake_case OrignaBase question fields', () {
+      final model = QAModel.fromMap('doc_snake', {
+        'question_text': 'Does live Q&A render the submitted text?',
+        'asker_id': 'buyer-snake',
+        Fields.createdAt: '2026-05-01T10:15:00.000Z',
+        'answer_text': 'Yes, snake_case fields are supported.',
+        'answered_at': '2026-05-01T10:20:00.000Z',
+        'answered_by': 'seller-snake',
+      });
+
+      expect(model.question, 'Does live Q&A render the submitted text?');
+      expect(model.authorId, 'buyer-snake');
+      expect(model.answer, 'Yes, snake_case fields are supported.');
+      expect(model.answeredAt, DateTime.parse('2026-05-01T10:20:00.000Z'));
+      expect(model.answeredBy, 'seller-snake');
+    });
+
+    test('fromMap parses live OrignaBase API camelCase question fields', () {
+      final model = QAModel.fromMap('doc_api', {
+        'questionId': 'doc_api',
+        'questionText': 'Does the live API question text render?',
+        'answerText': 'Yes, camelCase API fields are supported.',
+        'createdAt': '2026-05-01T10:25:00.000Z',
+        'answeredAt': '2026-05-01T10:30:00.000Z',
+      });
+
+      expect(model.question, 'Does the live API question text render?');
+      expect(model.answer, 'Yes, camelCase API fields are supported.');
+      expect(model.answeredAt, DateTime.parse('2026-05-01T10:30:00.000Z'));
+    });
+
     test('toMap writes basic fields', () {
       final model = QAModel(
         id: 'doc3',

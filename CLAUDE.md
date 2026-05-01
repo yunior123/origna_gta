@@ -174,6 +174,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
 - use at least this:use real yr62813@gmail.com for testing e2e ui interactions live.
 - we are a mixture of amazon + instacart
 - surreal is gone, mailjet is gone. make sure there are no references to those in whole repo
+- always prefer AgentBrowser, update if needed, playwright is secondary
 
 ## Current Hot Path
 
@@ -185,6 +186,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
 - OrignaVentures contact/email sending is live-green again; direct live API responses report support + confirmation emails with `status=sent`.
 - Production checkout/payment verification remains a manual final gate; use non-destructive probes unless explicit approval is given for a real charge.
 - Remaining active investigation item: home cart badge update after add-to-cart still needs deeper live audit.
+-dont fucking use spam fabricated email that could ban us with gmail
 
 ## Observability
 

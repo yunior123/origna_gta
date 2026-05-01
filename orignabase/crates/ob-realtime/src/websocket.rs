@@ -24,6 +24,8 @@ const ALLOWED_COLLECTIONS: &[&str] = &[
     "favorites",
     "notifications",
     "users__notifications",
+    "chats",
+    "chats__messages",
     "chat_messages",
     "chat_threads",
     "product_questions",

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/repositories/cart_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/models/models.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// OrignaBase implementation of [CartRepository].
 ///
@@ -73,6 +76,47 @@ class OrignaBaseCartRepository implements CartRepository {
       }
     }
     return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Future<List<CartItemModel>> _fetchCartViaGraphQL(String userId) async {
+    final bareId = userId.contains(':') ? userId.split(':').last : userId;
+    final response = await _ob.request(
+      'POST',
+      '/graphql',
+      body: {
+        'query':
+            'query(\$collection:String!,\$filters:JSON,\$limit:Int){ list(collection:\$collection, filters:\$filters, limit:\$limit) }',
+        'variables': {
+          'collection': '${Collections.users}__${Collections.cart}',
+          'filters': {
+            Fields.parentId: {'_eq': '${Collections.users}:$bareId'},
+          },
+          'limit': 100,
+        },
+      },
+    );
+
+    final data = response['data'];
+    final rawList = data is Map ? data['list'] : response['list'];
+    if (rawList is! List) return const <CartItemModel>[];
+
+    final items = <CartItemModel>[];
+    for (final raw in rawList) {
+      if (raw is! Map) continue;
+      final map = raw.map((key, value) => MapEntry(key.toString(), value));
+      final docId = map['id']?.toString();
+      try {
+        final item = CartItemModel.fromMap(map, docId: docId);
+        if (item.quantity > 0) items.add(item);
+      } catch (error) {
+        AppLogger.w(
+          'Skipping malformed GraphQL cart item',
+          tag: 'cart',
+          error: error,
+        );
+      }
+    }
+    return items;
   }
 
   /// Adds a specified quantity of a product (or variant) to the user's cart.
@@ -380,34 +424,116 @@ class OrignaBaseCartRepository implements CartRepository {
   /// document changes (create, update, delete). Items are sorted by creation date.
   @override
   Stream<List<CartItemModel>> watchCart(String userId) {
-    return (() async* {
-      final cartRef = _cartRef(userId);
-      final state = <String, CartItemModel>{};
+    late StreamController<List<CartItemModel>> controller;
+    StreamSubscription<DocumentChange>? realtimeSub;
+    Timer? refreshTimer;
 
-      final initial = await cartRef.get();
-      for (final doc in initial.docs) {
-        final item = CartItemModel.fromMap(doc.data, docId: doc.id);
-        if (item.quantity > 0) {
-          state[doc.id] = item;
+    controller = StreamController<List<CartItemModel>>(
+      onListen: () async {
+        final state = <String, CartItemModel>{};
+        try {
+          final cartRef = _cartRef(userId);
+
+          Future<void> fetchAndEmit() async {
+            try {
+              state.clear();
+              for (final item in await _fetchCartViaGraphQL(userId)) {
+                state[item.cartItemId] = item;
+              }
+              if (!controller.isClosed) {
+                controller.add(_sortedCartItems(state));
+              }
+            } catch (error, _) {
+              if (!controller.isClosed) {
+                AppLogger.w(
+                  'Cart realtime refresh failed; keeping last known state',
+                  tag: 'cart',
+                  error: error,
+                );
+                controller.add(_sortedCartItems(state));
+              }
+            }
+          }
+
+          await fetchAndEmit();
+
+          refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+            unawaited(fetchAndEmit());
+          });
+
+          try {
+            realtimeSub = cartRef.snapshots().listen(
+              (change) {
+                try {
+                  if (!change.document.exists) {
+                    state.remove(change.document.id);
+                  } else {
+                    final item = CartItemModel.fromMap(
+                      change.document.data,
+                      docId: change.document.id,
+                    );
+                    if (item.quantity <= 0) {
+                      state.remove(change.document.id);
+                    } else {
+                      state[change.document.id] = item;
+                    }
+                  }
+
+                  if (!controller.isClosed) {
+                    controller.add(_sortedCartItems(state));
+                  }
+                } catch (error) {
+                  AppLogger.w(
+                    'Skipping malformed cart realtime change',
+                    tag: 'cart',
+                    error: error,
+                  );
+                  if (!controller.isClosed) {
+                    controller.add(_sortedCartItems(state));
+                  }
+                }
+              },
+              onError: (Object error, StackTrace _) {
+                if (controller.isClosed) return;
+                AppLogger.w(
+                  'Cart realtime subscription failed; keeping last known state',
+                  tag: 'cart',
+                  error: error,
+                );
+                controller.add(_sortedCartItems(state));
+              },
+            );
+          } catch (error) {
+            AppLogger.w(
+              'Cart realtime subscription setup failed; polling remains active',
+              tag: 'cart',
+              error: error,
+            );
+            if (!controller.isClosed) {
+              scheduleMicrotask(() {
+                if (controller.isClosed) return;
+                controller.add(_sortedCartItems(state));
+              });
+            }
+          }
+        } catch (error) {
+          if (!controller.isClosed) {
+            AppLogger.w(
+              'Cart stream setup failed; emitting last known state',
+              tag: 'cart',
+              error: error,
+            );
+            controller.add(_sortedCartItems(state));
+          }
         }
-      }
-      yield _sortedCartItems(state);
+      },
+      onCancel: () {
+        refreshTimer?.cancel();
+        realtimeSub?.cancel();
+      },
+    );
 
-      await for (final change in cartRef.snapshots()) {
-        final item = CartItemModel.fromMap(
-          change.document.data,
-          docId: change.document.id,
-        );
-
-        if (!change.document.exists || item.quantity <= 0) {
-          state.remove(change.document.id);
-        } else {
-          state[change.document.id] = item;
-        }
-
-        yield _sortedCartItems(state);
-      }
-    })();
+    return controller.stream;
   }
 
   List<CartItemModel> _sortedCartItems(Map<String, CartItemModel> state) {

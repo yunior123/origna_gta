@@ -9,7 +9,7 @@ import fitz
 from PIL import Image, ImageStat
 
 SCREENSHOT_RE = re.compile(
-    r"^\d{3}-(?:live|mockup)-(gta|ventures)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
+    r"^\d{3}-(?:live|mockup)-(gta)-.+-desktop-(1280|1440|1600|1728)-y\d{5}\.png$"
 )
 PDF_NAME_RE = re.compile(r"\d{3}-(?:live|mockup)-[^\s]+?\.png")
 BAD_NAME_RE = re.compile(
@@ -42,11 +42,26 @@ REQUIRED_SCREENSHOT_TARGETS = (
     "gta-admin-seller-products",
     "gta-admin-payment-monitor",
     "gta-admin-security",
-    "ventures-contact-form",
-    "ventures-service-tiers",
-    "ventures-project-intake",
-    "ventures-delivery-tracker",
-    "ventures-payment-handoff",
+    "gta-admin-api-operations-plan",
+    "gta-buyer-payment-to-delivery-flow",
+    "gta-auth-login",
+    "gta-auth-mfa-challenge",
+    "gta-auth-mfa-setup",
+    "gta-buyer-address-edit",
+    "gta-buyer-order-detail",
+    "gta-buyer-return-request",
+    "gta-buyer-payment-success",
+    "gta-buyer-payment-cancel",
+    "gta-buyer-order-success",
+    "gta-buyer-shipping-approval",
+    "gta-seller-registration",
+    "gta-seller-return-refresh",
+    "gta-seller-edit-product",
+    "gta-product-details-legacy",
+    "gta-admin-tabs-all",
+    "gta-legal-privacy",
+    "gta-legal-terms",
+    "gta-auth-reset-password",
 )
 
 
@@ -54,11 +69,24 @@ def validate_screenshots(path: Path, expected_count: int) -> None:
     files = sorted(path.glob("*.png"))
     issues: list[str] = []
     hashes: dict[str, str] = {}
+    live_targets: dict[str, str] = {}
     for index, file in enumerate(files, start=1):
         match = SCREENSHOT_RE.fullmatch(file.name)
         if not match:
             issues.append(f"bad screenshot name: {file.name}")
             continue
+        if "-live-" in file.name:
+            target = re.sub(
+                r"^\d{3}-live-(.+)-desktop-\d+-y\d{5}\.png$",
+                r"\1",
+                file.name,
+            )
+            if target in live_targets:
+                issues.append(
+                    f"repeated live screenshot target: {file.name} repeats {live_targets[target]}"
+                )
+            else:
+                live_targets[target] = file.name
         image_hash = hashlib.sha256(file.read_bytes()).hexdigest()
         if image_hash in hashes:
             issues.append(f"duplicate screenshot: {file.name} matches {hashes[image_hash]}")
@@ -78,6 +106,8 @@ def validate_screenshots(path: Path, expected_count: int) -> None:
     if len(files) != expected_count:
         issues.append(f"expected {expected_count} screenshots, found {len(files)}")
     names = "\n".join(file.name for file in files)
+    if "ventures" in names.lower():
+        issues.append("ecommerce deck screenshots must not include OrignaVentures/ventures images")
     for target in REQUIRED_SCREENSHOT_TARGETS:
         if target not in names:
             issues.append(f"missing required screenshot target: {target}")

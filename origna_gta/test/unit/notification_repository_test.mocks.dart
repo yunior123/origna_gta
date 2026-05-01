@@ -146,6 +146,17 @@ class _FakeQuerySnapshot_18 extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
+class _FakeAuthState_19 extends _i1.SmartFake implements _i3.AuthState {
+  _FakeAuthState_19(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeMfaSetupResult_20 extends _i1.SmartFake
+    implements _i3.MfaSetupResult {
+  _FakeMfaSetupResult_20(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [OrignaBase].
 ///
 /// See the documentation for Mockito's code generation for more information.
@@ -1519,4 +1530,537 @@ class MockWriteBatch extends _i1.Mock implements _i14.WriteBatch {
                 ),
           )
           as _i20.Future<List<Map<String, dynamic>>>);
+}
+
+/// A class which mocks [OrignaBaseAuth].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockOrignaBaseAuth extends _i1.Mock implements _i3.OrignaBaseAuth {
+  @override
+  _i20.Stream<_i3.AuthState> get authStateChanges =>
+      (super.noSuchMethod(
+            Invocation.getter(#authStateChanges),
+            returnValue: _i20.Stream<_i3.AuthState>.empty(),
+            returnValueForMissingStub: _i20.Stream<_i3.AuthState>.empty(),
+          )
+          as _i20.Stream<_i3.AuthState>);
+
+  @override
+  Map<String, dynamic> get currentClaims =>
+      (super.noSuchMethod(
+            Invocation.getter(#currentClaims),
+            returnValue: <String, dynamic>{},
+            returnValueForMissingStub: <String, dynamic>{},
+          )
+          as Map<String, dynamic>);
+
+  @override
+  List<String> get currentRoles =>
+      (super.noSuchMethod(
+            Invocation.getter(#currentRoles),
+            returnValue: <String>[],
+            returnValueForMissingStub: <String>[],
+          )
+          as List<String>);
+
+  @override
+  bool get isEmailVerified =>
+      (super.noSuchMethod(
+            Invocation.getter(#isEmailVerified),
+            returnValue: false,
+            returnValueForMissingStub: false,
+          )
+          as bool);
+
+  @override
+  _i3.AuthState get currentState =>
+      (super.noSuchMethod(
+            Invocation.getter(#currentState),
+            returnValue: _FakeAuthState_19(
+              this,
+              Invocation.getter(#currentState),
+            ),
+            returnValueForMissingStub: _FakeAuthState_19(
+              this,
+              Invocation.getter(#currentState),
+            ),
+          )
+          as _i3.AuthState);
+
+  @override
+  _i20.Future<_i3.AuthState> register(
+    String? email,
+    String? password, {
+    String? turnstileToken,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #register,
+              [email, password],
+              {#turnstileToken: turnstileToken},
+            ),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #register,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #register,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> signInWithEmail(
+    String? email,
+    String? password, {
+    String? turnstileToken,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #signInWithEmail,
+              [email, password],
+              {#turnstileToken: turnstileToken},
+            ),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #signInWithEmail,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #signInWithEmail,
+                  [email, password],
+                  {#turnstileToken: turnstileToken},
+                ),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> refreshToken() =>
+      (super.noSuchMethod(
+            Invocation.method(#refreshToken, []),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(this, Invocation.method(#refreshToken, [])),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(this, Invocation.method(#refreshToken, [])),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> signInWithGoogle(String? idToken) =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithGoogle, [idToken]),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInWithGoogle, [idToken]),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInWithGoogle, [idToken]),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> signInWithApple(
+    String? authorizationCode, {
+    String? displayName,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #signInWithApple,
+              [authorizationCode],
+              {#displayName: displayName},
+            ),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #signInWithApple,
+                  [authorizationCode],
+                  {#displayName: displayName},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #signInWithApple,
+                  [authorizationCode],
+                  {#displayName: displayName},
+                ),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> signInWithOidc(String? accessToken) =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithOidc, [accessToken]),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInWithOidc, [accessToken]),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInWithOidc, [accessToken]),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<void> forgotPassword(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#forgotPassword, [email]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<void> resetPassword(String? token, String? newPassword) =>
+      (super.noSuchMethod(
+            Invocation.method(#resetPassword, [token, newPassword]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<_i3.AuthState> signInAnonymously() =>
+      (super.noSuchMethod(
+            Invocation.method(#signInAnonymously, []),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInAnonymously, []),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#signInAnonymously, []),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> upgradeAnonymous(
+    String? email,
+    String? password, {
+    String? displayName,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #upgradeAnonymous,
+              [email, password],
+              {#displayName: displayName},
+            ),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #upgradeAnonymous,
+                  [email, password],
+                  {#displayName: displayName},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(
+                  #upgradeAnonymous,
+                  [email, password],
+                  {#displayName: displayName},
+                ),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<void> sendMagicLink(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#sendMagicLink, [email]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<_i3.AuthState> verifyMagicLink(String? token) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyMagicLink, [token]),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#verifyMagicLink, [token]),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#verifyMagicLink, [token]),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<void> sendEmailVerification() =>
+      (super.noSuchMethod(
+            Invocation.method(#sendEmailVerification, []),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<void> verifyEmail(String? token) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyEmail, [token]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<_i3.MfaSetupResult> setupMfa() =>
+      (super.noSuchMethod(
+            Invocation.method(#setupMfa, []),
+            returnValue: _i20.Future<_i3.MfaSetupResult>.value(
+              _FakeMfaSetupResult_20(this, Invocation.method(#setupMfa, [])),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.MfaSetupResult>.value(
+              _FakeMfaSetupResult_20(this, Invocation.method(#setupMfa, [])),
+            ),
+          )
+          as _i20.Future<_i3.MfaSetupResult>);
+
+  @override
+  _i20.Future<List<String>> verifyMfaSetup(String? totpCode) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyMfaSetup, [totpCode]),
+            returnValue: _i20.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i20.Future<List<String>>.value(
+              <String>[],
+            ),
+          )
+          as _i20.Future<List<String>>);
+
+  @override
+  _i20.Future<_i3.AuthState> verifyMfaChallenge(
+    String? challengeToken,
+    String? totpCode,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#verifyMfaChallenge, [challengeToken, totpCode]),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#verifyMfaChallenge, [
+                  challengeToken,
+                  totpCode,
+                ]),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#verifyMfaChallenge, [
+                  challengeToken,
+                  totpCode,
+                ]),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<_i3.AuthState> useMfaRecoveryCode(
+    String? challengeToken,
+    String? recoveryCode,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#useMfaRecoveryCode, [
+              challengeToken,
+              recoveryCode,
+            ]),
+            returnValue: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#useMfaRecoveryCode, [
+                  challengeToken,
+                  recoveryCode,
+                ]),
+              ),
+            ),
+            returnValueForMissingStub: _i20.Future<_i3.AuthState>.value(
+              _FakeAuthState_19(
+                this,
+                Invocation.method(#useMfaRecoveryCode, [
+                  challengeToken,
+                  recoveryCode,
+                ]),
+              ),
+            ),
+          )
+          as _i20.Future<_i3.AuthState>);
+
+  @override
+  _i20.Future<void> disableMfa(String? totpCode) =>
+      (super.noSuchMethod(
+            Invocation.method(#disableMfa, [totpCode]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<List<Map<String, dynamic>>> getLoginHistory({
+    int? limit = 20,
+    int? offset = 0,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#getLoginHistory, [], {
+              #limit: limit,
+              #offset: offset,
+            }),
+            returnValue: _i20.Future<List<Map<String, dynamic>>>.value(
+              <Map<String, dynamic>>[],
+            ),
+            returnValueForMissingStub:
+                _i20.Future<List<Map<String, dynamic>>>.value(
+                  <Map<String, dynamic>>[],
+                ),
+          )
+          as _i20.Future<List<Map<String, dynamic>>>);
+
+  @override
+  _i20.Future<List<Map<String, dynamic>>> getKnownDevices() =>
+      (super.noSuchMethod(
+            Invocation.method(#getKnownDevices, []),
+            returnValue: _i20.Future<List<Map<String, dynamic>>>.value(
+              <Map<String, dynamic>>[],
+            ),
+            returnValueForMissingStub:
+                _i20.Future<List<Map<String, dynamic>>>.value(
+                  <Map<String, dynamic>>[],
+                ),
+          )
+          as _i20.Future<List<Map<String, dynamic>>>);
+
+  @override
+  _i20.Future<void> removeDevice(String? deviceId) =>
+      (super.noSuchMethod(
+            Invocation.method(#removeDevice, [deviceId]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<List<Map<String, dynamic>>> getSecurityAlerts() =>
+      (super.noSuchMethod(
+            Invocation.method(#getSecurityAlerts, []),
+            returnValue: _i20.Future<List<Map<String, dynamic>>>.value(
+              <Map<String, dynamic>>[],
+            ),
+            returnValueForMissingStub:
+                _i20.Future<List<Map<String, dynamic>>>.value(
+                  <Map<String, dynamic>>[],
+                ),
+          )
+          as _i20.Future<List<Map<String, dynamic>>>);
+
+  @override
+  _i20.Future<void> acknowledgeAlert(String? alertId) =>
+      (super.noSuchMethod(
+            Invocation.method(#acknowledgeAlert, [alertId]),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i20.Future<void> signOut() =>
+      (super.noSuchMethod(
+            Invocation.method(#signOut, []),
+            returnValue: _i20.Future<void>.value(),
+            returnValueForMissingStub: _i20.Future<void>.value(),
+          )
+          as _i20.Future<void>);
+
+  @override
+  _i3.AuthState restoreSession({
+    required String? accessToken,
+    String? refreshToken,
+    String? email,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#restoreSession, [], {
+              #accessToken: accessToken,
+              #refreshToken: refreshToken,
+              #email: email,
+            }),
+            returnValue: _FakeAuthState_19(
+              this,
+              Invocation.method(#restoreSession, [], {
+                #accessToken: accessToken,
+                #refreshToken: refreshToken,
+                #email: email,
+              }),
+            ),
+            returnValueForMissingStub: _FakeAuthState_19(
+              this,
+              Invocation.method(#restoreSession, [], {
+                #accessToken: accessToken,
+                #refreshToken: refreshToken,
+                #email: email,
+              }),
+            ),
+          )
+          as _i3.AuthState);
+
+  @override
+  void dispose() => super.noSuchMethod(
+    Invocation.method(#dispose, []),
+    returnValueForMissingStub: null,
+  );
 }

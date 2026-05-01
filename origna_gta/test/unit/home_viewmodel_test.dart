@@ -17,7 +17,7 @@ void main() {
   late MockProductRepository mockRepo;
   late ProviderContainer container;
 
-  Product createTestProduct(String id, String name) {
+  Product createTestProduct(String id, String name, {String? madeInCountry}) {
     return Product(
       productId: id,
       name: name,
@@ -28,6 +28,7 @@ void main() {
       categoryId: 1,
       stockQuantity: 10,
       createdAt: DateTime.now(),
+      madeInCountry: madeInCountry,
     );
   }
 
@@ -346,6 +347,58 @@ void main() {
       viewModel.onToggleCanadaOnly();
       expect(container.read(homeViewModelProvider).canadaOnly, !initial);
     });
+
+    test(
+      'onToggleCanadaOnly loads ahead when current page has no visible products',
+      () async {
+        final imported = createTestProduct(
+          'imported',
+          'Imported',
+          madeInCountry: 'CN',
+        );
+        final canadian = createTestProduct(
+          'canadian',
+          'Canadian',
+          madeInCountry: 'CA',
+        );
+        final viewModel = container.read(homeViewModelProvider.notifier);
+
+        reset(mockRepo);
+        when(
+          mockRepo.fetchProducts(
+            searchQuery: anyNamed('searchQuery'),
+            categoryId: anyNamed('categoryId'),
+            subcategory: anyNamed('subcategory'),
+            lastDocumentId: anyNamed('lastDocumentId'),
+            pageSize: anyNamed('pageSize'),
+            sortOption: anyNamed('sortOption'),
+            minPriceCents: anyNamed('minPriceCents'),
+            maxPriceCents: anyNamed('maxPriceCents'),
+          ),
+        ).thenAnswer((invocation) async {
+          final cursor = invocation.namedArguments[#lastDocumentId] as String?;
+          return cursor == null
+              ? ProductQueryResult(
+                  products: [imported],
+                  lastDocumentId: 'cursor-imported',
+                  hasMore: true,
+                )
+              : ProductQueryResult(
+                  products: [canadian],
+                  lastDocumentId: 'cursor-canadian',
+                  hasMore: false,
+                );
+        });
+
+        await viewModel.refresh();
+        viewModel.onToggleCanadaOnly();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        final state = container.read(homeViewModelProvider);
+        expect(state.canadaOnly, isTrue);
+        expect(state.displayedProducts.map((p) => p.productId), ['canadian']);
+      },
+    );
 
     test('onSortChanged updates state and reloads', () {
       final viewModel = container.read(homeViewModelProvider.notifier);

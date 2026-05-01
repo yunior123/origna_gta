@@ -103,6 +103,7 @@ mixin OrderQueryHelpers {
     required Query Function() initialQuery,
     required bool Function(models.Order) accept,
     required List<models.Order> Function(List<models.Order>) sort,
+    Stream<DocumentChange> Function()? realtimeChanges,
   }) {
     final state = <String, models.Order>{};
     final controller = StreamController<List<models.Order>>();
@@ -135,9 +136,11 @@ mixin OrderQueryHelpers {
             seed();
           }
         });
-        realtime = RealtimeClient(ob)..connect();
-        wsSub = realtime!
-            .subscribe(Collections.orders)
+        final changeStream = realtimeChanges?.call();
+        if (changeStream == null) {
+          realtime = RealtimeClient(ob)..connect();
+        }
+        wsSub = (changeStream ?? realtime!.subscribe(Collections.orders))
             .listen(
               (change) {
                 if (controller.isClosed) return;

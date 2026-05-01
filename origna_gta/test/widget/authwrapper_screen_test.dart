@@ -10,6 +10,7 @@ import 'package:origna_gta/core/repositories/product_repository.dart';
 import 'package:origna_gta/core/repositories/user_repository.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
 import 'package:origna_gta/features/auth/auth_provider.dart';
+import 'package:origna_gta/features/cart/cart_provider.dart';
 import 'package:origna_gta/features/terms/terms_provider.dart';
 import 'package:origna_gta/models/generated/models.dart';
 import 'package:origna_gta/models/models.dart' as app_models;
@@ -218,6 +219,9 @@ void main() {
     return TestWrapper(
       overrides: [
         productRepositoryProvider.overrideWithValue(fakeProductRepository),
+        cartItemsProvider.overrideWith((ref) => Stream.value([])),
+        cartWithDetailsProvider.overrideWith((ref) async => []),
+        cartItemCountProvider.overrideWith((ref) => 0),
         authStateProvider.overrideWith((ref) {
           if (authState.isLoading) return const Stream.empty();
           if (authState.hasError) {

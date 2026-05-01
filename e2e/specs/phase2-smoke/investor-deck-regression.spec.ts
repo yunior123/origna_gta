@@ -36,11 +36,26 @@ const requiredCaptureTargets = [
   'gta-admin-seller-products',
   'gta-admin-payment-monitor',
   'gta-admin-security',
-  'ventures-contact-form',
-  'ventures-service-tiers',
-  'ventures-project-intake',
-  'ventures-delivery-tracker',
-  'ventures-payment-handoff',
+  'gta-admin-api-operations-plan',
+  'gta-buyer-payment-to-delivery-flow',
+  'gta-auth-login',
+  'gta-auth-mfa-challenge',
+  'gta-auth-mfa-setup',
+  'gta-buyer-address-edit',
+  'gta-buyer-order-detail',
+  'gta-buyer-return-request',
+  'gta-buyer-payment-success',
+  'gta-buyer-payment-cancel',
+  'gta-buyer-order-success',
+  'gta-buyer-shipping-approval',
+  'gta-seller-registration',
+  'gta-seller-return-refresh',
+  'gta-seller-edit-product',
+  'gta-product-details-legacy',
+  'gta-admin-tabs-all',
+  'gta-legal-privacy',
+  'gta-legal-terms',
+  'gta-auth-reset-password',
 ] as const;
 
 const requiredTranslationKeys = [
@@ -87,7 +102,7 @@ function flattenTranslations(
   return out;
 }
 
-describe('Investor deck regression guard', () => {
+describe('Ecommerce deck regression guard', () => {
   test('capture script still targets previously missing buyer/seller/admin views', () => {
     const script = readFileSync(captureScript, 'utf8');
     for (const target of requiredCaptureTargets) {
@@ -95,8 +110,10 @@ describe('Investor deck regression guard', () => {
     }
     expect(script).toContain('seenImageHashes.has(imageHash)');
     expect(script).toContain('skip duplicate');
-    expect(script).toContain("process.env.MIN_INVESTOR_SCREENSHOTS || 112");
-    expect(script).toContain('seedInvestorDemoState');
+    expect(script).toContain("process.env.MIN_INVESTOR_SCREENSHOTS || 157");
+    expect(script).toContain("process.env.TARGET_INVESTOR_SCREENSHOTS || 157");
+    expect(script).toContain('buildCoverageMockups');
+    expect(script).toContain('seedEcommerceDemoState');
     expect(script).toContain("'admin-products'");
   });
 
@@ -131,18 +148,25 @@ describe('Investor deck regression guard', () => {
     const files = readdirSync(screenshotDir)
       .filter((name) => name.endsWith('.png'))
       .sort();
-    expect(files.length).toBeGreaterThanOrEqual(112);
+    expect(files.length).toBeGreaterThanOrEqual(157);
 
     const hashes = new Map<string, string>();
+    const liveTargets = new Map<string, string>();
     for (const file of files) {
       const path = join(screenshotDir, file);
       expect(statSync(path).size).toBeGreaterThan(25_000);
       const hash = createHash('sha256').update(readFileSync(path)).digest('hex');
       expect(hashes.get(hash), `${file} duplicates ${hashes.get(hash)}`).toBeUndefined();
       hashes.set(hash, file);
+      if (file.includes('-live-')) {
+        const target = file.replace(/^\d{3}-live-(.+)-desktop-\d+-y\d{5}\.png$/, '$1');
+        expect(liveTargets.get(target), `${file} repeats live target ${liveTargets.get(target)}`).toBeUndefined();
+        liveTargets.set(target, file);
+      }
     }
 
     const names = files.join('\n');
+    expect(names.toLowerCase()).not.toContain('ventures');
     for (const target of requiredCaptureTargets) {
       expect(names, `missing screenshot for ${target}`).toContain(target);
     }

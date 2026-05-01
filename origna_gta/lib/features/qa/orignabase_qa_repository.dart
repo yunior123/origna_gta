@@ -58,6 +58,7 @@ class OrignaBaseQARepository implements QARepository {
   }) {
     final controller = StreamController<List<QAModel>>();
     final questions = <String, QAModel>{};
+    Timer? refreshTimer;
 
     var query = _ob
         .collection(Collections.productQuestions)
@@ -67,22 +68,76 @@ class OrignaBaseQARepository implements QARepository {
     if (offset > 0) {
       query = query.offset(offset);
     }
-    query
-        .get()
-        .then((snapshot) {
-          if (snapshot.isEmpty) {
-            controller.add([]);
-            return;
+
+    Future<void> fetchCollectionFallback() async {
+      final snapshot = await query.get();
+      questions.clear();
+      for (final doc in snapshot.docs) {
+        questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
+      }
+    }
+
+    Future<void> fetchAndEmit(String context) async {
+      try {
+        var loadedFromApi = false;
+        try {
+          final response = await _ob.request(
+            'POST',
+            ApiEndpoints.productsQuestionsList,
+            body: {
+              Fields.productId: productId,
+              'limit': limit,
+              'offset': offset,
+            },
+          );
+          final data = response['data'];
+          final result = response['result'];
+          final rawQuestions =
+              response['questions'] ??
+              (data is Map ? data['questions'] : null) ??
+              (result is Map ? result['questions'] : null);
+          if (rawQuestions is! List) {
+            throw OrignaBaseException('Invalid product questions response');
           }
-          for (final doc in snapshot.docs) {
-            questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
+          questions.clear();
+          for (final raw in rawQuestions) {
+            if (raw is! Map) continue;
+            final data = raw.map((key, value) => MapEntry(key.toString(), value));
+            final id =
+                data[Fields.questionId] as String? ??
+                data['id'] as String? ??
+                data['_id'] as String? ??
+                '';
+            if (id.isEmpty) continue;
+            questions[id] = QAModel.fromMap(id, data);
           }
+          loadedFromApi = true;
+        } catch (e, st) {
+          AppError.log(
+            e,
+            stackTrace: st,
+            context: '$context.api',
+            extras: {'productId': productId},
+          );
+        }
+        if (!loadedFromApi) {
+          await fetchCollectionFallback();
+        }
+        if (!controller.isClosed) {
           controller.add(_sortedQuestions(questions));
-        })
-        .catchError((Object e, StackTrace st) {
-          AppError.log(e, stackTrace: st, context: 'ob_qa.watchQA.init');
-          controller.add(const <QAModel>[]);
-        });
+        }
+      } catch (e, st) {
+        AppError.log(e, stackTrace: st, context: context);
+        if (!controller.isClosed) {
+          controller.add(_sortedQuestions(questions));
+        }
+      }
+    }
+
+    unawaited(fetchAndEmit('ob_qa.watchQA.init'));
+    refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      unawaited(fetchAndEmit('ob_qa.watchQA.poll'));
+    });
 
     // Realtime updates
     final realtime = RealtimeClient(_ob);
@@ -92,14 +147,15 @@ class OrignaBaseQARepository implements QARepository {
         .listen(
           (change) {
             final doc = change.document;
-            final docProductId = doc.data[Fields.productId] as String?;
+            final docProductId =
+                doc.data[Fields.productId] as String? ??
+                doc.data['product_id'] as String?;
             if (docProductId != productId) return;
 
             switch (change.type) {
               case ChangeType.create:
               case ChangeType.update:
-                questions[doc.id] = QAModel.fromMap(doc.id, doc.data);
-                controller.add(_sortedQuestions(questions));
+                unawaited(fetchAndEmit('ob_qa.watchQA.realtime'));
               case ChangeType.delete:
                 questions.remove(doc.id);
                 controller.add(_sortedQuestions(questions));
@@ -111,6 +167,7 @@ class OrignaBaseQARepository implements QARepository {
         );
 
     controller.onCancel = () {
+      refreshTimer?.cancel();
       sub.cancel();
       realtime.disconnect();
     };

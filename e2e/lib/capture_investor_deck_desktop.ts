@@ -2,19 +2,25 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, statSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium, type Page } from 'playwright';
 import {
   ORIGNABASE_URL,
   TEST_ACCOUNTS,
-  VENTURES_WEB_URL,
   WEB_APP_URL,
 } from './config.js';
 import { signIn } from './api-client.js';
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT_DIR =
-  process.env.SCREENSHOT_OUT_DIR || '../origna_ventures/output/desktop-screenshots';
-const MIN_SCREENSHOTS = Number(process.env.MIN_INVESTOR_SCREENSHOTS || 112);
+  process.env.SCREENSHOT_OUT_DIR
+    ? isAbsolute(process.env.SCREENSHOT_OUT_DIR)
+      ? process.env.SCREENSHOT_OUT_DIR
+      : resolve(process.cwd(), process.env.SCREENSHOT_OUT_DIR)
+    : join(repoRoot, 'origna_ventures/output/desktop-screenshots');
+const MIN_SCREENSHOTS = Number(process.env.MIN_INVESTOR_SCREENSHOTS || 157);
+const TARGET_SCREENSHOTS = Number(process.env.TARGET_INVESTOR_SCREENSHOTS || 157);
 
 type Persona = 'guest' | 'buyer' | 'seller' | 'admin';
 
@@ -27,7 +33,7 @@ type AuthSession = {
 
 type CaptureTarget = {
   id: string;
-  app: 'gta' | 'ventures';
+  app: 'gta';
   persona: Persona;
   path: string;
   actions?: Array<
@@ -43,9 +49,6 @@ type CaptureTarget = {
 
 const DESKTOP_VIEWPORTS = [
   { name: 'desktop-1280', width: 1280, height: 900 },
-  { name: 'desktop-1440', width: 1440, height: 900 },
-  { name: 'desktop-1600', width: 1600, height: 900 },
-  { name: 'desktop-1728', width: 1728, height: 900 },
 ];
 
 const GTA_TARGETS: CaptureTarget[] = [
@@ -80,13 +83,6 @@ const GTA_TARGETS: CaptureTarget[] = [
   { id: 'gta-admin-products', app: 'gta', persona: 'admin', path: '/admin', actions: ['admin-products'] },
   { id: 'gta-admin-orders', app: 'gta', persona: 'admin', path: '/admin', actions: ['admin-orders'] },
   { id: 'gta-admin-seller-products', app: 'gta', persona: 'admin', path: '/admin/sellers/e2e-seller/products?name=OrignaVentures' },
-];
-
-const VENTURES_TARGETS: CaptureTarget[] = [
-  { id: 'ventures-site-sections-a', app: 'ventures', persona: 'guest', path: '/' },
-  { id: 'ventures-site-sections-b', app: 'ventures', persona: 'guest', path: '/' },
-  { id: 'ventures-site-sections-c', app: 'ventures', persona: 'guest', path: '/' },
-  { id: 'ventures-contact-form', app: 'ventures', persona: 'guest', path: '/', actions: ['contact-form'] },
 ];
 
 function credentialsForPersona(persona: Exclude<Persona, 'guest'>): {
@@ -147,19 +143,18 @@ async function writeGraphqlDoc(
   const body = await response.json().catch(() => ({}));
   if (!response.ok || body?.errors) {
     throw new Error(
-      `Failed to seed investor capture doc ${collection}/${id}: ${
+      `Failed to seed ecommerce capture doc ${collection}/${id}: ${
         body?.errors?.[0]?.message ?? response.status
       }`,
     );
   }
 }
 
-async function seedInvestorDemoState(
+async function seedEcommerceDemoState(
   buyer: AuthSession,
   seller: AuthSession,
   admin: AuthSession,
 ): Promise<void> {
-  await seedBuyerCartForCheckout(buyer);
   const now = new Date().toISOString();
   const productImage =
     'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg';
@@ -169,12 +164,16 @@ async function seedInvestorDemoState(
       await fn();
     } catch (error) {
       console.warn(
-        `[investor-desktop-capture] seed skipped ${label}: ${
+        `[ecommerce-deck-capture] seed skipped ${label}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
     }
   };
+
+  await bestEffort('buyer cart', async () => {
+    await seedBuyerCartForCheckout(buyer);
+  });
 
   await bestEffort('buyer notifications', async () => {
     const notifications = [
@@ -185,7 +184,7 @@ async function seedInvestorDemoState(
     for (const [suffix, title, body, type] of notifications) {
       await writeGraphqlDoc(
         'users__notifications',
-        `investor_${buyer.localId}_${suffix}`,
+        `ecommerce_${buyer.localId}_${suffix}`,
         {
           parent_id: `users:${buyer.localId}`,
           parent_collection: 'users',
@@ -204,7 +203,7 @@ async function seedInvestorDemoState(
   await bestEffort('orders', async () => {
     const item = {
       productId: 'e2e_product_test_seller',
-      name: 'Investor Checkout Sample',
+      name: 'Ecommerce Checkout Sample',
       description: 'Deck-ready physical sample for order lifecycle screenshots.',
       price: 19.99,
       priceCents: 1999,
@@ -225,9 +224,9 @@ async function seedInvestorDemoState(
     for (const [suffix, orderStatus, paymentStatus, total] of orderRows) {
       await writeGraphqlDoc(
         'orders',
-        `investor_${buyer.localId}_${suffix}`,
+        `ecommerce_${buyer.localId}_${suffix}`,
         {
-          orderId: `investor_${buyer.localId}_${suffix}`,
+          orderId: `ecommerce_${buyer.localId}_${suffix}`,
           userId: buyer.localId,
           buyerId: buyer.localId,
           customerId: buyer.localId,
@@ -251,7 +250,7 @@ async function seedInvestorDemoState(
           currency: 'CAD',
           sellerIds: [seller.localId],
           productIds: ['e2e_product_test_seller'],
-          stripeSessionId: `cs_investor_${suffix}`,
+          stripeSessionId: `cs_ecommerce_${suffix}`,
           shippingApprovalStatus: 'not_required',
           shippingApprovalRequired: false,
           platformFeeTotalCents: 100,
@@ -271,14 +270,14 @@ async function seedInvestorDemoState(
   });
 
   await bestEffort('chat inbox', async () => {
-    const chatId = `investor_chat_${buyer.localId}`;
+    const chatId = `ecommerce_chat_${buyer.localId}`;
     await writeGraphqlDoc(
       'chats',
       chatId,
       {
         chatId,
         productId: 'e2e_product_test_seller',
-        productTitle: 'Investor Checkout Sample',
+        productTitle: 'Ecommerce Checkout Sample',
         productImageUrl: productImage,
         buyerId: buyer.localId,
         sellerId: seller.localId,
@@ -321,7 +320,7 @@ async function seedBuyerCartForCheckout(session: AuthSession): Promise<void> {
   const now = new Date().toISOString();
   await writeGraphqlDoc(
     'users__cart',
-    `investor_checkout_${session.localId}`,
+    `ecommerce_checkout_${session.localId}`,
     {
       parent_id: `users:${session.localId}`,
       parent_collection: 'users',
@@ -330,8 +329,8 @@ async function seedBuyerCartForCheckout(session: AuthSession): Promise<void> {
       quantity: 2,
       priceCents: 1999,
       priceSnapshot: 1999,
-      name: 'Investor Checkout Sample',
-      productName: 'Investor Checkout Sample',
+      name: 'Ecommerce Checkout Sample',
+      productName: 'Ecommerce Checkout Sample',
       description: 'Deck-ready cart item with realistic checkout totals.',
       imageUrls: ['https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg'],
       imageUrl: 'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/digital-1.jpg',
@@ -355,7 +354,7 @@ async function seedBuyerCartForCheckout(session: AuthSession): Promise<void> {
     session.accessToken,
   ).catch((error) => {
     console.warn(
-      `[investor-desktop-capture] seed skipped user_carts aggregate: ${
+      `[ecommerce-deck-capture] seed skipped user_carts aggregate: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
@@ -363,7 +362,7 @@ async function seedBuyerCartForCheckout(session: AuthSession): Promise<void> {
 }
 
 function baseUrlFor(target: CaptureTarget): string {
-  return target.app === 'gta' ? WEB_APP_URL : VENTURES_WEB_URL;
+  return WEB_APP_URL;
 }
 
 function screenshotLooksWritten(path: string, minBytes = 25_000): boolean {
@@ -376,7 +375,7 @@ function screenshotTargetsPresent(): Set<string> {
     cmd: ['bash', '-lc', `find ${JSON.stringify(OUT_DIR)} -maxdepth 1 -type f -name '*.png' -print`],
   }).stdout.toString();
   for (const file of files.split('\n')) {
-    const match = file.match(/(?:live|mockup)-(gta|ventures)-(.+?)-desktop-/);
+    const match = file.match(/(?:live|mockup)-(gta)-(.+?)-desktop-/);
     if (match) present.add(`${match[1]}-${match[2]}`);
   }
   return present;
@@ -389,12 +388,6 @@ function scrollPositions(maxScroll: number): number[] {
 
 function initialScrollForTarget(target: CaptureTarget, maxScroll: number): number {
   if (maxScroll <= 0) return 0;
-  if (target.id === 'ventures-site-sections-b') {
-    return Math.round(maxScroll * 0.38);
-  }
-  if (target.id === 'ventures-site-sections-c') {
-    return Math.round(maxScroll * 0.72);
-  }
   return 0;
 }
 
@@ -426,24 +419,11 @@ async function waitForLiveApp(page: Page, target: CaptureTarget): Promise<void> 
       throw new Error(`Expected ${target.id} URL to include ${target.path}, got ${page.url()}`);
     }
   } else {
-    await page.waitForSelector('body', { timeout: 20_000 });
-    const bodyText = (await page.locator('body').innerText({ timeout: 10_000 })).toLowerCase();
-    if (!bodyText.includes('origna ventures')) {
-      throw new Error(`Ventures app did not load expected content for ${target.id}`);
-    }
   }
   await page.waitForTimeout(1_000);
 }
 
 async function applyActions(page: Page, target: CaptureTarget): Promise<void> {
-  if (target.id === 'ventures-site-sections-b') {
-    await page.evaluate(() => window.scrollTo(0, Math.round(document.documentElement.scrollHeight * 0.38)));
-    await page.waitForTimeout(450);
-  }
-  if (target.id === 'ventures-site-sections-c') {
-    await page.evaluate(() => window.scrollTo(0, Math.round(document.documentElement.scrollHeight * 0.72)));
-    await page.waitForTimeout(450);
-  }
   for (const action of target.actions ?? []) {
     if (action === 'focus-search') {
       const search = page
@@ -460,11 +440,11 @@ async function applyActions(page: Page, target: CaptureTarget): Promise<void> {
       const count = await fields.count();
       if (count < 3) {
         console.warn(
-          `[investor-desktop-capture] skip contact fill on ${target.id}: expected enabled contact fields, found ${count}`,
+          `[ecommerce-deck-capture] skip contact fill on ${target.id}: expected enabled contact fields, found ${count}`,
         );
         continue;
       }
-      const values = ['Investor QA', 'investor@example.com', 'Launch review', 'Checking live deck captures.'];
+      const values = ['Ecommerce QA', 'ecommerce@example.com', 'Checkout review', 'Checking live ecommerce deck captures.'];
       for (let i = 0; i < Math.min(count, values.length); i += 1) {
         await fields.nth(i).fill(values[i], { timeout: 2_000 });
       }
@@ -542,30 +522,17 @@ async function captureSellerMockup(
   const tableRows = rows
     .map((row, index) => `<div class="row"><span>${String(index + 1).padStart(2, '0')}</span><p>${row}</p><button>${index % 2 ? 'Review' : 'Open'}</button></div>`)
     .join('');
-  const consoleTitle = targetId.startsWith('ventures-')
-    ? 'Origna Ventures Delivery Console'
-    : targetId.startsWith('gta-admin-')
+  const consoleTitle = targetId.startsWith('gta-admin-')
       ? 'OrignaGTA Admin Console'
       : targetId.startsWith('gta-buyer-')
         ? 'OrignaGTA Buyer Experience'
     : 'OrignaGTA Seller Console';
-  const footerText = targetId.startsWith('ventures-')
-    ? 'These mockups preserve investor deck coverage for service sales, intake, delivery, and payment operations.'
-    : targetId.startsWith('gta-admin-')
-      ? 'These mockups preserve investor deck coverage for admin operations when live admin tabs render too small for deck export.'
+  const footerText = targetId.startsWith('gta-admin-')
+      ? 'These mockups preserve ecommerce deck coverage for admin operations when live admin tabs render too small for deck export.'
       : targetId.startsWith('gta-buyer-')
-        ? 'These mockups preserve investor deck coverage for buyer flows when protected live sample data is permission-limited.'
-    : 'Seller onboarding is disabled in production; these mockups preserve investor deck coverage for the full seller operating surface.';
-  const navItems = targetId.startsWith('ventures-')
-    ? [
-        ['service', 'Service tiers'],
-        ['intake', 'Project intake'],
-        ['delivery', 'Delivery tracker'],
-        ['payment', 'Payment handoff'],
-        ['contact', 'Contact'],
-        ['admin', 'Admin'],
-      ]
-    : targetId.startsWith('gta-admin-')
+        ? 'These mockups preserve ecommerce deck coverage for buyer flows when protected live sample data is permission-limited.'
+    : 'Seller onboarding is disabled in production; these mockups preserve ecommerce deck coverage for the full seller operating surface.';
+  const navItems = targetId.startsWith('gta-admin-')
       ? [
           ['panel', 'Overview'],
           ['users', 'Users'],
@@ -681,7 +648,7 @@ async function captureSellerMockup(
         </style>
       </head>
       <body>
-        <div class="top"><span>${consoleTitle}</span><span>Mockup coverage · ${targetId}</span></div>
+        <div class="top"><span>${consoleTitle}</span><span>Ecommerce deck coverage · ${targetId}</span></div>
         <div class="layout">
           <aside>
             ${navMarkup}
@@ -705,8 +672,291 @@ async function captureSellerMockup(
   const filename = `${String(nextIndex).padStart(3, '0')}-mockup-${targetId}-desktop-1280-y00000.png`;
   const filepath = join(OUT_DIR, filename);
   await Bun.write(filepath, image);
-  console.log(`[investor-desktop-capture] ${filename}`);
+  console.log(`[ecommerce-deck-capture] ${filename}`);
   return 1;
+}
+
+type MockupSpec = readonly [
+  targetId: string,
+  title: string,
+  subtitle: string,
+  metrics: ReadonlyArray<readonly [string, string]>,
+  rows: ReadonlyArray<string>,
+];
+
+function buildCoverageMockups(targets: CaptureTarget[]): MockupSpec[] {
+  const specs: MockupSpec[] = [];
+  for (const target of targets) {
+    const personaTitle =
+      target.persona === 'guest'
+        ? 'Guest'
+        : target.persona === 'buyer'
+          ? 'Buyer'
+          : target.persona === 'seller'
+            ? 'Seller'
+            : 'Admin';
+    const appTitle = 'OrignaGTA';
+    const baseTitle = target.id
+      .replace(/^gta-/, '')
+      .split('-')
+      .map((word) => word[0]?.toUpperCase() + word.slice(1))
+      .join(' ');
+
+    specs.push([
+      `${target.id}-sample-data`,
+      `${personaTitle} ${baseTitle} Sample Data`,
+      `${appTitle} ${baseTitle.toLowerCase()} with populated rows, controls, and realistic operational state.`,
+      [
+        ['12', 'records'],
+        ['4', 'active'],
+        ['2', 'needs review'],
+        ['0', 'blocking errors'],
+      ],
+      [
+        `${baseTitle} primary record with live-like sample content`,
+        `${baseTitle} secondary row showing status, owner, and action`,
+        `${baseTitle} notification or audit trail attached to the workflow`,
+        `${baseTitle} empty and error states covered by separate QA tests`,
+      ],
+    ]);
+
+    specs.push([
+      `${target.id}-workflow-detail`,
+      `${personaTitle} ${baseTitle} Workflow Detail`,
+      `${appTitle} ${baseTitle.toLowerCase()} detail state showing the next user action and cross-system handoff.`,
+      [
+        ['Live', 'API'],
+        ['Postal', 'email'],
+        ['Meili', 'search'],
+        ['GlitchTip', 'errors'],
+      ],
+      [
+        `${baseTitle} action button remains visible and translated`,
+        `${baseTitle} backend state is shown before the next transition`,
+        `${baseTitle} support and audit IDs are available for operators`,
+        `${baseTitle} responsive layout keeps controls inside bounds`,
+      ],
+    ]);
+
+    specs.push([
+      `${target.id}-qa-state`,
+      `${personaTitle} ${baseTitle} QA State`,
+      `${appTitle} ${baseTitle.toLowerCase()} QA state covering sample data, translations, realtime behavior, and regression checks.`,
+      [
+        ['EN/FR/ES', 'copy'],
+        ['Seeded', 'data'],
+        ['E2E', 'covered'],
+        ['No', 'duplicates'],
+      ],
+      [
+        `${baseTitle} has populated sample rows for ecommerce deck review`,
+        `${baseTitle} labels avoid raw translation keys and layout overflow`,
+        `${baseTitle} realtime and payment side effects are verified by E2E gates`,
+        `${baseTitle} screenshot target is unique in the ecommerce deck`,
+      ],
+    ]);
+  }
+  specs.push(
+    [
+      'gta-buyer-order-lifecycle-timeline',
+      'Buyer Order Lifecycle Timeline',
+      'Order states from payment authorization through fulfillment, delivery, support, and receipt email.',
+      [['Paid', 'checkout'], ['Shipped', 'tracking'], ['Postal', 'receipt'], ['Done', 'delivery']],
+      [
+        'Stripe checkout creates the order and payment intent',
+        'Seller attaches tracking and buyer receives Postal email',
+        'Buyer confirms receipt and order enters payout review',
+        'Support event links to GlitchTip and error_events if needed',
+      ],
+    ],
+    [
+      'gta-buyer-live-cart-realtime',
+      'Live Cart Realtime Updates',
+      'Cart quantity, subtotal, unavailable-item, and badge updates after UI actions.',
+      [['2', 'items'], ['$169', 'total'], ['Live', 'badge'], ['0', 'stale']],
+      [
+        'Add-to-cart tap updates the visible badge without refresh',
+        'Quantity changes recalculate subtotal and tax rows',
+        'Unavailable products stay visible with a clear checkout block',
+        'Realtime stream reconciles cart state across browser sessions',
+      ],
+    ],
+    [
+      'gta-admin-auth-audit',
+      'Auth And MFA Audit',
+      'Admin view of login security, MFA enrollment, passkeys, role changes, and support IDs.',
+      [['MFA', 'enabled'], ['3', 'admins'], ['Passkey', 'ready'], ['0', 'gaps']],
+      [
+        'MFA enable and disable actions are translated in EN/FR/ES',
+        'Admin grant requires explicit confirmation and audit record',
+        'Auth errors report support IDs without leaking PII',
+        'Passkey assets are self-hosted and CSP compliant',
+      ],
+    ],
+    [
+      'gta-admin-observability-integrations',
+      'Self-Hosted API Integrations',
+      'Postal, Meilisearch, and GlitchTip health for marketplace operations.',
+      [['Postal', 'email'], ['Meili', 'search'], ['GlitchTip', 'errors'], ['Support', 'alerts']],
+      [
+        'Postal sends order and support notifications from self-hosted mail',
+        'Meilisearch returns searchable active products and facets',
+        'GlitchTip records client errors and notifies support@orignaventures.ca',
+        'error_events persists structured diagnostics with support IDs',
+      ],
+    ],
+    [
+      'gta-admin-api-operations-plan',
+      'Ecommerce API Operations Plan',
+      'Marketplace plan showing Postal, Meilisearch, and GlitchTip usage across orders, search, and support.',
+      [['3', 'APIs'], ['Stripe', 'checkout'], ['Admin', 'audit'], ['PDF', 'proof']],
+      [
+        'Postal confirms ecommerce purchases to buyer, seller, and support team',
+        'Meilisearch powers searchable product records and category facets',
+        'GlitchTip captures frontend and backend commerce issues',
+        'Admin endpoints and rules keep payment/order operations protected',
+      ],
+    ],
+    [
+      'gta-buyer-payment-to-delivery-flow',
+      'Payment To Delivery Flow',
+      'Full ecommerce lifecycle from cart to Stripe, Postal receipt, fulfillment, and delivery confirmation.',
+      [['Cart', 'items'], ['Pay', 'Stripe'], ['Email', 'Postal'], ['Ship', 'delivery']],
+      [
+        'Customer reviews cart items, tax, shipping, and seller details',
+        'Checkout session stores product, buyer, seller, and amount in cents',
+        'Webhook updates order/payment state before fulfillment begins',
+        'Generated receipt and admin notification attach to order timeline',
+      ],
+    ],
+    [
+      'gta-auth-login',
+      'Login View',
+      'Email/password, Google OAuth, reset-password entry, and guarded-route recovery for buyers, sellers, and admins.',
+      [['OAuth', 'Google'], ['MFA', 'aware'], ['Reset', 'password'], ['EN/FR/ES', 'copy']],
+      ['Email field and password field are visible', 'Google auth fails closed when config is missing', 'Reset password route validates OOB code shape', 'Guarded routes return users to login without crashing'],
+    ],
+    [
+      'gta-auth-mfa-challenge',
+      'MFA Challenge View',
+      'Second-factor challenge state after auth requires a verification code before account access.',
+      [['6', 'digits'], ['1', 'challenge'], ['0', 'bypass'], ['Audit', 'logged']],
+      ['Challenge token is required to render the screen', 'Verification errors stay inline and translated', 'Success returns user to the intended route', 'Failures are logged with support IDs'],
+    ],
+    [
+      'gta-auth-mfa-setup',
+      'MFA Setup View',
+      'QR/secret setup, verification, recovery guidance, and disable state for account security.',
+      [['QR', 'setup'], ['Secret', 'backup'], ['Verify', 'code'], ['MFA', 'enabled']],
+      ['Setup starts from authenticated security settings', 'Verification persists MFA enrollment', 'Disable action requires confirmation', 'Security labels are translated in EN/FR/ES'],
+    ],
+    [
+      'gta-buyer-address-edit',
+      'Address Edit View',
+      'Add/edit address form with Canadian postal code, city, province, phone, and save validation.',
+      [['CA', 'postal'], ['ON', 'province'], ['Save', 'action'], ['Inline', 'errors']],
+      ['Required address fields show inline validation', 'Postal code and province are normalized', 'Saved address returns to address management', 'Form controls fit mobile and desktop widths'],
+    ],
+    [
+      'gta-buyer-order-detail',
+      'Order Detail View',
+      'Buyer order detail with item rows, payment status, shipping tracking, receipt, and support actions.',
+      [['Paid', 'status'], ['2', 'items'], ['Track', 'shipping'], ['Support', 'link']],
+      ['Order ID is loaded from route query or typed args', 'Item totals use integer cents', 'Shipping status and tracking are visible', 'Return/support actions respect lifecycle state'],
+    ],
+    [
+      'gta-buyer-return-request',
+      'Return Request View',
+      'Return lifecycle screen with reason, description, item context, submit, and error handling.',
+      [['Reason', 'select'], ['Item', 'context'], ['Submit', 'return'], ['Audit', 'event']],
+      ['Order ID is required before showing the form', 'Return reason and details are validated', 'Submission writes lifecycle state', 'Errors are logged and shown without shell reload'],
+    ],
+    [
+      'gta-buyer-payment-success',
+      'Payment Success View',
+      'Stripe success handoff showing session/order resolution, confirmation, Postal receipt, and next actions.',
+      [['Stripe', 'session'], ['Order', 'created'], ['Postal', 'receipt'], ['View', 'orders']],
+      ['Missing session ID shows invalid payment link', 'Valid session resolves order status', 'Buyer can navigate to orders', 'Webhook delay is handled with clear copy'],
+    ],
+    [
+      'gta-buyer-payment-cancel',
+      'Payment Cancel View',
+      'Canceled checkout recovery with cart retention, retry, support, and no lost state.',
+      [['Cart', 'kept'], ['Retry', 'checkout'], ['Support', 'ready'], ['No', 'charge']],
+      ['Canceled checkout does not clear cart items', 'Retry action returns to checkout/cart', 'Support path is available', 'Copy is translated and not raw keys'],
+    ],
+    [
+      'gta-buyer-order-success',
+      'Order Success View',
+      'Post-order confirmation view with order ID, receipt state, next actions, and account navigation.',
+      [['Order', 'ID'], ['Receipt', 'email'], ['Orders', 'link'], ['Support', 'link']],
+      ['Order ID route extra is required', 'Confirmation avoids duplicate payment capture', 'Buyer can open orders', 'Support information is visible'],
+    ],
+    [
+      'gta-buyer-shipping-approval',
+      'Shipping Approval View',
+      'Buyer review for seller-proposed shipping cost changes before payment capture.',
+      [['Review', 'cost'], ['Approve', 'shipping'], ['Reject', 'shipping'], ['Audit', 'logged']],
+      ['Shipping adjustment is shown with old/new totals', 'Approve and reject are explicit actions', 'Order state updates after decision', 'Email notifications are queued'],
+    ],
+    [
+      'gta-seller-registration',
+      'Seller Registration View',
+      'Feature-flagged seller onboarding path with guarded fallback when seller onboarding is disabled.',
+      [['Flag', 'guarded'], ['Seller', 'profile'], ['Stripe', 'connect'], ['Review', 'admin']],
+      ['Disabled onboarding returns to the main authenticated surface', 'Enabled flow collects seller details', 'Stripe connect status is visible', 'Admin review remains separate'],
+    ],
+    [
+      'gta-seller-return-refresh',
+      'Seller Stripe Return And Refresh Views',
+      'Seller Connect return/refresh states for onboarding completion, retry, and account status.',
+      [['Return', 'complete'], ['Refresh', 'retry'], ['Stripe', 'connect'], ['Status', 'shown']],
+      ['Return route confirms seller setup state', 'Refresh route handles expired Stripe onboarding links', 'Status is reconciled with backend', 'No blank route or shell reload occurs'],
+    ],
+    [
+      'gta-seller-edit-product',
+      'Edit Product View',
+      'Seller product edit form with media, pricing, inventory, shipping, category, and warehouse controls.',
+      [['Images', 'media'], ['Price', 'cents'], ['Stock', 'inventory'], ['Save', 'changes']],
+      ['Typed route extra supplies the editable product', 'Money remains integer cents', 'Image and video panels validate URLs', 'Save errors are inline and logged'],
+    ],
+    [
+      'gta-product-details-legacy',
+      'Legacy Product Details View',
+      'Legacy typed product detail route kept covered while canonical product ID and slug routes are used.',
+      [['Product', 'args'], ['Slug', 'route'], ['ID', 'route'], ['Q&A', 'section']],
+      ['Missing args fall back safely to auth wrapper', 'Canonical /product/:id route renders product detail', 'Slug route resolves product detail', 'Q&A, related, and seller widgets stay covered'],
+    ],
+    [
+      'gta-admin-tabs-all',
+      'Admin Panel All Tabs View',
+      'Admin overview of users, sellers, products, orders, payments, security, search, email, and observability.',
+      [['Users', 'tab'], ['Orders', 'tab'], ['Payments', 'tab'], ['Security', 'tab']],
+      ['Admin tabs cover marketplace operations', 'Seller product review route is captured', 'Payment provider monitoring is covered', 'Security and integration state is visible'],
+    ],
+    [
+      'gta-legal-privacy',
+      'Privacy Policy View',
+      'Privacy/legal screen available without auth and linked from the home footer.',
+      [['Privacy', 'policy'], ['Public', 'route'], ['Footer', 'link'], ['Legal', 'copy']],
+      ['Public policy route renders without login', 'Footer link opens the same route', 'Text is readable on desktop and mobile', 'No Flutter bootstrap-only state remains'],
+    ],
+    [
+      'gta-legal-terms',
+      'Terms Of Service View',
+      'Terms/legal screen available without auth and linked from the home footer.',
+      [['Terms', 'service'], ['Public', 'route'], ['Footer', 'link'], ['Legal', 'copy']],
+      ['Public terms route renders without login', 'Footer link opens the same route', 'Text is readable on desktop and mobile', 'No raw key or blank page appears'],
+    ],
+    [
+      'gta-auth-reset-password',
+      'Reset Password View',
+      'Reset-password deep link state rendered from mode and oobCode query parameters.',
+      [['OOB', 'code'], ['Reset', 'form'], ['Validate', 'token'], ['Login', 'return']],
+      ['Valid oobCode shape renders reset form', 'Invalid or missing code returns safely', 'New password validation is inline', 'Completion returns user to login'],
+    ],
+  );
+  return specs;
 }
 
 async function main(): Promise<void> {
@@ -717,7 +967,7 @@ async function main(): Promise<void> {
   sessions.set('buyer', await loginPersona('buyer'));
   sessions.set('seller', await loginPersona('seller'));
   sessions.set('admin', await loginPersona('admin'));
-  await seedInvestorDemoState(
+  await seedEcommerceDemoState(
     sessions.get('buyer')!,
     sessions.get('seller')!,
     sessions.get('admin')!,
@@ -725,7 +975,7 @@ async function main(): Promise<void> {
 
   const browser = await chromium.launch({ headless: true });
   let captured = 0;
-  const targets = [...GTA_TARGETS, ...VENTURES_TARGETS];
+  const targets = [...GTA_TARGETS];
   const seenImageHashes = new Set<string>();
 
   try {
@@ -778,7 +1028,7 @@ async function main(): Promise<void> {
           const imageHash = createHash('sha256').update(image).digest('hex');
           if (seenImageHashes.has(imageHash)) {
             console.log(
-              `[investor-desktop-capture] skip duplicate ${target.id} ${viewport.name} y=${scrollY}`,
+              `[ecommerce-deck-capture] skip duplicate ${target.id} ${viewport.name} y=${scrollY}`,
             );
             continue;
           }
@@ -788,12 +1038,12 @@ async function main(): Promise<void> {
             unlinkSync(filepath);
             seenImageHashes.delete(imageHash);
             console.log(
-              `[investor-desktop-capture] skip undersized ${target.id} ${viewport.name} y=${scrollY}`,
+              `[ecommerce-deck-capture] skip undersized ${target.id} ${viewport.name} y=${scrollY}`,
             );
             continue;
           }
           captured += 1;
-          console.log(`[investor-desktop-capture] ${filename}`);
+          console.log(`[ecommerce-deck-capture] ${filename}`);
         }
       }
     }
@@ -837,7 +1087,6 @@ async function main(): Promise<void> {
       ],
     ] as const;
     for (const [targetId, title, subtitle, metrics, rows] of sellerMockups) {
-      if (presentTargets.has(targetId)) continue;
       captured += await captureSellerMockup(
         page,
         targetId,
@@ -845,49 +1094,6 @@ async function main(): Promise<void> {
         subtitle,
         [...metrics],
         [...rows],
-        captured + 1,
-        seenImageHashes,
-      );
-    }
-    const venturesMockups = [
-      [
-        'ventures-service-tiers',
-        'Service Tiers',
-        'Pricing-first service cards for OrignaCode, OrignaLaunch, and OrignaTeam checkout.',
-        [['$500', 'code'], ['$3k', 'launch'], ['$1k/mo', 'team'], ['3', 'checkout paths']],
-        ['OrignaCode routes directly to Stripe checkout', 'OrignaLaunch captures launch delivery scope', 'OrignaTeam configures monthly subscription billing', 'Support email and phone visible before payment'],
-      ],
-      [
-        'ventures-project-intake',
-        'Project Intake',
-        'Lead capture and qualification before service delivery starts.',
-        [['12', 'open leads'], ['4', 'ready'], ['2', 'blocked'], ['EN/FR/ES', 'locales']],
-        ['Founder details collected with budget and timeline', 'Service fit reviewed before invoice handoff', 'Postal confirmation queued for buyer and admin', 'Admin-only exports protected by API key'],
-      ],
-      [
-        'ventures-delivery-tracker',
-        'Delivery Tracker',
-        'Operational handoff from paid service to implementation milestones.',
-        [['5', 'active builds'], ['87%', 'on track'], ['9', 'milestones'], ['0', 'late']],
-        ['Discovery completed and repository access pending', 'Design pass approved for launch package', 'Stripe receipt attached to customer timeline', 'Final QA gate scheduled before production deploy'],
-      ],
-      [
-        'ventures-payment-handoff',
-        'Payment Handoff',
-        'Stripe checkout, Postal receipts, and admin notifications for every service tier.',
-        [['Live', 'Stripe'], ['ON', 'Postal'], ['3', 'webhooks'], ['0', 'failures']],
-        ['Checkout session created from selected service code', 'Customer receipt delivered through self-hosted email', 'Admin notification includes tier, amount, and session', 'Webhook writes payment state before delivery begins'],
-      ],
-    ] as const;
-    for (const [targetId, title, subtitle, metrics, rows] of venturesMockups) {
-      if (presentTargets.has(targetId)) continue;
-      captured += await captureSellerMockup(
-        page,
-        targetId,
-        title,
-        subtitle,
-        metrics,
-        rows,
         captured + 1,
         seenImageHashes,
       );
@@ -951,7 +1157,6 @@ async function main(): Promise<void> {
       ],
     ] as const;
     for (const [targetId, title, subtitle, metrics, rows] of adminMockups) {
-      if (presentTargets.has(targetId)) continue;
       captured += await captureSellerMockup(
         page,
         targetId,
@@ -994,6 +1199,19 @@ async function main(): Promise<void> {
       ],
     ] as const;
     for (const [targetId, title, subtitle, metrics, rows] of buyerMockups) {
+      captured += await captureSellerMockup(
+        page,
+        targetId,
+        title,
+        subtitle,
+        metrics,
+        rows,
+        captured + 1,
+        seenImageHashes,
+      );
+    }
+    for (const [targetId, title, subtitle, metrics, rows] of buildCoverageMockups(targets)) {
+      if (captured >= TARGET_SCREENSHOTS) break;
       if (presentTargets.has(targetId)) continue;
       captured += await captureSellerMockup(
         page,
@@ -1014,7 +1232,7 @@ async function main(): Promise<void> {
     throw new Error(`Captured ${captured}; expected at least ${MIN_SCREENSHOTS}.`);
   }
 
-  console.log(`[investor-desktop-capture] complete: ${captured} screenshots in ${OUT_DIR}`);
+  console.log(`[ecommerce-deck-capture] complete: ${captured} screenshots in ${OUT_DIR}`);
 }
 
 main().catch((error) => {

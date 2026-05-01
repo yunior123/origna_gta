@@ -2756,6 +2756,7 @@ abstract final class ApiEndpoints {
       '/api/products/stock-notify/unsubscribe';
   static const productsQuestionsAsk = '/api/products/questions/ask';
   static const productsQuestionsAnswer = '/api/products/questions/answer';
+  static const productsQuestionsList = '/api/products/questions/list';
 
   // --- Orders ---
   static const ordersApproveShipping = '/api/orders/approve-shipping';

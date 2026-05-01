@@ -415,6 +415,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .first;
 
@@ -448,6 +449,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders.reversed.toList(),
+            realtimeChanges: () => changeController.stream,
           )
           .first;
 
@@ -477,6 +479,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (order) => order.orderId == 'order1',
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .first;
 
@@ -505,6 +508,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .first;
 
@@ -532,6 +536,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .take(2)
           .toList();
@@ -571,6 +576,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .take(2)
           .toList();
@@ -609,6 +615,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => acceptValue,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .take(2)
           .toList();
@@ -651,6 +658,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .take(2)
           .toList();
@@ -686,6 +694,7 @@ void main() {
         initialQuery: () => mockQuery,
         accept: (_) => true,
         sort: (orders) => orders,
+        realtimeChanges: () => changeController.stream,
       );
 
       expect(stream.first, throwsA(isA<Exception>()));
@@ -712,6 +721,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .first
           .timeout(const Duration(seconds: 2));
@@ -741,6 +751,7 @@ void main() {
             initialQuery: () => mockQuery,
             accept: (_) => true,
             sort: (orders) => orders,
+            realtimeChanges: () => changeController.stream,
           )
           .take(2)
           .toList();

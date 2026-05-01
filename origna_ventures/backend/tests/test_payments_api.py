@@ -423,7 +423,9 @@ def test_stripe_webhook_completed_payment_updates_status_and_sends_email(
     assert event_row == ("evt_checkout_completed", "checkout.session.completed")
     receipt_emails = [e for e in sent_emails if e["to_email"] == "client@example.com"]
     support_emails = [
-        e for e in sent_emails if e["to_email"] == backend_app.settings.support_email
+        e
+        for e in sent_emails
+        if e["to_email"] == backend_app.settings.support_delivery_email
     ]
     assert len(receipt_emails) == 1
     assert "Subscription receipt" in receipt_emails[0]["subject"]
@@ -593,7 +595,9 @@ def test_stripe_webhook_completed_one_time_payment_keeps_subscription_null(
     assert row == ("paid", None, None)
     receipt_emails = [e for e in sent_emails if e["to_email"] == "launch@example.com"]
     support_emails = [
-        e for e in sent_emails if e["to_email"] == backend_app.settings.support_email
+        e
+        for e in sent_emails
+        if e["to_email"] == backend_app.settings.support_delivery_email
     ]
     assert len(receipt_emails) == 1
     assert "Payment receipt" in receipt_emails[0]["subject"]
@@ -788,7 +792,7 @@ def test_stripe_webhook_distinct_duplicate_checkout_completion_does_not_resend_e
     assert len(sent_emails) == 2
     assert {email["to_email"] for email in sent_emails} == {
         "buyer@example.com",
-        backend_app.settings.support_email,
+        backend_app.settings.support_delivery_email,
     }
 
 
@@ -1047,7 +1051,7 @@ def test_email_queue_persists_to_db_on_checkout_completed(client, monkeypatch):
     ).fetchall()
     support_queued = conn.execute(
         "SELECT * FROM email_queue WHERE to_email = ?",
-        (backend_app.settings.support_email,),
+        (backend_app.settings.support_delivery_email,),
     ).fetchall()
     conn.close()
 
@@ -1503,15 +1507,19 @@ def test_contact_endpoint_exposes_postal_delivery_status(client, monkeypatch):
     test_client, db_path = client
 
     monkeypatch.setattr(
+        backend_app.settings,
+        "support_delivery_email",
+        "yuniorrodriguezo460@gmail.com",
+    )
+    seen_jobs = []
+
+    monkeypatch.setattr(
         backend_app,
         "dispatch_email_jobs",
-        lambda jobs: [
+        lambda jobs: seen_jobs.extend(jobs)
+        or [
             {
                 "to_email": jobs[0]["to_email"],
-                "result": {"status": "sent", "provider": "postal"},
-            },
-            {
-                "to_email": jobs[1]["to_email"],
                 "result": {"status": "sent", "provider": "postal"},
             },
         ],
@@ -1533,8 +1541,10 @@ def test_contact_endpoint_exposes_postal_delivery_status(client, monkeypatch):
     assert payload["status"] == "ok"
     assert payload["emails"]["support"]["status"] == "sent"
     assert payload["emails"]["support"]["provider"] == "postal"
-    assert payload["emails"]["confirmation"]["status"] == "sent"
-    assert payload["emails"]["confirmation"]["provider"] == "postal"
+    assert "confirmation" not in payload["emails"]
+    assert len(seen_jobs) == 1
+    assert seen_jobs[0]["to_email"] == "yuniorrodriguezo460@gmail.com"
+    assert "reply_to_email" not in seen_jobs[0]
 
     conn = sqlite3.connect(db_path)
     row = conn.execute("SELECT name, email, company, service FROM contacts").fetchone()

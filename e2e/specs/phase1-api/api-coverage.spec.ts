@@ -1041,6 +1041,9 @@ describe('P. Product Mutations', () => {
       price: 19.99,
       stockQuantity: 10,
       categoryId: '1',
+      imageUrls: [
+        `https://picsum.photos/seed/${encodeURIComponent(uid())}/640/640`,
+      ],
       shippingConfig: {
         standardDelivery: true,
         expressDelivery: false,

@@ -44,16 +44,26 @@ class QAModel {
       id: id,
       question:
           (map[Fields.questionText] as String?) ??
+          (map['questionText'] as String?) ??
+          (map['question_text'] as String?) ??
           (map['question'] as String?) ??
           '',
       authorId:
           (map[Fields.askerId] as String?) ??
+          (map['asker_id'] as String?) ??
           (map['authorId'] as String?) ??
           '',
       createdAt: _parseDt(map[Fields.createdAt]) ?? DateTime.now(),
-      answer: (map[Fields.answerText] as String?) ?? map['answer'] as String?,
-      answeredAt: _parseDt(map[Fields.answeredAt]),
-      answeredBy: map[Fields.answeredBy] as String?,
+      answer:
+          (map[Fields.answerText] as String?) ??
+          (map['answerText'] as String?) ??
+          (map['answer_text'] as String?) ??
+          map['answer'] as String?,
+      answeredAt: _parseDt(
+        map[Fields.answeredAt] ?? map['answeredAt'] ?? map['answered_at'],
+      ),
+      answeredBy:
+          (map[Fields.answeredBy] as String?) ?? map['answered_by'] as String?,
     );
   }
 

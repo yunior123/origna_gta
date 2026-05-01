@@ -400,6 +400,21 @@ class MockConfigService extends _i1.Mock implements _i9.ConfigService {
           as String);
 
   @override
+  String get glitchtipDsn =>
+      (super.noSuchMethod(
+            Invocation.getter(#glitchtipDsn),
+            returnValue: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#glitchtipDsn),
+            ),
+            returnValueForMissingStub: _i6.dummyValue<String>(
+              this,
+              Invocation.getter(#glitchtipDsn),
+            ),
+          )
+          as String);
+
+  @override
   String get sentryDnsKey =>
       (super.noSuchMethod(
             Invocation.getter(#sentryDnsKey),

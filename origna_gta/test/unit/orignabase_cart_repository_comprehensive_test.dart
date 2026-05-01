@@ -231,7 +231,18 @@ class _FakeOrignaBase extends Fake implements OrignaBase {
     String path, {
     Map<String, dynamic>? body,
     Map<String, String>? headers,
-  }) async => {'success': true};
+  }) async {
+    if (method == 'POST' && path == '/graphql') {
+      return {
+        'data': {
+          'list': usersCollection.cartSubcollection.queryDocs.map((doc) {
+            return <String, dynamic>{'id': doc.id, ...doc.data};
+          }).toList(),
+        },
+      };
+    }
+    return {'success': true};
+  }
 }
 
 void main() {

@@ -497,6 +497,8 @@ describe('OrignaVentures — Contact API', () => {
 });
 
 describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
+  const liveEmailTest = process.env.VENTURES_ALLOW_LIVE_EMAIL_SEND === '1' ? test : test.skip;
+
   test('PW01-contract: mobile shell page is reachable', async () => {
     const res = await fetch(VENTURES_WEB_URL);
     expect(res.status).toBe(200);
@@ -504,7 +506,7 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     expect(html.toLowerCase()).toContain('origna ventures');
   }, 30_000);
 
-  test('PW04-contact-api: live contact endpoint reports support + confirmation emails', async () => {
+  liveEmailTest('PW04-contact-api: live contact endpoint reports support-only email', async () => {
     const unique = Date.now();
     const res = await venturesApiFetch('/contact', {
       method: 'POST',
@@ -523,7 +525,7 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     expect(res.status).toBe(200);
     expect(body?.status).toBe('ok');
     expect(body?.emails?.support?.status).toBe('sent');
-    expect(body?.emails?.confirmation?.status).toBe('sent');
+    expect(body?.emails?.confirmation).toBeUndefined();
   }, 60_000);
 
   test('PW05-pricing-contract: meta exposes all live tier codes', async () => {

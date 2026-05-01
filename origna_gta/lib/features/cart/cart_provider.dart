@@ -83,21 +83,14 @@ final cartItemDetailProvider = FutureProvider.autoDispose
           .firstOrNull;
       final productId = cartItem?.productId ?? cartItemDocId.split('_').first;
 
-      // Pull from batch-fetched product cache (single whereIn query for all cart items)
-      final productCache = await ref.watch(_cartProductsBatchProvider.future);
-      final productData = productCache[productId];
-
-      final isUnavailable =
-          productData == null ||
-          productData[Fields.lifecycleStatus] !=
-              ProductLifecycleStatusValues.active;
-
-      if (isUnavailable) {
+      CartItemDetailModel? snapshotFallback() {
         if (cartItem == null) return null;
         final snapshotPriceCents = cartItem.priceSnapshot ?? 0;
         return CartItemDetailModel(
           productId: productId,
-          name: cartItem.productName ?? '',
+          name: cartItem.productName?.trim().isNotEmpty == true
+              ? cartItem.productName!.trim()
+              : 'product.product_fallback'.tr(),
           description: cartItem.productDescription ?? '',
           price: snapshotPriceCents / 100.0,
           priceCents: snapshotPriceCents,
@@ -118,63 +111,96 @@ final cartItemDetailProvider = FutureProvider.autoDispose
         );
       }
 
-      return CartItemDetailModel(
-        productId: productId,
-        name: (productData[Fields.name] as String?) ?? '',
-        description: (productData[Fields.description] as String?) ?? '',
-        priceCents: productData[Fields.priceCents] != null
-            ? (productData[Fields.priceCents] as num).toInt()
-            : (productData[Fields.price] as num? ?? 0).toInt() * 100,
-        price:
-            (productData[Fields.priceCents] as num? ??
-                    (productData[Fields.price] as num? ?? 0))
-                .toDouble() /
-            100,
-        imageUrls: List<String>.from(
-          productData[Fields.imageUrls] as Iterable? ?? [],
-        ),
-        quantity: cartItem?.quantity ?? 1,
-        createdAt: createdAt,
-        sellerAddress: Address.fromMap(
-          productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {},
-        ),
-        sellerId: (productData[Fields.sellerId] as String?) ?? '',
-        sellerName: (productData[Fields.sellerName] as String?) ?? '',
-        weightKg: productData[Fields.weightKg] != null
-            ? (productData[Fields.weightKg] as num).toDouble()
-            : null,
-        lengthCm: productData[Fields.lengthCm] != null
-            ? (productData[Fields.lengthCm] as num).toDouble()
-            : null,
-        widthCm: productData[Fields.widthCm] != null
-            ? (productData[Fields.widthCm] as num).toDouble()
-            : null,
-        heightCm: productData[Fields.heightCm] != null
-            ? (productData[Fields.heightCm] as num).toDouble()
-            : null,
-        isLocalDeliveryOnly:
-            (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
-        isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
-        estimatedShipDays:
-            (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
-        deliveryOptions: productData[Fields.deliveryOptions] != null
-            ? (productData[Fields.deliveryOptions] as List<dynamic>)
-                  .whereType<Map<dynamic, dynamic>>()
-                  .map(
-                    (o) =>
-                        SellerDeliveryOption.fromMap(o.cast<String, dynamic>()),
-                  )
-                  .whereType<SellerDeliveryOption>()
-                  .toList()
-            : [],
-        minimumOrderQuantity:
-            (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
-        freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
-        isDigital: (productData[Fields.isDigital] as bool?) ?? false,
-        variantId: cartItem?.variantId,
-        variantTitle: cartItem?.variantTitle,
-        variantOptions: cartItem?.variantOptions,
-      );
+      late final Map<String, dynamic>? productData;
+      try {
+        // Pull from batch-fetched product cache (single whereIn query for all cart items)
+        final productCache = await ref.watch(_cartProductsBatchProvider.future);
+        productData = productCache[productId];
+      } catch (error) {
+        AppLogger.w(
+          'Cart item product enrichment failed; using cart snapshot',
+          tag: 'cart',
+          error: error,
+        );
+        return snapshotFallback();
+      }
+
+      final isUnavailable =
+          productData == null ||
+          productData[Fields.lifecycleStatus] !=
+              ProductLifecycleStatusValues.active;
+
+      if (isUnavailable) {
+        return snapshotFallback();
+      }
+
+      try {
+        return CartItemDetailModel(
+          productId: productId,
+          name: (productData[Fields.name] as String?) ?? '',
+          description: (productData[Fields.description] as String?) ?? '',
+          priceCents: productData[Fields.priceCents] != null
+              ? (productData[Fields.priceCents] as num).toInt()
+              : (productData[Fields.price] as num? ?? 0).toInt() * 100,
+          price:
+              (productData[Fields.priceCents] as num? ??
+                      (productData[Fields.price] as num? ?? 0))
+                  .toDouble() /
+              100,
+          imageUrls: List<String>.from(
+            productData[Fields.imageUrls] as Iterable? ?? [],
+          ),
+          quantity: cartItem?.quantity ?? 1,
+          createdAt: createdAt,
+          sellerAddress: Address.fromMap(
+            productData[Fields.sellerAddress] as Map<String, dynamic>? ?? {},
+          ),
+          sellerId: (productData[Fields.sellerId] as String?) ?? '',
+          sellerName: (productData[Fields.sellerName] as String?) ?? '',
+          weightKg: productData[Fields.weightKg] != null
+              ? (productData[Fields.weightKg] as num).toDouble()
+              : null,
+          lengthCm: productData[Fields.lengthCm] != null
+              ? (productData[Fields.lengthCm] as num).toDouble()
+              : null,
+          widthCm: productData[Fields.widthCm] != null
+              ? (productData[Fields.widthCm] as num).toDouble()
+              : null,
+          heightCm: productData[Fields.heightCm] != null
+              ? (productData[Fields.heightCm] as num).toDouble()
+              : null,
+          isLocalDeliveryOnly:
+              (productData[Fields.isLocalDeliveryOnly] as bool?) ?? false,
+          isPerishable: (productData[Fields.isPerishable] as bool?) ?? false,
+          estimatedShipDays:
+              (productData[Fields.estimatedShipDays] as num?)?.toInt() ?? 3,
+          deliveryOptions: productData[Fields.deliveryOptions] != null
+              ? (productData[Fields.deliveryOptions] as List<dynamic>)
+                    .whereType<Map<dynamic, dynamic>>()
+                    .map(
+                      (o) => SellerDeliveryOption.fromMap(
+                        o.cast<String, dynamic>(),
+                      ),
+                    )
+                    .whereType<SellerDeliveryOption>()
+                    .toList()
+              : [],
+          minimumOrderQuantity:
+              (productData[Fields.minimumOrderQuantity] as num?)?.toInt() ?? 1,
+          freeShipping: (productData[Fields.freeShipping] as bool?) ?? false,
+          isDigital: (productData[Fields.isDigital] as bool?) ?? false,
+          variantId: cartItem?.variantId,
+          variantTitle: cartItem?.variantTitle,
+          variantOptions: cartItem?.variantOptions,
+        );
+      } catch (error) {
+        AppLogger.w(
+          'Cart item product data parse failed; using cart snapshot',
+          tag: 'cart',
+          error: error,
+        );
+        return snapshotFallback();
+      }
     });
 
 // ============================================================================
@@ -214,7 +240,25 @@ final cartItemsProvider = StreamProvider.autoDispose<List<CartItemModel>>((
   final userId = ref.watch(userIdProvider);
   if (userId == null) return Stream.value([]);
 
-  return ref.watch(cartRepositoryProvider).watchCart(userId);
+  return ref
+      .watch(cartRepositoryProvider)
+      .watchCart(userId)
+      .transform(
+        StreamTransformer<
+          List<CartItemModel>,
+          List<CartItemModel>
+        >.fromHandlers(
+          handleData: (items, sink) => sink.add(items),
+          handleError: (error, stackTrace, sink) {
+            AppLogger.w(
+              'Cart stream error suppressed at provider boundary',
+              tag: 'cart',
+              error: error,
+            );
+            sink.add(const <CartItemModel>[]);
+          },
+        ),
+      );
 });
 
 // ============================================================================

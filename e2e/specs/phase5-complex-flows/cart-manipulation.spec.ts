@@ -16,13 +16,13 @@ import {
   readDoc,
   deleteDoc,
 } from '../../lib/api-client.js';
-import { TEST_ACCOUNTS, TEST_UIDS, WEB_APP_URL } from '../../lib/config.js';
+import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
 const TEST_PRODUCT_ID = 'e2e_product_test_seller';
-/** Bare user ID (without "users:" prefix) extracted from TEST_UIDS.BUYER */
-const BUYER_BARE_ID = TEST_UIDS.BUYER.includes(':')
-  ? TEST_UIDS.BUYER.split(':')[1]
-  : TEST_UIDS.BUYER;
+
+function cartDocPath(localId: string, productId = TEST_PRODUCT_ID): string {
+  return `users/${localId}/cart/${localId}_${productId}`;
+}
 
 async function loginAs(browser: AgentBrowser, email: string, password: string) {
   await browser.open(`${WEB_APP_URL}/login`);
@@ -66,20 +66,24 @@ describe('Cart Manipulation', () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     buyerToken = auth.idToken;
 
-    const cartDocPath = `users/${BUYER_BARE_ID}/cart/${TEST_PRODUCT_ID}`;
-    await deleteDoc(cartDocPath, buyerToken).catch(() => {});
+    const path = cartDocPath(auth.localId);
+    await deleteDoc(path, buyerToken).catch(() => {});
 
-    const cartData = {
-      productId: TEST_PRODUCT_ID,
-      quantity: 1,
-      dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER,
-      parent_id: TEST_UIDS.BUYER,
-    };
-    const written = await writeDoc(cartDocPath, cartData, buyerToken, false);
+    const written = await writeDoc(
+      path,
+      {
+        productId: TEST_PRODUCT_ID,
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        dateCreated: new Date().toISOString(),
+        userId: auth.localId,
+      },
+      buyerToken,
+      false,
+    );
     expect(written).toBe(true);
 
-    const doc = await readDoc(cartDocPath, buyerToken);
+    const doc = await readDoc(path, buyerToken);
     expect(doc).not.toBeNull();
     expect(doc?.fields?.productId?.stringValue ?? doc?.productId).toBe(TEST_PRODUCT_ID);
     expect(Number(doc?.fields?.quantity?.integerValue ?? doc?.quantity)).toBe(1);
@@ -91,12 +95,25 @@ describe('Cart Manipulation', () => {
       const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
       buyerToken = auth.idToken;
     }
+    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
-    const cartDocPath = `users/${BUYER_BARE_ID}/cart/${TEST_PRODUCT_ID}`;
-    const updated = await writeDoc(cartDocPath, { quantity: 3 }, buyerToken, true);
+    const path = cartDocPath(auth.localId);
+    await writeDoc(
+      path,
+      {
+        productId: TEST_PRODUCT_ID,
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        dateCreated: new Date().toISOString(),
+        userId: auth.localId,
+      },
+      buyerToken,
+      false,
+    );
+    const updated = await writeDoc(path, { quantity: 3 }, buyerToken, true);
     expect(updated).toBe(true);
 
-    const doc = await readDoc(cartDocPath, buyerToken);
+    const doc = await readDoc(path, buyerToken);
     expect(doc).not.toBeNull();
     expect(Number(doc?.fields?.quantity?.integerValue ?? doc?.quantity)).toBe(3);
   });
@@ -107,12 +124,25 @@ describe('Cart Manipulation', () => {
       const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
       buyerToken = auth.idToken;
     }
+    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
 
-    const cartDocPath = `users/${BUYER_BARE_ID}/cart/${TEST_PRODUCT_ID}`;
-    const deleted = await deleteDoc(cartDocPath, buyerToken);
+    const path = cartDocPath(auth.localId);
+    await writeDoc(
+      path,
+      {
+        productId: TEST_PRODUCT_ID,
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        dateCreated: new Date().toISOString(),
+        userId: auth.localId,
+      },
+      buyerToken,
+      false,
+    );
+    const deleted = await deleteDoc(path, buyerToken);
     expect(deleted).toBe(true);
 
-    const doc = await readDoc(cartDocPath, buyerToken);
+    const doc = await readDoc(path, buyerToken);
     expect(doc).toBeNull();
   });
 
@@ -124,14 +154,20 @@ describe('Cart Manipulation', () => {
       const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
       buyerToken = auth.idToken;
     }
-    const cartDocPath = `users/${BUYER_BARE_ID}/cart/${TEST_PRODUCT_ID}`;
-    await writeDoc(cartDocPath, {
-      productId: TEST_PRODUCT_ID,
-      quantity: 1,
-      dateCreated: new Date().toISOString(),
-      userId: TEST_UIDS.BUYER,
-      parent_id: TEST_UIDS.BUYER,
-    }, buyerToken, false).catch(() => {});
+    const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+    const path = cartDocPath(auth.localId);
+    await writeDoc(
+      path,
+      {
+        productId: TEST_PRODUCT_ID,
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        dateCreated: new Date().toISOString(),
+        userId: auth.localId,
+      },
+      buyerToken,
+      false,
+    ).catch(() => {});
 
     // Login via UI
     await loginAs(browser, TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
@@ -163,7 +199,7 @@ describe('Cart Manipulation', () => {
     expect(hasContent).toBe(true);
 
     // Cleanup
-    await deleteDoc(cartDocPath, buyerToken).catch(() => {});
+    await deleteDoc(path, buyerToken).catch(() => {});
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (/connection refused|exit null|exit 1|timed out|not found/i.test(msg)) {

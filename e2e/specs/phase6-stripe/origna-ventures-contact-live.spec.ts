@@ -2,7 +2,7 @@
  * Focused live contact/email verification for OrignaVentures.
  *
  * This spec exercises the real browser contact form and asserts the live
- * submission reports both support and confirmation emails as sent.
+ * submission reports the support notification email as sent.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -15,7 +15,9 @@ import {
 import { VENTURES_API_BASE, VENTURES_WEB_URL } from '../../lib/config.js';
 
 const CONTACT_TEST_EMAIL =
-  process.env.VENTURES_CONTACT_TEST_EMAIL ?? 'e2e-contact@orignaventures.ca';
+  process.env.VENTURES_CONTACT_TEST_EMAIL ?? 'support@orignaventures.ca';
+const liveEmailTest =
+  process.env.VENTURES_ALLOW_LIVE_EMAIL_SEND === '1' ? test : test.skip;
 
 async function openVenturesPage(): Promise<{
   browser: Browser;
@@ -168,7 +170,46 @@ describe('OrignaVentures contact form live verification', () => {
     }
   }, 150_000);
 
-  test('live contact submission reports support + confirmation emails as sent', async () => {
+  liveEmailTest('live browser contact form submits through the UI and sends the support email', async () => {
+    const { browser, context, page } = await openVenturesPage();
+    const unique = Date.now();
+
+    try {
+      await acceptCookiesIfVisible(page);
+      await scrollToContactForm(page);
+      await fillFlutterField(page, 'input-contact-name', 'Yunior Rodriguez');
+      await fillFlutterField(page, 'input-contact-email', CONTACT_TEST_EMAIL);
+      await fillFlutterField(page, 'input-contact-company', 'Origna Ventures');
+      await fillFlutterField(
+        page,
+        'input-contact-message',
+        `I would like to confirm the contact form is reaching support correctly. Reference ${unique}.`,
+      );
+
+      const contactResponse = page.waitForResponse(
+        (response) =>
+          response.url().startsWith(`${VENTURES_API_BASE}/api/contact`) &&
+          response.request().method() === 'POST',
+        { timeout: 30_000 },
+      );
+      await page.locator('[aria-label="btn-contact-submit"]').first().click({
+        force: true,
+      });
+
+      const response = await contactResponse;
+      expect(response.status()).toBe(200);
+      const body = await response.json().catch(() => null);
+      expect(body?.status).toBe('ok');
+      expect(String(body?.id ?? '')).toMatch(/^ct-/);
+      expect(body?.emails?.support?.status).toBe('sent');
+      expect(body?.emails?.support?.provider).toBe('postal');
+      expect(body?.emails?.confirmation).toBeUndefined();
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 150_000);
+
+  liveEmailTest('live contact submission reports support email as sent', async () => {
     const unique = Date.now();
     const response = await fetch(`${VENTURES_API_BASE}/api/contact`, {
       method: 'POST',
@@ -177,11 +218,11 @@ describe('OrignaVentures contact form live verification', () => {
         Origin: VENTURES_WEB_URL,
       },
       body: JSON.stringify({
-        name: `E2E Contact ${unique}`,
+        name: 'Yunior Rodriguez',
         email: CONTACT_TEST_EMAIL,
-        company: 'Origna Ventures E2E',
+        company: 'Origna Ventures',
         service: 'origna_launch',
-        message: `Live contact verification ${unique}. Please ignore this automated support check.`,
+        message: `I would like to confirm the contact form is reaching support correctly. Reference ${unique}.`,
       }),
     });
     expect(response.status).toBe(200);
@@ -191,7 +232,6 @@ describe('OrignaVentures contact form live verification', () => {
     expect(String(body?.id ?? '')).toMatch(/^ct-/);
     expect(body?.emails?.support?.status).toBe('sent');
     expect(body?.emails?.support?.provider).toBe('postal');
-    expect(body?.emails?.confirmation?.status).toBe('sent');
-    expect(body?.emails?.confirmation?.provider).toBe('postal');
+    expect(body?.emails?.confirmation).toBeUndefined();
   }, 30_000);
 });

@@ -50,6 +50,7 @@ void main() {
         orignabaseProvider.overrideWithValue(mockOrignaBase),
         obUserIdProvider.overrideWithValue('user_123'),
         cartSubtotalProvider.overrideWithValue(10000),
+        cartWithDetailsProvider.overrideWith((ref) async => []),
       ],
     );
   });

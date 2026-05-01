@@ -113,7 +113,7 @@ class _FakeHomeViewModel extends HomeViewModel {
   @override
   Future<void> loadProducts() async {
     if (onLoadProductsCallback != null) {
-      return onLoadProductsCallback!();
+      await onLoadProductsCallback!();
     }
   }
 
@@ -1115,11 +1115,11 @@ void main() {
                     hasMore: true,
                     products: products,
                   ),
-                  onLoadProductsCallback: () {
+                  onLoadProductsCallback: () async {
                     if (allowErrors) {
-                      return Future.error(Exception('Simulated async crash'));
+                      await Future<void>.value();
+                      throw Exception('Simulated async crash');
                     }
-                    return Future.value();
                   },
                 ),
               ),
