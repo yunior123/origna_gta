@@ -6,7 +6,7 @@
  */
 import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
 import { AgentBrowser } from '../../lib/agent-browser.js';
-import { WEB_APP_URL } from '../../lib/config.js';
+import { TEST_ACCOUNTS, WEB_APP_URL } from '../../lib/config.js';
 
 describe('Subscription Cancel Screen', () => {
   let browser: AgentBrowser;
@@ -19,142 +19,66 @@ describe('Subscription Cancel Screen', () => {
     await browser.close();
   });
 
-  test('T01: Cancel page renders with resubscribe CTA', { timeout: 60_000 }, async () => {
-    try {
-      await browser.open(`${WEB_APP_URL}/subscription/cancel`);
-      await browser.waitForFlutter();
-    } catch (err) {
-      console.log('T01: Browser open failed (connection refused or timeout) — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-    await browser.waitForChange({ timeout: 3000 });
+  async function openCancelPageAsBuyer() {
+    await browser.loginViaApi(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
+    await browser.open(`${WEB_APP_URL}/subscription/cancel`);
+    await browser.waitForFlutter();
+    await browser.waitForChange({
+      text: /btn-resubscribe|btn-back-home|checkout.*cancel|subscription/i,
+      timeout: 15_000,
+    });
+    return browser.snapshot({ interactive: true, compact: true });
+  }
 
-    let snap: any;
-    try {
-      snap = await browser.snapshot({ interactive: true, compact: true });
-    } catch {
-      console.log('T01: Snapshot failed — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-    const text = JSON.stringify(snap);
-    // Page should show subscription-related content, redirect to login, or show Flutter app content
-    // The route may not exist yet — accept any rendered page as long as it loaded
-    expect(
-      /resubscribe|cancel|subscription|abonnement|annul/i.test(text) ||
-      /login|connexion|sign.*in/i.test(text) ||
-      /home|product|error|not.?found|404|flutter/i.test(text) ||
-      snap.refs.length > 0 ||
-      text.length > 10
-    ).toBe(true);
+  test('T01: Cancel page renders with resubscribe CTA', { timeout: 60_000 }, async () => {
+    const snap = await openCancelPageAsBuyer();
+    expect(browser.findByLabel(snap, /btn-resubscribe/i)).toBeTruthy();
+    expect(browser.findByLabel(snap, /btn-back-home/i)).toBeTruthy();
   });
 
   test('T02: btn-resubscribe navigates to subscription page', { timeout: 60_000 }, async () => {
-    try {
-      await browser.open(`${WEB_APP_URL}/subscription/cancel`);
-      await browser.waitForFlutter();
-    } catch (err) {
-      console.log('T02: Browser open failed (connection refused or timeout) — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-    await browser.waitForChange({ timeout: 3000 });
+    const snap = await openCancelPageAsBuyer();
+    const resubBtn = browser.findByLabel(snap, /btn-resubscribe/i);
+    expect(resubBtn).toBeTruthy();
 
-    let snap: any;
-    try {
-      snap = await browser.snapshot({ interactive: true, compact: true });
-    } catch {
-      console.log('T02: Snapshot failed — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-
-    const resubBtn = browser.findByLabel(snap, /btn-resubscribe|resubscribe|se.*réabonner/i);
-    if (resubBtn) {
-      try {
-        await browser.click(resubBtn.ref);
-        await browser.waitForChange({ timeout: 3000 });
-        try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-        const newSnap = await browser.snapshot({ interactive: true, compact: true });
-        const newText = JSON.stringify(newSnap);
-        expect(/subscription|premium|abonnement/i.test(newText) || newSnap.refs.length > 0).toBe(true);
-      } catch {
-        console.log('T02: Click failed — accepting');
-        expect(true).toBe(true);
-      }
-    } else {
-      // Page may redirect to login or route doesn't exist — acceptable
-      console.log('T02: Resubscribe button not found — route may not exist yet');
-      expect(true).toBe(true);
-    }
+    await browser.click(resubBtn!.ref);
+    await browser.waitForChange({
+      text: /subscription|premium|abonnement|btn-subscribe-premium/i,
+      timeout: 15_000,
+    });
+    const newSnap = await browser.snapshot({ interactive: true, compact: true });
+    const newText = JSON.stringify(newSnap);
+    expect(/subscription|premium|abonnement|btn-subscribe-premium/i.test(newText)).toBe(true);
   });
 
   test('T03: btn-back-home navigates to home', { timeout: 60_000 }, async () => {
-    try {
-      await browser.open(`${WEB_APP_URL}/subscription/cancel`);
-      await browser.waitForFlutter();
-    } catch {
-      console.log('T03: Browser open failed — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-    await browser.waitForChange({ timeout: 3000 });
+    const snap = await openCancelPageAsBuyer();
+    const homeBtn = browser.findByLabel(snap, /btn-back-home/i);
+    expect(homeBtn).toBeTruthy();
 
-    let snap: any;
-    try {
-      snap = await browser.snapshot({ interactive: true, compact: true });
-    } catch {
-      expect(true).toBe(true);
-      return;
-    }
-
-    const homeBtn = browser.findByLabel(snap, /btn-back-home|back.*home|retour.*accueil|home/i);
-    if (homeBtn) {
-      try {
-        await browser.click(homeBtn.ref);
-        await browser.waitForChange({ timeout: 3000 });
-        try { await browser.waitForFlutter(); } catch { /* timeout ok */ }
-        const newSnap = await browser.snapshot({ interactive: true, compact: true });
-        const text = JSON.stringify(newSnap);
-        expect(/home|accueil|product|produit|search|recherche/i.test(text) || newSnap.refs.length > 0).toBe(true);
-      } catch {
-        console.log('T03: Click failed — accepting');
-        expect(true).toBe(true);
-      }
-    } else {
-      console.log('T03: Back-home button not found — route may not exist yet');
-      expect(true).toBe(true);
-    }
+    await browser.click(homeBtn!.ref);
+    await browser.waitForChange({
+      text: /btn-home-settings|input-home-search|product-card-|search|home/i,
+      timeout: 20_000,
+    });
+    const newSnap = await browser.snapshot({ interactive: true, compact: true });
+    const text = JSON.stringify(newSnap);
+    expect(/btn-home-settings|input-home-search|product-card-|search|home/i.test(text)).toBe(true);
   });
 
   test('T04: Page accessible without auth (shows content or redirects)', { timeout: 60_000 }, async () => {
-    try {
-      await browser.clearState();
-      await browser.open(`${WEB_APP_URL}/subscription/cancel`);
-      await browser.waitForFlutter();
-    } catch {
-      console.log('T04: Browser open failed — accepting');
-      expect(true).toBe(true);
-      return;
-    }
-    await browser.waitForChange({ timeout: 3000 });
-
-    let snap: any;
-    try {
-      snap = await browser.snapshot({ interactive: true, compact: true });
-    } catch {
-      console.log('T04: Snapshot failed — accepting');
-      expect(true).toBe(true);
-      return;
-    }
+    await browser.clearState();
+    await browser.open(`${WEB_APP_URL}/subscription/cancel`);
+    await browser.waitForFlutter();
+    await browser.waitForChange({
+      text: /login|connexion|sign.*in|btn-login|subscription|checkout.*cancel/i,
+      timeout: 15_000,
+    });
+    const snap = await browser.snapshot({ interactive: true, compact: true });
     const text = JSON.stringify(snap);
-    // Either shows cancel page, redirects to login, or shows any Flutter content — all valid
+    // AuthRequiredGate may redirect to login; authenticated sessions show cancel content.
     expect(
-      /cancel|subscription|resubscribe|login|connexion|sign.*in|abonnement/i.test(text) ||
-      /home|product|error|not.?found|404|flutter/i.test(text) ||
-      snap.refs.length > 0 ||
-      text.length > 10
+      /login|connexion|sign.*in|btn-login|cancel|subscription|abonnement/i.test(text)
     ).toBe(true);
   });
 });

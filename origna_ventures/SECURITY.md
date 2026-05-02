@@ -17,7 +17,7 @@ Security audit completed with **HIGH** security rating after implementing critic
 - **Database**: SQLite with WAL mode for concurrent access safety
 - **Deployment**: rsync to Hetzner VPS (204.168.137.16), Caddy reverse proxy, no Firebase
 - **Payment**: Stripe Checkout Sessions (3 service tiers)
-- **Email**: Postal for contact confirmations and payment notifications
+- **Email**: Postal for support notifications and payment/service notifications
 
 ---
 

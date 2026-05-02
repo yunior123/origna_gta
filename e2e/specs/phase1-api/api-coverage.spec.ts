@@ -1177,13 +1177,6 @@ describe('R. Miscellaneous', () => {
     expect(result).toBeTruthy();
   });
 
-  test('R3: configure_algolia is admin-only', async () => {
-    // /api/admin/configure-algolia returns HTTP 404 (not-found) in dev — endpoint may not be deployed
-    const auth = await signIn(BUYER_EMAIL);
-    const err = await callExpectError('configure_algolia', {}, auth.idToken);
-    expect(['permission-denied', 'failed-precondition', 'not-found', 'unauthenticated']).toContain(err.code);
-  });
-
   test('R4: deactivate_supplier_platform rejects non-admin', async () => {
     // OrignaBase returns HTTP 403 (permission-denied): "Admin access required" for non-admins
     const auth = await signIn(SELLER_EMAIL);

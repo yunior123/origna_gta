@@ -985,11 +985,6 @@ export async function callCallable(
         };
       case "cleanup_fcm_token":
         return { path: "/api/users/cleanup-fcm-token", body: { userId } };
-      case "configure_algolia":
-        return {
-          path: "/api/admin/configure-algolia",
-          body: { adminId: userId },
-        };
       case "create_account_link":
         return { path: "/api/connect/account-link", body: { userId } };
       case "create_connect_account":

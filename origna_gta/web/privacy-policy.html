@@ -169,7 +169,7 @@
   <!-- ================================================================ -->
   <div class="section">
     <h2>2. Google User Data — Data Accessed</h2>
-    <p>Origna GTA uses Google Firebase Authentication to allow you to sign in with your Google account. When you choose to sign in with Google, we access the following limited Google user data:</p>
+    <p>Origna GTA uses Google OAuth through OrignaBase authentication to allow you to sign in with your Google account. When you choose to sign in with Google, we access the following limited Google user data:</p>
     <div class="highlight-box">
       <ul>
         <li><strong>Google account email address</strong> — to create your account and send notifications.</li>
@@ -228,8 +228,8 @@
     <p>We implement robust security measures to protect your Google user data:</p>
     <div class="highlight-box">
       <ul>
-        <li><strong>Encrypted Storage:</strong> Google user data is stored in Google Cloud Firestore, which is encrypted at rest (AES-256) and in transit (TLS 1.2+).</li>
-        <li><strong>Access Controls:</strong> Access to user data is restricted by Firebase Security Rules, ensuring only authorized operations are permitted.</li>
+        <li><strong>Encrypted Storage:</strong> Google user data is stored in OrignaBase's PostgreSQL database on our Hetzner VPS, with encrypted communication in transit.</li>
+        <li><strong>Access Controls:</strong> Access to user data is restricted by OrignaBase authentication, authorization rules, and administrative controls.</li>
         <li><strong>Encrypted Communication:</strong> All communication between the app and our servers is encrypted using TLS/SSL.</li>
         <li><strong>No Token Storage:</strong> We do not store Google OAuth tokens or Google passwords on our servers.</li>
         <li><strong>Administrative Access:</strong> Only the application owner has administrative access to the database. No employee or contractor has bulk access to user data.</li>
@@ -279,8 +279,8 @@
     <p>We do <strong>not</strong> sell your personal data. We share information only with the following trusted service providers:</p>
     <ul>
       <li><strong>Payment Processors:</strong> Stripe for secure payment processing.</li>
-      <li><strong>Cloud Services:</strong> Firebase (Google) for authentication, OrignaBase on Hetzner VPS for database/backend, Caddy for hosting.</li>
-      <li><strong>Search Services:</strong> Algolia for product search functionality.</li>
+      <li><strong>Cloud Services:</strong> OrignaBase on Hetzner VPS for authentication, database/backend, and Caddy hosting.</li>
+      <li><strong>Search Services:</strong> Self-hosted Meilisearch through OrignaBase for product search functionality.</li>
       <li><strong>Shipping Partners:</strong> Carrier services when fulfilling deliveries.</li>
       <li><strong>Sellers:</strong> Order details necessary to fulfill your purchases (name, delivery address).</li>
       <li><strong>Legal Requirements:</strong> When required by Canadian law, court order, or to protect rights and safety.</li>
@@ -330,8 +330,8 @@
       <li>Payment data is handled by PCI-DSS compliant processors (Stripe).</li>
       <li>Access to personal data is restricted to authorized personnel only.</li>
       <li>Regular security audits and vulnerability monitoring.</li>
-      <li>Firebase Security Rules protect database access at the field level.</li>
-      <li>Google user data is stored in encrypted Google Cloud infrastructure (AES-256 at rest).</li>
+      <li>OrignaBase authorization rules protect database access at the field level.</li>
+      <li>Google user data is stored in OrignaBase and protected by authenticated access controls.</li>
     </ul>
   </div>
 
