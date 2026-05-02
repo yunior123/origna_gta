@@ -67,7 +67,7 @@ describe('Infrastructure Health', () => {
     expect(res.status).toBeLessThan(600);
   });
 
-  test('SurrealDB health is implicit in the successful plain-text /health response', { timeout: 10_000 }, async () => {
+  test('database health is implicit in the successful plain-text /health response', { timeout: 10_000 }, async () => {
     const res = await fetchWithRetry(`${ORIGNABASE_URL}/health`, { method: 'GET' });
     expect(res.status).toBe(200);
     const body = await res.text();

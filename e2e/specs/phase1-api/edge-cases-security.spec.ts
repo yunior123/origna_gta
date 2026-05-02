@@ -40,7 +40,7 @@ const ADMIN_PASS = TEST_ACCOUNTS.ADMIN_PASS;
 const VALID_TEST_IMAGE_URL =
   'https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev/dev/products/samples/electronics-1.jpg';
 
-/** Build a raw checkout payload without reading from SurrealDB (for negative tests). */
+/** Build a raw checkout payload without reading from OrignaBase (for negative tests). */
 function rawCheckoutPayload(buyerUid: string, productId: string, quantity: number, sellerId = TEST_UIDS.SELLER) {
   return {
     userId: buyerUid,
@@ -468,7 +468,7 @@ describe('7. Non-Existent Product at Checkout', () => {
   test('Checkout with non-existent product ID is rejected', { timeout: 60_000 }, async () => {
     const buyerAuth = await signIn(BUYER_EMAIL);
 
-    // Build payload manually — buildCheckoutPayload reads SurrealDB and throws before
+    // Build payload manually — buildCheckoutPayload reads OrignaBase and throws before
     // the API call if the product doesn't exist. We need a raw payload here.
     const data = rawCheckoutPayload(buyerAuth.localId, 'e2e_nonexistent_product_xyz', 1);
 
@@ -482,7 +482,7 @@ describe('7. Non-Existent Product at Checkout', () => {
     const product = await getTestProduct(buyerAuth.idToken, buyerAuth.localId);
     const { data } = await buildCheckoutPayload(buyerAuth.localId, product.id, 1, buyerAuth.idToken);
 
-    // Tamper: set subtotalCents to 0 — backend re-computes from SurrealDB, but subtotalCents guard fires first
+    // Tamper: set subtotalCents to 0 — backend re-computes from OrignaBase, but subtotalCents guard fires first
     data.subtotalCents = 0;
 
     const error = await callExpectError('create_checkout_session', data, buyerAuth.idToken);

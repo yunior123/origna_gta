@@ -98,7 +98,7 @@ describe('Return Request Flow (Flow 6)', () => {
     const returnId = returnResult.returnId;
     expect(returnId).toBeTruthy();
 
-    // 6. Verify return request exists in SurrealDB
+    // 6. Verify return request exists in OrignaBase
     const returnData = await getDoc(`return_requests/${returnId}`, adminAuth.idToken);
     expect(returnData.returnStatus).toBe('requested');
 

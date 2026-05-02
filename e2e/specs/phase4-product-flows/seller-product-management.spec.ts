@@ -96,7 +96,7 @@ describe('Seller Product Management — API Tests', () => {
     }
   });
 
-  test('T02: Bulk pause products — verify lifecycleStatus in SurrealDB', async () => {
+  test('T02: Bulk pause products — verify lifecycleStatus in OrignaBase', async () => {
     const result = await callOk('bulk_update_products', {
       productIds: [testProductId],
       action: 'pause',
@@ -108,7 +108,7 @@ describe('Seller Product Management — API Tests', () => {
     expect(['paused', 'inactive']).toContain(doc.lifecycleStatus);
   });
 
-  test('T03: Bulk activate products — verify restore in SurrealDB', async () => {
+  test('T03: Bulk activate products — verify restore in OrignaBase', async () => {
     const result = await callOk('bulk_update_products', {
       productIds: [testProductId],
       action: 'activate',

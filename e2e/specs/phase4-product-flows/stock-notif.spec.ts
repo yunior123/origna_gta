@@ -344,7 +344,7 @@ describe('4. Security — Adversarial Scenarios', () => {
     expect(err.code).toBeTruthy();
   });
 
-  test('4.5 SurrealDB direct write to stock_notifications is blocked by rules', async () => {
+  test('4.5 direct write to stock_notifications is blocked by rules', async () => {
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL);
     const path = `stock_notifications/${OOS_PRODUCT_ID}_bypass_${auth.localId}`;
     const ok = await writeDoc(path, {

@@ -63,7 +63,7 @@ async function deleteWarehouse(token: string, warehouseId: string): Promise<void
 
 describe('Warehouse: multi-location seller flow', () => {
 
-  test('T1: seller creates a warehouse and it is persisted in SurrealDB', { timeout: 60_000 }, async () => {
+  test('T1: seller creates a warehouse and it is persisted in OrignaBase', { timeout: 60_000 }, async () => {
     const { idToken: token } = await signIn(SELLER_EMAIL, DEFAULT_PASS);
 
     const result = await createWarehouse(token, {

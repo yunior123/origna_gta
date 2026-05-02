@@ -178,8 +178,7 @@ class NoopPushMessagingClient implements PushMessagingClient {
 /// OrignaBase-backed push messaging client.
 ///
 /// P1-NEW-11: Replaces [NoopPushMessagingClient] to provide real-time
-/// notification delivery via OrignaBase WebSocket snapshots. Since Firebase
-/// is removed, this implementation:
+/// notification delivery via OrignaBase WebSocket snapshots. This implementation:
 ///
 /// - Watches the user's notification subcollection via OrignaBase realtime
 /// - Detects new notifications and emits them as [AppRemoteMessage] objects
@@ -315,8 +314,8 @@ class OrignaBasePushMessagingClient implements PushMessagingClient {
     bool provisional = false,
     bool sound = true,
   }) async {
-    // Without Firebase/APNs, we can't prompt the native permission dialog.
-    // Return authorized so the service proceeds with WebSocket-based delivery.
+    // Native push isn't implemented yet — return authorized so the service
+    // proceeds with WebSocket-based delivery.
     return const AppNotificationSettings(
       authorizationStatus: AppNotificationAuthorizationStatus.authorized,
     );

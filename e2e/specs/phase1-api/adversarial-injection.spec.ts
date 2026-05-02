@@ -14,7 +14,7 @@
  * 10. Address field injection (street, city, postal code)
  *
  * Expected behaviour for all: reject with invalid-argument or unauthenticated.
- * Backend MUST sanitise/escape before any storage — no raw user HTML in SurrealDB.
+ * Backend MUST sanitise/escape before any storage — no raw user HTML in OrignaBase.
  */
 
 import { afterAll, test, expect, describe } from 'bun:test';

@@ -54,7 +54,7 @@ describe('OrignaBase — UI Integration Flows', () => {
     await browser.close();
   });
 
-  test('O1: Profile Update reflects in OrignaBase SurrealDB', async () => {
+  test('O1: Profile update reflects in OrignaBase', async () => {
     // Verify profile exists and can be read via API — UI edit is best-effort
     const auth = await signIn(TEST_ACCOUNTS.BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     let profile: any;

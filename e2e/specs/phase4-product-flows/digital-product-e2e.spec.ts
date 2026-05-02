@@ -42,7 +42,7 @@ function shouldSkipMissingDigitalSoftware(product: any): boolean {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('A. Digital Product Catalogue', () => {
-  test('A.1 Software product has correct SurrealDB fields (FXCleaner)', async () => {
+  test('A.1 Software product has correct OrignaBase fields (FXCleaner)', async () => {
     const doc = await readDoc(`products/${DIGITAL_SW_ID}`);
     const product = parseDoc(doc);
 
@@ -57,7 +57,7 @@ describe('A. Digital Product Catalogue', () => {
     expect(product.weightKg).toBeLessThan(0.02);
   });
 
-  test('A.2 Book product has correct SurrealDB fields (eBook bundle)', async () => {
+  test('A.2 Book product has correct OrignaBase fields (eBook bundle)', async () => {
     const doc = await readDoc(`products/${DIGITAL_BOOK_ID}`);
     const product = parseDoc(doc);
 

@@ -15,7 +15,7 @@
 /// BACKEND CONTRACT:
 /// - `baseUrl` is the public website host and share-link origin.
 /// - `orignabaseUrl` is the primary backend for auth, data, and business APIs.
-/// - Web bundle served from Hetzner VPS with Caddy (no Firebase Hosting).
+/// - Web bundle served from Hetzner VPS with Caddy.
 ///
 /// USAGE:
 /// - Emulator mode: Pass --dart-define=ENVIRONMENT=emulator

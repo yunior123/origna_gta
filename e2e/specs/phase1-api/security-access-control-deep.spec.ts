@@ -17,7 +17,7 @@
  * 10. Stock manipulation — Seller attempts to set competitor's stock
  * 11. Price manipulation at checkout (client-side price tampering)
  * 12. Address isolation — Buyer cannot set another user's address as default
- * 13. SurrealDB direct read — private subcollections blocked for wrong user
+ * 13. Direct data read — private subcollections blocked for wrong user
  */
 
 import { test, expect, describe } from 'bun:test';
@@ -67,7 +67,7 @@ describe('1. IDOR — Order Access Control', () => {
     // buyer1 tries to cancel it — should be denied
     const error = await callExpectError('cancel_order', { orderId }, buyerAuth.idToken);
     // Backend checks: ownership (403), order existence (404), or validation (400)
-    // writeDoc bypasses normal order creation — cancel_order may succeed if SurrealDB PERMISSIONS
+    // writeDoc bypasses normal order creation — cancel_order may succeed if storage permissions
     // don't cover raw-inserted docs. Backend IDOR fix tracked separately.
     expect(['permission-denied', 'forbidden', 'not-found', 'invalid-argument', 'validation-error', 'unexpected-success']).toContain(error.code);
   });
@@ -299,7 +299,7 @@ describe('5. Price Tampering at Checkout', () => {
     data.subtotalCents = 1; // $0.01
 
     const error = await callExpectError('create_checkout_session', data, auth.idToken);
-    // Backend re-fetches price from SurrealDB — subtotalCents mismatch → invalid-argument
+    // Backend re-fetches price from OrignaBase — subtotalCents mismatch → invalid-argument
     // May also be rate-limited if previous tests exhausted the checkout endpoint
     expect(['invalid-argument', 'validation-error', 'resource-exhausted']).toContain(error.code);
     if (error.code === 'invalid-argument') {
@@ -442,7 +442,7 @@ describe('7. Race Condition — Last Item in Stock', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // 8. FIRESTORE DIRECT WRITE PREVENTION (Client cannot bypass Cloud Functions)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('8. SurrealDB Direct Write Prevention', () => {
+describe('8. Direct Write Prevention', () => {
   // timeout: 60_000
 
   test('Client cannot directly write to products collection (must use Cloud Function)', { timeout: 60_000 }, async () => {

@@ -348,7 +348,7 @@ describe('C. Create Subscription API + Session Integrity', () => {
 // ════════════════════════════════════════════════════════════════════
 
 describe('D. Full Stripe Checkout — Success Flow', () => {
-  test('D1: 4242 card -> successful subscription -> SurrealDB isPremium=true within 60s', async () => {
+  test('D1: 4242 card -> successful subscription -> OrignaBase isPremium=true within 60s', async () => {
     const auth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     const status = await callCallable('get_subscription_status', {}, auth.idToken);
     if ((status.result ?? status).isPremium) {
@@ -576,7 +576,7 @@ describe('F. Stripe Checkout — 3DS Authentication', () => {
 });
 
 describe('G. Webhook Sync', () => {
-  test('G1: customer.subscription.created sets isPremium=true in SurrealDB', async () => {
+  test('G1: customer.subscription.created sets isPremium=true in OrignaBase', async () => {
     // Verify that if a user has an active subscription, their user doc reflects isPremium=true
     const auth = await signIn(BUYER_EMAIL, TEST_ACCOUNTS.BUYER_PASS);
     const status = await callCallable('get_subscription_status', {}, auth.idToken);

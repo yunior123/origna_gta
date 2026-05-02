@@ -293,7 +293,7 @@ The `AppError` class provides two static methods used throughout the app:
 
 **`AppError.log(error, {stackTrace, context, extras})`** -- Dual-channel error reporting:
 - Development: logs via `AppLogger.e()` (structured debug output)
-- Production: sends to GlitchTip via `Sentry.captureException()` with context tags
+- Production: sends to self-hosted GlitchTip through the Sentry-compatible SDK with context tags
 
 Usage pattern in ViewModels:
 

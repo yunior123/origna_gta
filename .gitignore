@@ -157,6 +157,7 @@ scripts/pre_push_validation.sh
 *.bak
 *.backup
 *.orig
+*.tmp
 *.swp
 *.swo
 *.md.bak

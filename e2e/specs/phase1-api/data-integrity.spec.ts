@@ -59,11 +59,11 @@ describe('Data Integrity', () => {
     }
   });
 
-  test('T04: Product ids retain valid identifier shape (SurrealDB or UUID)', async () => {
+  test('T04: Product ids retain valid identifier shape', async () => {
     if (!stableProductId) return;
     if (stableProductRecordId) {
       const idStr = stableProductRecordId;
-      // Accept both SurrealDB record-id format (collection:id) and UUID format
+      // Accept both legacy record-id format (collection:id) and UUID format
       const isValidShape = idStr.includes(':') || /^[0-9a-f-]{36}$/i.test(idStr);
       expect(isValidShape).toBe(true);
     }

@@ -98,7 +98,7 @@ describe('Subcategory Filtering — API', () => {
     }
   });
 
-  test('T03: create_product_atomic with valid subcategory stores it in SurrealDB', async () => {
+  test('T03: create_product_atomic with valid subcategory stores it in OrignaBase', async () => {
     const productName = `E2E Subcat Test ${uid()}`;
     const result = await callOk('create_product_atomic', {
       productData: {

@@ -35,7 +35,7 @@ describe("Edit Product Flow", () => {
       );
 
       if (!originalDoc) {
-        console.warn(`Product ${SELLER_PRODUCT_ID} not found in dev SurrealDB`);
+        console.warn(`Product ${SELLER_PRODUCT_ID} not found in dev OrignaBase`);
         return;
       }
 
@@ -97,7 +97,7 @@ describe("Edit Product Flow", () => {
       );
 
       if (!originalDoc) {
-        console.warn(`Product ${SELLER_PRODUCT_ID} not found in dev SurrealDB`);
+        console.warn(`Product ${SELLER_PRODUCT_ID} not found in dev OrignaBase`);
         return;
       }
 

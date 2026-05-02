@@ -54,7 +54,7 @@ describe('Add Product — API Tests', () => {
     }
   });
 
-  test('T01: Create product via callable — verify SurrealDB record', async () => {
+  test('T01: Create product via callable — verify OrignaBase record', async () => {
     const testName = `E2E Product ${uid()}`;
     const result = await callOk('create_product_atomic', {
       productData: {
@@ -85,7 +85,7 @@ describe('Add Product — API Tests', () => {
     expect(doc.imageUrls.length).toBeGreaterThan(0);
   });
 
-  test('T02: Create digital product — verify digital fields in SurrealDB', async () => {
+  test('T02: Create digital product — verify digital fields in OrignaBase', async () => {
     const testName = `E2E Digital ${uid()}`;
     const result = await callOk('create_product_atomic', {
       productData: {
@@ -205,7 +205,7 @@ describe('Add Product — API Tests', () => {
     }
   });
 
-  test('T07: Update product name — verify change in SurrealDB', async () => {
+  test('T07: Update product name — verify change in OrignaBase', async () => {
     const result = await callOk('create_product_atomic', {
       productData: {
         name: `Update Test ${uid()}`,
@@ -232,7 +232,7 @@ describe('Add Product — API Tests', () => {
     expect(doc.name).toBe(newName);
   });
 
-  test('T08: Delete product — verify soft delete in SurrealDB', async () => {
+  test('T08: Delete product — verify soft delete in OrignaBase', async () => {
     const result = await callOk('create_product_atomic', {
       productData: {
         name: `Delete Test ${uid()}`,

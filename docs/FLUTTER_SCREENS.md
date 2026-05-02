@@ -1068,7 +1068,7 @@ OrdersScreen (pending approvals) → ShippingApprovalScreen
 
 | Provider | Purpose |
 |----------|---------|
-| `authStateProvider` | Authentication state (Firebase/OrignaBase user) |
+| `authStateProvider` | Authentication state (OrignaBase user) |
 | `userProfileProvider` | User profile data from database |
 | `homeViewModelProvider` | Home screen products and search |
 | `cartItemsProvider` | Shopping cart items |

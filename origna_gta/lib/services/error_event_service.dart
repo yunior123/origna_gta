@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart';
+import 'package:origna_gta/utils/app_logger.dart';
 
 /// Best-effort internal error-event persistence.
 ///
@@ -59,7 +60,7 @@ abstract final class ErrorEventService {
       await ob.collection(Collections.errorEvents).add(payload);
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('ErrorEventService.persist failed: $e');
+        AppLogger.e('ErrorEventService.persist failed: $e');
       }
     }
   }

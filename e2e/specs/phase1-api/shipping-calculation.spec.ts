@@ -319,7 +319,7 @@ describe("Shipping Calculation", () => {
         expect(order1.subtotalCents).toBe(1000);
         expect(order2.subtotalCents).toBe(2000);
       } finally {
-        // Always clean up the test product to avoid polluting dev SurrealDB
+        // Always clean up the test product to avoid polluting dev OrignaBase
         await deleteDoc(`products/${productId}`, adminAuth.idToken).catch(
           () => {},
         );

@@ -46,7 +46,7 @@ describe('Rate Limiting', () => {
     );
 
     // Rate limiting is best-effort in concurrent Cloud Functions — instances may
-    // not see each other's SurrealDB writes fast enough. Assert the service
+    // not see each other's OrignaBase writes fast enough. Assert the service
     // didn't crash (at least 1 response) and log rate-limit hits for monitoring.
     expect(results.length).toBe(10);
     expect(successes.length + errors.length).toBe(10);

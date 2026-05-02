@@ -198,7 +198,7 @@ class ProductDetailScreen extends ConsumerWidget {
 
 ### OrignaBaseNotificationService
 
-Push notification service via FCM (Firebase Cloud Messaging).
+Push notification service backed by OrignaBase-managed device tokens.
 
 **Purpose**: Manage device tokens and send push notifications through OrignaBase.
 
@@ -617,7 +617,7 @@ class NotificationService {
       // Web push is different
       return null;
     }
-    return await FirebaseMessaging.instance.getToken();
+    return await OrignaBaseNotificationTokens.currentDeviceToken();
   }
 }
 ```
@@ -634,7 +634,7 @@ class AnalyticsService {
       // Never crash app for analytics failure
       AppLogger.w('Analytics tracking failed: $e');
       // Optionally report to GlitchTip (non-blocking)
-      unawaited(Sentry.captureException(e, stackTrace: st));
+      unawaited(AppError.log(e, stackTrace: st));
     }
   }
 }

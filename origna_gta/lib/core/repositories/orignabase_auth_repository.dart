@@ -55,9 +55,9 @@ class OrignaBaseAuthException implements Exception {
 /// This repository handles all authentication-related operations, including
 /// multi-factor authentication, third-party OAuth providers, and account management.
 ///
-/// Error codes from OrignaBase SDK exceptions are mapped to Firebase-style
-/// codes (`user-not-found`, `wrong-password`, etc.) to maintain compatibility
-/// with existing error handling logic in the app.
+/// Error codes from OrignaBase SDK exceptions are mapped to standard
+/// auth codes (`user-not-found`, `wrong-password`, etc.) to maintain
+/// compatibility with existing error handling logic in the app.
 class OrignaBaseAuthRepository implements AuthRepository {
   final OrignaBase _ob;
   bool _googleSignInInitialized = false;

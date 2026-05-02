@@ -5,7 +5,7 @@
  * Headless API tests (no browser needed) — verifies DB state after mutations.
  *
  * Coverage: 65 previously-uncovered callable functions across 14 domains.
- * Every mutation verifies SurrealDB state. Every permission boundary is tested.
+ * Every mutation verifies OrignaBase state. Every permission boundary is tested.
  *
  * Run: cd e2e-agent-browser && npx vitest run specs/phase1-api/api-coverage.spec.ts
  */
@@ -68,7 +68,7 @@ describe('A. User Profile', () => {
     // The update should succeed (no error)
     expect(updateResult.error).toBeFalsy();
 
-    // Verify by re-fetching profile via the API (not SurrealDB directly)
+    // Verify by re-fetching profile via the API, not by bypassing OrignaBase.
     const profile = await callOk('get_user_profile', {}, auth.idToken);
     // OrignaBase may return name or displayName field
     const returnedName = profile?.name || profile?.displayName || profile?.user?.name || profile?.user?.displayName;
@@ -78,7 +78,7 @@ describe('A. User Profile', () => {
     }
   });
 
-  test('A4: update_email_consent toggles consent and verifies SurrealDB', async () => {
+  test('A4: update_email_consent toggles consent and verifies OrignaBase', async () => {
     // Endpoint exists and works — /api/users/email-consent returns { success, emailConsent }
     const auth = await signIn(BUYER_EMAIL);
     const updateResult = await callCallable('update_email_consent', { emailConsent: false }, auth.idToken);
@@ -143,7 +143,7 @@ describe('B. Address CRUD', () => {
 
     const r = result.result || result;
     if (r.addressId || r.id) {
-      // Verify address exists in SurrealDB
+      // Verify address exists in OrignaBase
       const doc = await readDoc(`users/${auth.localId}/addresses/${r.addressId || r.id}`, auth.idToken);
       if (doc) {
         const addr = parseDoc(doc);
@@ -1033,7 +1033,7 @@ describe('P. Product Mutations', () => {
     expect(['permission-denied', 'failed-precondition', 'not-found', 'unknown', 'internal', 'invalid-argument', 'unauthenticated']).toContain(err.code);
   });
 
-  test('P4: create_product_atomic creates product and verifies SurrealDB', async () => {
+  test('P4: create_product_atomic creates product and verifies OrignaBase', async () => {
     const auth = await signIn(SELLER_EMAIL);
     const productData = {
       name: `E2E Test Product ${uid()}`,

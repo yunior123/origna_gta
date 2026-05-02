@@ -337,7 +337,7 @@ async fn create_product(
     let mut product = body.clone();
     let product_obj = product
         .as_object_mut()
-        .expect("already validated as object");
+        .ok_or_else(|| ob_core::Error::Validation("Product body must be a JSON object".into()))?;
     product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
     product_obj.insert(

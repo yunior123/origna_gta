@@ -157,7 +157,7 @@ flutter test integration_test/coverage_gate_integration_test.dart
 | `premium-subscription.spec.ts` | Subscribe + paywall + cancel |
 | `favorites.spec.ts` | Toggle + list favorites |
 | `profile-management.spec.ts` | Profile + address CRUD |
-| `search-products.spec.ts` | Algolia search + filters |
+| `search-products.spec.ts` | Meilisearch search + filters |
 | `trending-products.spec.ts` | Trending section |
 | `admin-actions.spec.ts` | Admin product/user actions |
 | `admin-panel.spec.ts` | Admin panel tabs |
