@@ -25,7 +25,7 @@
                        ▼
 ┌─────────────────────────────────────────────────────────┐
 │              EXTERNAL APIS / PLATFORMS                   │
-│  - OrignaBase SDK, Stripe, Firebase, etc.              │
+│  - OrignaBase SDK, Stripe, Postal, GlitchTip, etc.     │
 └─────────────────────────────────────────────────────────┘
 ```
 

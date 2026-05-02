@@ -11,8 +11,8 @@ import 'add_product_state.dart';
 String? validateAddProductInputs({
   required String name,
   required String description,
-  required double price,
-  double? compareAtPrice,
+  required int priceCents,
+  int? compareAtPriceCents,
   required int stock,
   required int categoryId,
   required String street,
@@ -39,9 +39,9 @@ String? validateAddProductInputs({
   if (description.trim().length > 4000) {
     return 'product.description_too_long'.tr();
   }
-  if (price <= 0.99) return 'product.please_enter_price'.tr();
-  if (price > 100000) return 'product.price_limit_exceeded'.tr();
-  if (compareAtPrice != null && compareAtPrice - price < 0.50) {
+  if (priceCents <= 99) return 'product.please_enter_price'.tr();
+  if (priceCents > 10000000) return 'product.price_limit_exceeded'.tr();
+  if (compareAtPriceCents != null && compareAtPriceCents - priceCents < 50) {
     return 'product.compare_at_price_must_be_higher'.tr();
   }
   if (stock < 0) return 'product.stock_negative'.tr();

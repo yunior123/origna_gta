@@ -138,6 +138,9 @@ orignabase/local_test_data/
 # --- Test results (root) ---
 test-results/
 
+# --- Docs site generated output ---
+docs-site/out/
+
 # --- E2E ---
 e2e/node_modules/
 e2e/dist/

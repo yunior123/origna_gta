@@ -112,7 +112,7 @@ export function normalizeFields(
   fields: Record<string, any>,
 ): Record<string, any> {
   const entries = Object.entries(fields || {});
-  const looksSurrealDB =
+  const looksTypedFields =
     entries.length > 0 &&
     entries.every(
       ([, value]) =>
@@ -132,21 +132,21 @@ export function normalizeFields(
         ),
     );
 
-  if (!looksSurrealDB) return fields;
+  if (!looksTypedFields) return fields;
 
   const normalized: Record<string, any> = {};
   for (const [k, v] of entries) normalized[k] = parseVal(v);
   return normalized;
 }
 
-export function wrapSurrealDBDoc(
+export function wrapTypedDoc(
   path: string,
   data: Record<string, any> | null,
 ): any {
   if (!data) return null;
   return {
     name: path,
-    fields: toSurrealDBFields(data),
+    fields: toTypedFields(data),
   };
 }
 
@@ -227,7 +227,7 @@ export async function readDoc(path: string, token?: string): Promise<any> {
     return null;
   }
 
-  return wrapSurrealDBDoc(path, raw as Record<string, any>);
+  return wrapTypedDoc(path, raw as Record<string, any>);
 }
 
 export async function getDoc(path: string, token?: string): Promise<any> {
@@ -356,7 +356,7 @@ export function parseDoc(doc: any): any {
   return r;
 }
 
-export function toSurrealDBFields(obj: Record<string, any>): any {
+export function toTypedFields(obj: Record<string, any>): any {
   const f: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) f[k] = toFsVal(v);
   return f;
@@ -373,7 +373,7 @@ export function toFsVal(v: any): any {
   if (v instanceof Date) return { timestampValue: v.toISOString() };
   if (Array.isArray(v)) return { arrayValue: { values: v.map(toFsVal) } };
   if (typeof v === "object")
-    return { mapValue: { fields: toSurrealDBFields(v) } };
+    return { mapValue: { fields: toTypedFields(v) } };
   return { stringValue: String(v) };
 }
 
@@ -2039,7 +2039,7 @@ export async function buildMultiSellerPayload(
     const prodDoc = await readDoc(`products/${productId}`, token);
     const product = parseDoc(prodDoc);
     if (!product)
-      throw new Error(`Product ${productId} not found in SurrealDB.`);
+      throw new Error(`Product ${productId} not found in OrignaBase.`);
     const price =
       product.price ?? (product.priceCents ? product.priceCents / 100 : 0);
     cartItems.push({
@@ -2447,7 +2447,7 @@ export async function discoverProducts(
           if (fields.sellerId !== sellerUid) {
             await writeDoc(
               `products/${id}`,
-              toSurrealDBFields({ sellerId: sellerUid }),
+              toTypedFields({ sellerId: sellerUid }),
               adminAuth.idToken,
               true,
             );
@@ -2502,7 +2502,7 @@ export async function discoverProducts(
         if (currentStock < 10) {
           await writeDoc(
             `products/${id}`,
-            toSurrealDBFields({ stockQuantity: 200 }),
+            toTypedFields({ stockQuantity: 200 }),
             adminAuth.idToken,
             true,
           );
@@ -2529,7 +2529,7 @@ export async function discoverProducts(
           if (Object.keys(patches).length > 0) {
             await writeDoc(
               `products/${id}`,
-              toSurrealDBFields(patches),
+              toTypedFields(patches),
               adminAuth.idToken,
               true,
             );
@@ -2539,7 +2539,7 @@ export async function discoverProducts(
         if (fields.sellerId !== sellerUid) {
           await writeDoc(
             `products/${id}`,
-            toSurrealDBFields({ sellerId: sellerUid }),
+            toTypedFields({ sellerId: sellerUid }),
             adminAuth.idToken,
             true,
           );
@@ -2615,7 +2615,7 @@ export async function getTestProduct(
     : fresh;
 
   if (freshCandidates.length === 0) {
-    throw new Error("All products are out of stock. Restock dev SurrealDB.");
+    throw new Error("All products are out of stock. Restock dev OrignaBase.");
   }
   return freshCandidates[0];
 }
@@ -2697,7 +2697,7 @@ export async function createDummyProduct(
     };
     const ok = await writeDoc(
       `products/${id}`,
-      toSurrealDBFields(productData),
+      toTypedFields(productData),
       adminAuth.idToken,
       true,
     );
@@ -2740,7 +2740,7 @@ export async function createDummyProduct(
 
   const ok = await writeDoc(
     `products/${id}`,
-    toSurrealDBFields(productData),
+    toTypedFields(productData),
     adminAuth.idToken,
     true,
   );
@@ -2792,7 +2792,7 @@ export async function ensureOosProduct(): Promise<void> {
     if (exists && (fields.stockQuantity ?? 1) !== 0) {
       await writeDoc(
         `products/${id}`,
-        toSurrealDBFields({ stockQuantity: 0 }),
+        toTypedFields({ stockQuantity: 0 }),
         adminAuth.idToken,
         true,
       );
@@ -2804,7 +2804,7 @@ export async function ensureOosProduct(): Promise<void> {
   if (!exists) {
     await writeDoc(
       `products/${id}`,
-      toSurrealDBFields({
+      toTypedFields({
         productId: id,
         sellerId: TEST_UIDS.ADMIN,
         sellerSku: "OOS-E2E-STABLE",
@@ -2878,7 +2878,7 @@ export async function setProductTrending(
 
   return writeDoc(
     `products/${productId}`,
-    toSurrealDBFields(updates),
+    toTypedFields(updates),
     token,
     true,
   );
@@ -2948,7 +2948,7 @@ export async function listUserAddresses(
     });
 }
 
-export async function querySurrealDB(
+export async function queryOrignaBase(
   structuredQuery: any,
   token?: string,
 ): Promise<any[]> {

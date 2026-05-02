@@ -54,7 +54,7 @@ describe('Profile Management — API Tests', () => {
 
   test('T01: Get profile returns user data', { timeout: 120_000 }, async () => {
     const result = await callOk('get_user_profile', {}, buyerToken);
-    // uid may be the full SurrealDB path or short form
+    // uid may be the full collection-prefixed path or short form
     expect(result.uid || result.id).toBeTruthy();
     expect(result.email).toBe(buyerEmail);
     // Roles may be returned as an array or may be absent for some profiles

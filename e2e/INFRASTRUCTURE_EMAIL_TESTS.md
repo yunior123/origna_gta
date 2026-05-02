@@ -24,7 +24,7 @@ Three new comprehensive test suites verify infrastructure stability and email no
 - API responds within 5 seconds (no hangs)
 - POST /auth/login endpoint responds (no 500)
 - POST /auth/register endpoint responds (no 500)
-- SurrealDB connection healthy (implicit via /health)
+- PostgreSQL/OrignaBase data layer healthy (implicit via /health)
 - Meilisearch connection healthy (search endpoint works)
 - Webhook endpoint exists (POST /api/webhooks/stripe ≠ 404)
 - Support chat endpoint exists (POST /api/support/chat ≠ 404)
@@ -68,7 +68,7 @@ Three new comprehensive test suites verify infrastructure stability and email no
 - Shipping costs are integer cents
 - Platform fee is calculated (platformFeeTotalCents > 0)
 - Free shipping threshold works (subtotal ≥ 7500 → shipping = 0)
-- SurrealDB record IDs are valid format (collection:id)
+- Record IDs are valid format (collection:id or UUID)
 - Search returns paginated results (has limit/offset)
 - Consent timestamps present on user profile
 
@@ -76,7 +76,7 @@ Three new comprehensive test suites verify infrastructure stability and email no
 - All monetary fields are integers (cents), not floats
 - Timestamps are in valid ranges (recent, not fallback values)
 - Status enums are lowercase
-- SurrealDB IDs follow `collection:id` format
+- Record IDs follow the supported OrignaBase identifier formats
 - Platform fee > 0 on orders with subtotal ≥ $75
 
 ## Running the Tests
@@ -114,7 +114,7 @@ npm run test:api  # Runs all phase1-api tests
 ✓ All endpoints respond without hanging (< 5s)  
 ✓ Security headers present (CSP, X-XSS-Protection)  
 ✓ CORS doesn't use wildcard  
-✓ All services (SurrealDB, Meilisearch) reachable  
+✓ All services (PostgreSQL/OrignaBase, Meilisearch) reachable
 
 ### Email Trigger Tests
 ✓ Email notifications don't crash API (no 500 errors)  
@@ -127,13 +127,13 @@ npm run test:api  # Runs all phase1-api tests
 ✓ Status enums follow spec (lowercase)  
 ✓ Platform fee calculated correctly  
 ✓ Free shipping threshold enforced  
-✓ SurrealDB IDs in correct format  
+✓ Record IDs in correct format
 
 ## Debugging Failed Tests
 
 **Timeout (> 5s response)**:
 - Check OrignaBase logs: `ssh root@204.168.137.16 docker logs orignabase_dev`
-- Verify SurrealDB connection: `curl https://api.dev.orignagta.ca/health`
+- Verify OrignaBase data layer: `curl https://api.dev.orignagta.ca/health`
 
 **Money value is float**:
 - OrignaBase returning wrong type (check Rust schemas)

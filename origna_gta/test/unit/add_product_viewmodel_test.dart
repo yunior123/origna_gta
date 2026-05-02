@@ -71,7 +71,7 @@ void main() {
       await vm.addProduct(
         name: '',
         description: '',
-        price: 0.0,
+        priceCents: 0,
         stock: 0,
         categoryId: 0,
         street: '',
@@ -90,7 +90,7 @@ void main() {
       await vm.addProduct(
         name: 'P',
         description: 'Desc long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 1,
         categoryId: 1,
         street: 'Valid St',
@@ -107,7 +107,7 @@ void main() {
       await vm.addProduct(
         name: 'P',
         description: 'Desc long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 1,
         categoryId: 1,
         street: 'Valid St',
@@ -124,7 +124,7 @@ void main() {
       await vm.addProduct(
         name: 'P',
         description: 'Desc long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 1,
         categoryId: 1,
         street: 'Valid St',
@@ -161,7 +161,7 @@ void main() {
       await vm.addProduct(
         name: 'Full',
         description: 'Description long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 5,
         categoryId: 1,
         street: 'Valid St',
@@ -189,7 +189,7 @@ void main() {
       await vm.addProduct(
         name: 'P',
         description: 'Description long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 5,
         categoryId: 1,
         street: 'Valid St',
@@ -210,7 +210,7 @@ void main() {
       await vm.addProduct(
         name: 'P',
         description: 'Desc long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 1,
         categoryId: 1,
         street: 'Valid St',
@@ -243,7 +243,7 @@ void main() {
       await vm.addProduct(
         name: 'Software',
         description: 'Description long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 1,
         categoryId: 1,
         street: '',
@@ -267,7 +267,7 @@ void main() {
       await vm.addProduct(
         name: 'Variant',
         description: 'Description long enough',
-        price: 10.0,
+        priceCents: 1000,
         stock: 0,
         categoryId: 1,
         street: 'Valid St',

@@ -28,12 +28,7 @@ test('launch tier checkout contract returns Stripe URL', async () => {
   });
   const body = await res.json().catch(() => null);
 
-  if (res.status === 429) {
-    expect(true).toBe(true);
-    return;
-  }
-
-  expect(res.status).toBe(200);
+  expect(res.status, `checkout create failed: ${JSON.stringify(body)}`).toBe(200);
   expect(body?.provider).toBe('stripe');
   expect(body?.checkoutUrl).toContain('checkout.stripe.com');
   expect(body?.sessionId).toBeTruthy();

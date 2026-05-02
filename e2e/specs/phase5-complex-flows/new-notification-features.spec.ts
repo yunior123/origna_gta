@@ -153,7 +153,7 @@ describe('New Notification Features E2E', () => {
     }, adminToken);
     expect(replyResult.success).toBe(true);
 
-    // 3. Verify message is stored in SurrealDB chat subcollection
+    // 3. Verify message is stored in the OrignaBase chat subcollection
     const msgDoc = await readDoc(`chats/${chatId}/messages/${sendResult.messageId}`, buyerToken);
     expect(msgDoc).toBeTruthy();
   });
@@ -190,7 +190,7 @@ describe('New Notification Features E2E', () => {
     expect(reportResult.success).toBe(true);
     expect(reportResult.reportId).toBeTruthy();
 
-    // 3. Verify report doc exists in SurrealDB
+    // 3. Verify report doc exists in OrignaBase
     const reportDoc = await readDoc(`message_reports/${reportResult.reportId}`, adminToken);
     expect(reportDoc).toBeTruthy();
     expect(parseDoc(reportDoc).reason).toBe('Harassment');

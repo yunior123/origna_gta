@@ -5,13 +5,33 @@ part of '../addproduct_screen.dart';
 // ============================================================================
 
 extension _AddProductSubmitSection on _AddProductScreenState {
-  double? _parseSubmittedPrice() {
+  int? _parseSubmittedPriceCents() {
     final priceText = _priceController.text.trim();
-    final parsedPrice = double.tryParse(priceText);
+    final parsedPrice = parseMoneyToCents(priceText);
     if (parsedPrice != null) return parsedPrice;
 
     AppLogger.w(
       'Add product submit aborted due to invalid price input: $priceText',
+      tag: 'product',
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('product.invalid_price'.tr()),
+        backgroundColor: DesignTokens.error,
+      ),
+    );
+    return null;
+  }
+
+  int? _parseSubmittedCompareAtPriceCents() {
+    final priceText = _compareAtPriceController.text.trim();
+    if (priceText.isEmpty) return null;
+
+    final parsedPrice = parseMoneyToCents(priceText);
+    if (parsedPrice != null) return parsedPrice;
+
+    AppLogger.w(
+      'Add product submit aborted due to invalid compare-at price input: $priceText',
       tag: 'product',
     );
     ScaffoldMessenger.of(context).showSnackBar(
@@ -237,8 +257,14 @@ extension _AddProductSubmitSection on _AddProductScreenState {
           : 0,
     );
 
-    final price = _parseSubmittedPrice();
-    if (price == null) return;
+    final priceCents = _parseSubmittedPriceCents();
+    if (priceCents == null) return;
+
+    final compareAtPriceCents = _parseSubmittedCompareAtPriceCents();
+    if (_compareAtPriceController.text.trim().isNotEmpty &&
+        compareAtPriceCents == null) {
+      return;
+    }
 
     viewModel.addProduct(
       name: _nameController.text.trim(),
@@ -249,10 +275,8 @@ extension _AddProductSubmitSection on _AddProductScreenState {
       descriptionF: _descriptionFController.text.trim().isEmpty
           ? null
           : _descriptionFController.text.trim(),
-      price: price,
-      compareAtPrice: _compareAtPriceController.text.trim().isEmpty
-          ? null
-          : double.tryParse(_compareAtPriceController.text.trim()),
+      priceCents: priceCents,
+      compareAtPriceCents: compareAtPriceCents,
       stock: state.selectedWarehouseIds.isEmpty
           ? (int.tryParse(_stockController.text.trim()) ?? 0)
           : 0,

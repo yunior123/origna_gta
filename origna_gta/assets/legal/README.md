@@ -77,7 +77,7 @@
 **Action Items:**
 - [ ] Update user registration form to add **unchecked** marketing opt-in checkbox
 - [ ] Add unsubscribe link to **all** promotional emails (footer template provided)
-- [ ] Store `consentTimestamp`, `consentSource` for every opt-in user (SurrealDB schema)
+- [ ] Store `consentTimestamp`, `consentSource` for every opt-in user (OrignaBase schema)
 - [ ] Set up monthly CASL audit process (query transactional vs. promotional emails)
 - [ ] Train marketing and support teams on CASL rules (annual requirement)
 - [ ] Verify Postal contract includes CASL compliance obligations

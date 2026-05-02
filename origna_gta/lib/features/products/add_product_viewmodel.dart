@@ -214,10 +214,10 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
   Future<void> addProduct({
     required String name,
     required String description,
-    required double price,
+    required int priceCents,
 
-    /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    double? compareAtPrice,
+    /// Original/crossed-out price for discount display (null = no sale, must be > priceCents)
+    int? compareAtPriceCents,
     required int stock,
     required int categoryId,
     required String street,
@@ -252,9 +252,6 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     final requestId = DateTime.now().microsecondsSinceEpoch.toString();
     _activeRequestId = requestId;
 
-    // Input boundary: convert dollars to cents immediately
-    final priceCents = (price * 100).round();
-
     final config = _ref.read(envConfigProvider);
     final isDevOrTestRun = config.isDev || config.isEmulator;
 
@@ -264,8 +261,8 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
     final validationError = validateAddProductInputs(
       name: name,
       description: description,
-      price: price,
-      compareAtPrice: compareAtPrice,
+      priceCents: priceCents,
+      compareAtPriceCents: compareAtPriceCents,
       stock: stock,
       categoryId: categoryId,
       street: street,
@@ -444,9 +441,7 @@ class AddProductViewModel extends StateNotifier<AddProductState> {
         keywords: generateSearchKeywords(name),
         stockQuantity: effectiveStock,
         priceCents: priceCents,
-        compareAtPriceCents: compareAtPrice != null
-            ? (compareAtPrice * 100).round()
-            : null,
+        compareAtPriceCents: compareAtPriceCents,
         imageUrls: const [],
         sellerAddress: useWarehouses
             ? null

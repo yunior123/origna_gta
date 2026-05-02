@@ -132,7 +132,7 @@ For every user who opts in to marketing, OrignaGTA records:
 | `consentVersion` | Version of consent text used | `v1.0` |
 | `ipAddress` | IP of consent source (for audit) | `203.0.113.42` |
 
-These records are stored in the `users` SurrealDB collection and are audit-logged.
+These records are stored in the OrignaBase `users` collection and are audit-logged.
 
 ---
 
@@ -286,11 +286,11 @@ OrignaGTA conducts monthly audits of:
 - **Email Content:** Verify that promotional emails are labeled as such and include unsubscribe links
 - **Transactional vs. Promotional:** Verify that transactional emails do not include promotional content
 
-**Audit Query (SurrealDB):**
+**Audit Query (PostgreSQL):**
 ```sql
 -- Check recent marketing emails sent without documented consent
 SELECT 
-  user:userId, 
+  user_id,
   marketing_consents.consentTimestamp, 
   marketing_emails.sentAt 
 FROM marketing_emails 
