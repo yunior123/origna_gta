@@ -41,5 +41,5 @@ cargo build --release               # release build (needs extra swap on 8GB)
 
 - PostgreSQL: use parameterized queries (`$1`, `$2`) — never string interpolation in SQL
 - PostgreSQL: use `sqlx::PgPool` for connection pooling with proper transaction handling
-- tower_governor behind Docker/Caddy: use `PeerIpKeyExtractor` not `SmartIpKeyExtractor`
+- tower_governor behind Docker/Caddy: use custom `XForwardedForKeyExtractor` (main.rs) — trusts `X-Forwarded-For` only from 127.0.0.1, falls back to peer IP
 - Full LTO + codegen-units=1 OOMs on 8GB → add 4GB swap before release build

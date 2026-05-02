@@ -116,14 +116,11 @@ class _ProductCardImageSection extends ConsumerWidget {
                                       DesignTokens.transparent,
                                       BlendMode.multiply,
                                     ),
-                              child: CachedNetworkImage(
+                              child: WebCachedNetworkImage(
                                 imageUrl: imageUrls[index],
                                 width: double.infinity,
                                 height: double.infinity,
                                 fit: BoxFit.cover,
-                                imageRenderMethodForWeb: kIsWeb
-                                    ? ImageRenderMethodForWeb.HtmlImage
-                                    : ImageRenderMethodForWeb.HttpGet,
                                 placeholder: (context, url) =>
                                     ModernSkeletonLoader.imagePlaceholder(),
                                 errorWidget: (context, url, error) =>
@@ -231,14 +228,11 @@ class _ProductCardImageSection extends ConsumerWidget {
   }
 
   Widget _networkImage(String imageUrl) {
-    return CachedNetworkImage(
+    return WebCachedNetworkImage(
       imageUrl: imageUrl,
       width: double.infinity,
       height: double.infinity,
       fit: BoxFit.cover,
-      imageRenderMethodForWeb: kIsWeb
-          ? ImageRenderMethodForWeb.HtmlImage
-          : ImageRenderMethodForWeb.HttpGet,
       placeholder: (context, url) => ModernSkeletonLoader.imagePlaceholder(),
       errorWidget: (context, url, error) => _placeholderImage(),
     );

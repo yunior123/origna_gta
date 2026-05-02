@@ -1,9 +1,5 @@
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart'
-    show ImageRenderMethodForWeb;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
@@ -21,6 +17,7 @@ import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
 import 'package:origna_gta/widgets/shared/trending_badge.dart';
+import 'package:origna_gta/widgets/web_cached_image.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
 
 part 'parts/product_card_image_section.dart';

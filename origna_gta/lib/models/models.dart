@@ -361,7 +361,6 @@ class CartItemDetailModel {
       Fields.productId: productId,
       Fields.name: name,
       Fields.description: description,
-      Fields.price: price,
       Fields.priceCents: priceCents,
       Fields.imageUrls: imageUrls,
       Fields.quantity: quantity,
@@ -655,7 +654,12 @@ class OrderModel {
         productId: (map[Fields.productId] as String?) ?? '',
         name: (map[Fields.name] as String?) ?? '',
         description: (map[Fields.description] as String?) ?? '',
-        price: ((map[Fields.price] as num?) ?? 0).toDouble(),
+        price: map[Fields.priceCents] != null
+            ? (map[Fields.priceCents] as num).toDouble() / 100
+            : (map[Fields.price] as num? ?? 0).toDouble(),
+        priceCents: map[Fields.priceCents] != null
+            ? (map[Fields.priceCents] as num).toInt()
+            : ((map[Fields.price] as num? ?? 0).toDouble() * 100).round(),
         imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
         createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
@@ -741,7 +745,12 @@ class OrderModel {
         productId: (map[Fields.productId] as String?) ?? '',
         name: (map[Fields.name] as String?) ?? '',
         description: (map[Fields.description] as String?) ?? '',
-        price: ((map[Fields.price] as num?) ?? 0).toDouble(),
+        price: map[Fields.priceCents] != null
+            ? (map[Fields.priceCents] as num).toDouble() / 100
+            : (map[Fields.price] as num? ?? 0).toDouble(),
+        priceCents: map[Fields.priceCents] != null
+            ? (map[Fields.priceCents] as num).toInt()
+            : ((map[Fields.price] as num? ?? 0).toDouble() * 100).round(),
         imageUrls: List<String>.from(map[Fields.imageUrls] as Iterable? ?? []),
         quantity: (map[Fields.quantity] as num?)?.toInt() ?? 0,
         createdAt: _parseDateTimeRequired(map[Fields.createdAt]),
@@ -965,7 +974,10 @@ class ProductModel {
     final data = doc.data();
 
     assert(data.containsKey(Fields.name), 'Product missing "name"');
-    assert(data.containsKey(Fields.price), 'Product missing "price"');
+    assert(
+      data.containsKey(Fields.priceCents) || data.containsKey(Fields.price),
+      'Product missing "priceCents" and "price"',
+    );
     assert(data.containsKey(Fields.categoryId), 'Product missing "categoryId"');
 
     return ProductModel.fromMap({...data, Fields.productId: doc.id});
@@ -1046,7 +1058,7 @@ class ProductModel {
     return {
       Fields.productId: id,
       Fields.name: name,
-      Fields.price: price,
+      Fields.priceCents: priceCents,
       Fields.sellerId: sellerId,
       Fields.imageUrls: imageUrls,
       Fields.sellerAddress: sellerAddress.toMap(),

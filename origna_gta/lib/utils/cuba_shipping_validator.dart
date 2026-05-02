@@ -10,17 +10,18 @@ class CubaShippingValidator {
 
   static bool isHavana(String city) => city.trim().toLowerCase() == 'havana';
 
-  static double calculateMaritimeCost(double totalWeightKg) {
+  static int calculateMaritimeCost(double totalWeightKg) {
     final clampedWeight = totalWeightKg.clamp(
       MaritimeShippingConstants.minWeightKg,
       MaritimeShippingConstants.maxWeightKg,
     );
-    double costCents = MaritimeShippingConstants.baseRateCents.toDouble();
-    costCents += clampedWeight * MaritimeShippingConstants.perKgRateCents;
+    int costCents = MaritimeShippingConstants.baseRateCents;
+    costCents += (clampedWeight * MaritimeShippingConstants.perKgRateCents)
+        .round();
     if (clampedWeight > MaritimeShippingConstants.surchargeHeavyKg) {
-      costCents += MaritimeShippingConstants.heavySurchargeCents.toDouble();
+      costCents += MaritimeShippingConstants.heavySurchargeCents;
     }
-    return costCents / 100.0;
+    return costCents;
   }
 
   static String estimatedDeliveryWindow() {

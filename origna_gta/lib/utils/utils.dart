@@ -239,14 +239,15 @@ int _calculateMaritimeShipping(List<CartItemDetailModel> items) {
     totalWeightKg += weightKg * item.quantity;
   }
 
-  double costCents = MaritimeShippingConstants.baseRateCents.toDouble();
-  costCents += totalWeightKg * MaritimeShippingConstants.perKgRateCents;
+  int costCents = MaritimeShippingConstants.baseRateCents;
+  costCents += (totalWeightKg * MaritimeShippingConstants.perKgRateCents)
+      .round();
 
   if (totalWeightKg > MaritimeShippingConstants.surchargeHeavyKg) {
-    costCents += MaritimeShippingConstants.heavySurchargeCents.toDouble();
+    costCents += MaritimeShippingConstants.heavySurchargeCents;
   }
 
-  return costCents.round();
+  return costCents;
 }
 
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.

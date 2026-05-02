@@ -134,7 +134,7 @@ class OrignaBaseProductRepository
           'Product ${data[Fields.productId] ?? doc.id} missing priceCents — deriving from price',
           tag: 'product',
         );
-        data[Fields.price] = fallbackPriceDollars;
+        data[Fields.priceCents] = (fallbackPriceDollars * 100).round();
       } else {
         AppLogger.w(
           'Product ${data[Fields.productId] ?? doc.id} missing both priceCents and price — defaulting to 0',
@@ -143,8 +143,6 @@ class OrignaBaseProductRepository
         data[Fields.priceCents] = 0;
       }
     }
-    data[Fields.price] ??=
-        ((data[Fields.priceCents] as num?)?.toDouble() ?? 0) / 100;
     data[Fields.rating] ??= 0.0;
     data[Fields.ratingCount] ??= 0;
     data[Fields.keywords] ??= const <String>[];

@@ -101,13 +101,13 @@ void main() {
   group('SellerOrderNetAmounts', () {
     test('constructs with required values', () {
       const amounts = SellerOrderNetAmounts(
-        sellerTotal: 100.0,
-        platformFee: 8.0,
-        sellerNet: 92.0,
+        sellerTotal: 10000,
+        platformFee: 250,
+        sellerNet: 9750,
       );
-      expect(amounts.sellerTotal, 100.0);
-      expect(amounts.platformFee, 8.0);
-      expect(amounts.sellerNet, 92.0);
+      expect(amounts.sellerTotal, 10000);
+      expect(amounts.platformFee, 250);
+      expect(amounts.sellerNet, 9750);
     });
   });
 

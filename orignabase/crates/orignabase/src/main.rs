@@ -37,7 +37,7 @@ use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
-use tower_governor::key_extractor::PeerIpKeyExtractor;
+use tower_governor::key_extractor::KeyExtractor;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -47,6 +47,39 @@ use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse};
 use tracing_subscriber::EnvFilter;
+
+// ── Custom Rate-Limit Key Extractor ──
+/// Extracts client IP from `X-Forwarded-For` header when the peer is the
+/// trusted reverse proxy (Caddy at 127.0.0.1).  Falls back to peer IP.
+/// This prevents all Docker-internal traffic from collapsing to one rate-limit key.
+#[derive(Clone, Debug)]
+struct XForwardedForKeyExtractor;
+
+const TRUSTED_PROXY_IP: &str = "127.0.0.1";
+
+impl KeyExtractor for XForwardedForKeyExtractor {
+    type Key = std::net::IpAddr;
+
+    fn extract<T>(&self, req: &axum::http::Request<T>) -> Result<Self::Key, tower_governor::errors::GovernorError> {
+        let peer_ip = req
+            .extensions()
+            .get::<std::net::SocketAddr>()
+            .map(|a| a.ip());
+
+        // Only trust X-Forwarded-For from the local reverse proxy (Caddy at 127.0.0.1)
+        if peer_ip.is_some_and(|ip| ip.to_string() == TRUSTED_PROXY_IP)
+            && let Some(xff) = req.headers().get("x-forwarded-for")
+            && let Ok(val) = xff.to_str()
+            && let Some(first_ip) = val.split(',').next()
+            && let Ok(ip) = first_ip.trim().parse::<std::net::IpAddr>()
+        {
+            return Ok(ip);
+        }
+
+        // Fallback: peer IP (direct connection or untrusted proxy)
+        peer_ip.ok_or(tower_governor::errors::GovernorError::UnableToExtractKey)
+    }
+}
 
 // ── CLI Credential Storage ──
 
@@ -1118,7 +1151,7 @@ async fn serve(config: Config) -> Result<()> {
     // Auth routes
     let auth_governor_conf = Arc::new(
         GovernorConfigBuilder::default()
-            .key_extractor(PeerIpKeyExtractor)
+            .key_extractor(XForwardedForKeyExtractor)
             .per_millisecond(auth_replenish_ms)
             .burst_size(auth_burst)
             .finish()
@@ -1139,7 +1172,7 @@ async fn serve(config: Config) -> Result<()> {
     // API routes
     let api_governor_conf = Arc::new(
         GovernorConfigBuilder::default()
-            .key_extractor(PeerIpKeyExtractor)
+            .key_extractor(XForwardedForKeyExtractor)
             .per_millisecond(api_replenish_ms)
             .burst_size(api_burst)
             .finish()

@@ -195,9 +195,9 @@ final sellerEarningsSummaryProvider =
 /// Moves fee arithmetic out of _SellerOrderCard.build().
 @immutable
 class SellerOrderNetAmounts {
-  final double sellerTotal;
-  final double platformFee;
-  final double sellerNet;
+  final int sellerTotal;
+  final int platformFee;
+  final int sellerNet;
 
   const SellerOrderNetAmounts({
     required this.sellerTotal,
@@ -230,17 +230,18 @@ final sellerOrderNetProvider = Provider.autoDispose
           final sellerItems = order.items.where(
             (item) => item.sellerId == params.sellerId,
           );
-          final sellerTotal = sellerItems.fold<double>(
-            0.0,
-            (acc, item) => acc + (item.price * item.quantity),
+          final sellerTotalCents = sellerItems.fold<int>(
+            0,
+            (acc, item) => acc + (item.priceCents * item.quantity),
           );
           // Per-seller fee = seller's own subtotal × platform fee rate
-          final platformFee =
-              sellerTotal * (BusinessRules.platformFeePercent / 100.0);
+          final platformFeeCents =
+              (sellerTotalCents * BusinessRules.platformFeePercent / 100.0)
+                  .round();
           return SellerOrderNetAmounts(
-            sellerTotal: sellerTotal,
-            platformFee: platformFee,
-            sellerNet: sellerTotal - platformFee,
+            sellerTotal: sellerTotalCents,
+            platformFee: platformFeeCents,
+            sellerNet: sellerTotalCents - platformFeeCents,
           );
         },
         orElse: () => const SellerOrderNetAmounts(
