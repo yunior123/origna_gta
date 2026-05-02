@@ -25,7 +25,7 @@ class DeliveryOptionsSection extends ConsumerWidget {
       checkoutStateProvider.select((state) => state.isCalculatingShipping),
     );
     final baseShippingCost = ref.watch(
-      checkoutStateProvider.select((state) => state.baseShippingCost),
+      checkoutStateProvider.select((state) => state.baseShippingCostCents),
     );
 
     if (isCalculating) {

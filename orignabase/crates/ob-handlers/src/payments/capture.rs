@@ -374,12 +374,12 @@ mod tests {
         let resp = CapturePaymentResponse {
             success: false,
             order_id: "order-fail".to_string(),
-            payment_status: "failed".to_string(),
+            payment_status: "payment_failed".to_string(),
             order_status: "failed".to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], false);
-        assert_eq!(json[fields::PAYMENT_STATUS], "failed");
+        assert_eq!(json[fields::PAYMENT_STATUS], "payment_failed");
     }
 
     #[test]
@@ -402,7 +402,7 @@ mod tests {
 
     #[test]
     fn test_payment_status_failed_str() {
-        assert_eq!(PaymentStatus::Failed.as_str(), "failed");
+        assert_eq!(PaymentStatus::Failed.as_str(), "payment_failed");
     }
 
     #[tokio::test]

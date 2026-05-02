@@ -1137,7 +1137,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z"
                 }),
@@ -1183,11 +1183,28 @@ mod tests {
             .get_document(collections::CHATS, chat_id)
             .await
             .unwrap();
-        assert_eq!(chat["messageCount"], 1);
+        assert_eq!(chat[fields::MESSAGE_COUNT], 1);
         assert_eq!(chat[fields::SELLER_UNREAD_COUNT], 1);
-        assert_eq!(chat["lastMessageText"], "Hello seller!");
+        assert_eq!(chat[fields::LAST_MESSAGE_TEXT], "Hello seller!");
 
-        // Test Deduplication (within 5s)
+        // Test Deduplication (within 5s) — pre-set dedup state to avoid race with thread update
+        let now = chrono::Utc::now().to_rfc3339();
+        state
+            .db
+            .upsert_document(
+                collections::CHATS,
+                chat_id,
+                json!({
+                    fields::BUYER_ID: buyer_id,
+                    fields::SELLER_ID: seller_id,
+                    fields::MESSAGE_COUNT: 1,
+                    fields::SELLER_UNREAD_COUNT: 1,
+                    fields::LAST_MESSAGE_TEXT: "Hello seller!",
+                    fields::UPDATED_AT: now,
+                }),
+            )
+            .await
+            .unwrap();
         let req_dup = SendMessageRequest {
             chat_id: chat_id.into(),
             message_text: Some("Hello seller!".into()),
@@ -1196,7 +1213,7 @@ mod tests {
         };
         let result_dup =
             send_message(State(state.clone()), Extension(auth.clone()), Json(req_dup)).await;
-        assert!(result_dup.is_err());
+        assert!(result_dup.is_err(), "Dedup should reject duplicate message within 5s");
         assert!(result_dup.unwrap_err().to_string().contains("already sent"));
     }
 
@@ -1234,9 +1251,9 @@ mod tests {
                 &msg_coll,
                 &m1,
                 json!({
-                    "chatId": chat_id,
+                    fields::CHAT_ID: chat_id,
                     fields::SENDER_ID: seller_id,
-                    "read": false
+                    fields::READ: false
                 }),
             )
             .await
@@ -1247,9 +1264,9 @@ mod tests {
                 &msg_coll,
                 &m2,
                 json!({
-                    "chatId": chat_id,
+                    fields::CHAT_ID: chat_id,
                     fields::SENDER_ID: seller_id,
-                    "read": false
+                    fields::READ: false
                 }),
             )
             .await
@@ -1362,7 +1379,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z"
                 }),
@@ -1421,9 +1438,9 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
-                    "lastMessageText": "Hello seller!",
+                    fields::LAST_MESSAGE_TEXT: "Hello seller!",
                     fields::UPDATED_AT: now
                 }),
             )
@@ -1472,9 +1489,9 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
-                    "lastMessageText": "First message",
+                    fields::LAST_MESSAGE_TEXT: "First message",
                     fields::UPDATED_AT: now
                 }),
             )
@@ -1892,7 +1909,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
@@ -1937,7 +1954,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: "buyer_1",
                     fields::SELLER_ID: "seller_1",
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
             )
@@ -1974,7 +1991,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 10_000,
+                    fields::MESSAGE_COUNT: 10_000,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
@@ -2021,7 +2038,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
@@ -2061,7 +2078,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 0,
+                    fields::MESSAGE_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     fields::UPDATED_AT: "2020-01-01T00:00:00Z",
                 }),
@@ -2085,7 +2102,7 @@ mod tests {
                 &msg_coll,
                 msg_id,
                 json!({
-                    "chatId": chat_id,
+                    fields::CHAT_ID: chat_id,
                     fields::SENDER_ID: buyer_id,
                     fields::MESSAGE_TEXT: "hello",
                 }),
@@ -2129,7 +2146,7 @@ mod tests {
                 json!({
                     fields::BUYER_ID: buyer_id,
                     fields::SELLER_ID: seller_id,
-                    "messageCount": 1,
+                    fields::MESSAGE_COUNT: 1,
                     fields::BUYER_UNREAD_COUNT: 0,
                     fields::SELLER_UNREAD_COUNT: 0,
                     "firstBuyerMessageAt": earlier,

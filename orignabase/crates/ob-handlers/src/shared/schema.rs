@@ -210,6 +210,7 @@ pub enum PaymentStatus {
     Refunded,
     #[serde(rename = "partially_refunded")]
     PartialRefund,
+    #[serde(rename = "payment_failed")]
     Failed,
     Cancelled,
     Disputed,
@@ -224,7 +225,7 @@ impl PaymentStatus {
             Self::Captured => "captured",
             Self::Refunded => "refunded",
             Self::PartialRefund => "partially_refunded",
-            Self::Failed => "failed",
+            Self::Failed => "payment_failed",
             Self::Cancelled => "cancelled",
             Self::Disputed => "disputed",
             Self::Expired => "expired",
@@ -1076,7 +1077,7 @@ mod tests {
         assert_eq!(PaymentStatus::Captured.as_str(), "captured");
         assert_eq!(PaymentStatus::Refunded.as_str(), "refunded");
         assert_eq!(PaymentStatus::PartialRefund.as_str(), "partially_refunded");
-        assert_eq!(PaymentStatus::Failed.as_str(), "failed");
+        assert_eq!(PaymentStatus::Failed.as_str(), "payment_failed");
         assert_eq!(PaymentStatus::Cancelled.as_str(), "cancelled");
         assert_eq!(PaymentStatus::Disputed.as_str(), "disputed");
         assert_eq!(PaymentStatus::Expired.as_str(), "expired");

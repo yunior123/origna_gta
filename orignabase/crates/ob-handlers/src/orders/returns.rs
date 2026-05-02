@@ -315,8 +315,8 @@ async fn notify_admins_of_return_escalation(
 
             let sent = if let (Some(pid), Some(sa)) = (&project_id, &REDACTED_SECRET) {
                 let mut data = std::collections::HashMap::new();
-                data.insert("orderId".to_string(), order_id.to_string());
-                data.insert("returnId".to_string(), return_id.to_string());
+                data.insert(fields::ORDER_ID.to_string(), order_id.to_string());
+                data.insert(fields::RETURN_ID.to_string(), return_id.to_string());
                 data.insert(fields::RETURN_STATUS.to_string(), "escalated".to_string());
                 push::send_push(
                     &state.http_client,
@@ -399,7 +399,7 @@ async fn create_return_request(
     Extension(auth): Extension<AuthContext>,
     Json(req): Json<CreateReturnRequest>,
 ) -> Result<Json<CreateReturnResponse>, ob_core::Error> {
-    validate_uid("orderId", &req.order_id)?;
+    validate_uid(fields::ORDER_ID, &req.order_id)?;
     validate_uid("productId", &req.product_id)?;
     let user_id = resolve_self_user_id(&auth, Some(req.user_id.as_str()), "userId")?;
 
@@ -580,7 +580,7 @@ async fn approve_return_request(
             }
 
             let mut patch = json!({
-                "returnStatus": "approved",
+                fields::RETURN_STATUS: "approved",
                 fields::UPDATED_AT: now,
             });
             if let Some(ref tn) = req.return_tracking_number {
@@ -607,7 +607,7 @@ async fn approve_return_request(
             }
 
             let mut patch = json!({
-                "returnStatus": "label_issued",
+                fields::RETURN_STATUS: "label_issued",
                 fields::UPDATED_AT: now,
             });
             if let Some(ref tn) = req.return_tracking_number {
@@ -630,7 +630,7 @@ async fn approve_return_request(
                 )));
             }
 
-            let order_id = str_field(&return_doc, "orderId");
+            let order_id = str_field(&return_doc, fields::ORDER_ID);
             let order = state
                 .db
                 .get_document(collections::ORDERS, order_id)
@@ -653,7 +653,7 @@ async fn approve_return_request(
             let refund_amount_cents =
                 crate::orders::refunds::calculate_refund_amount_cents(&order, item)?;
 
-            let payment_intent_id = str_field(&order, "paymentIntentId");
+            let payment_intent_id = str_field(&order, fields::PAYMENT_INTENT_ID);
             let idempotency_key = format!("return_refund_{}_{}", req.return_id, product_id);
             let mut refund_id = None;
 
@@ -665,9 +665,9 @@ async fn approve_return_request(
                     "requested_by_customer",
                     &idempotency_key,
                     &[
-                        ("orderId", order_id),
-                        ("productId", product_id),
-                        ("returnId", &req.return_id),
+                        (fields::ORDER_ID, order_id),
+                        (fields::PRODUCT_ID, product_id),
+                        (fields::RETURN_ID, &req.return_id),
                     ],
                 )
                 .await?;
@@ -730,7 +730,7 @@ async fn approve_return_request(
                     collections::RETURN_REQUESTS,
                     &req.return_id,
                     json!({
-                        "returnStatus": "refunded",
+                        fields::RETURN_STATUS: "refunded",
                         "resolvedAt": now,
                         "returnRefundAmountCents": refund_amount_cents,
                         fields::UPDATED_AT: now,
@@ -763,12 +763,12 @@ async fn approve_return_request(
                 .create_document(
                     collections::ORDER_EVENTS,
                     json!({
-                        "orderId": order_id,
-                        "userId": user_id,
-                        "eventType": "return_received_and_refunded",
-                        "message": format!("Return {} received and item {} refunded", req.return_id, product_id),
-                        "metadata": { "productId": product_id, "returnId": req.return_id, "refundAmountCents": refund_amount_cents },
-                        "createdAt": now,
+                        fields::ORDER_ID: order_id,
+                        fields::USER_ID: user_id,
+                        fields::EVENT_TYPE: "return_received_and_refunded",
+                        fields::MESSAGE: format!("Return {} received and item {} refunded", req.return_id, product_id),
+                        "metadata": { fields::PRODUCT_ID: product_id, fields::RETURN_ID: req.return_id, fields::REFUND_AMOUNT_CENTS: refund_amount_cents },
+                        fields::CREATED_AT: now,
                     }),
                 )
                 .await
@@ -855,7 +855,7 @@ async fn reject_return_request(
         .unwrap_or_default();
 
     let mut patch = json!({
-        "returnStatus": "rejected",
+        fields::RETURN_STATUS: "rejected",
         "resolvedAt": now,
         fields::UPDATED_AT: now,
     });
@@ -936,7 +936,7 @@ async fn escalate_return_request(
             collections::RETURN_REQUESTS,
             &req.return_id,
             json!({
-                "returnStatus": "escalated",
+                fields::RETURN_STATUS: "escalated",
                 "escalatedAt": now,
                 "escalationReason": reason,
                 fields::UPDATED_AT: now,
@@ -944,7 +944,7 @@ async fn escalate_return_request(
         )
         .await?;
 
-    let order_id = str_field(&return_doc, "orderId").to_string();
+    let order_id = str_field(&return_doc, fields::ORDER_ID).to_string();
     notify_admins_of_return_escalation(&state, &req.return_id, &order_id).await?;
 
     Ok(Json(EscalateReturnResponse {

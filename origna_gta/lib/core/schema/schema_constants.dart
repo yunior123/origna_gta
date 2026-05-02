@@ -677,7 +677,7 @@ abstract final class Fields {
   // === COMMON TIMESTAMPS (used across multiple collections) ===
   static const createdAt = 'createdAt';
   static const dateCreated =
-      'dateCreated'; // legacy alias — products + cart now use createdAt
+      'dateCreated'; // products + cart timestamp (not createdAt)
   static const updatedAt = 'updatedAt';
   static const version =
       'version'; // Optimistic concurrency version, starts at 1
@@ -2170,10 +2170,10 @@ abstract final class SchemaRegistry {
   /// Timestamp field mapping (which field name each collection uses)
   static const timestampField = {
     Collections.users: Fields.createdAt,
-    Collections.products: Fields.createdAt,
+    Collections.products: Fields.dateCreated,
     Collections.orders: Fields.createdAt,
     Collections.payouts: Fields.createdAt,
-    Collections.cart: Fields.createdAt,
+    Collections.cart: Fields.dateCreated,
   };
 
   /// Get the correct timestamp field name for a collection.

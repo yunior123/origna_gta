@@ -8,7 +8,7 @@ expression: json
   "captured",
   "refunded",
   "partially_refunded",
-  "failed",
+  "payment_failed",
   "cancelled",
   "disputed"
 ]

@@ -9,8 +9,7 @@ Tech stack: Rust (axum), PostgreSQL, async-graphql, tower, JWT auth, Stripe, FCM
 ## Key Rules
 
 1. ALL data access via `/graphql` POST — NO REST `/api/collections` endpoints exist
-2. NEVER manually edit `.pb.go` — always `make protos` (requires Colima/Docker)
-3. Auth: `/auth/*` endpoints — refresh via `{"refresh_token": "..."}` body (NOT Bearer header)
+2. Auth: `/auth/*` endpoints — refresh via `{"refresh_token": "..."}` body (NOT Bearer header)
 4. GraphQL filters: OBJECT `{field: {_op: val}}` NOT array — server calls `filters.as_object()`
 5. WebSocket `/realtime` requires `?token=<jwt>` query param
 6. Storage: 2-step presigned URL — POST `/storage/presign/upload` → PUT to signed URL

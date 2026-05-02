@@ -93,8 +93,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       0,
       subtotalCents - state.couponDiscountCents,
     );
-    final shippingCents = (state.shippingCost * 100).round();
-    final taxCents = (state.taxAmount * 100).round();
+    final shippingCents = state.shippingCostCents;
+    final taxCents = state.taxAmountCents;
     return discountedSubtotalCents + shippingCents + taxCents;
   }
 
@@ -235,7 +235,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     if (state.address == null) {
       if (!hasPhysicalItems) {
         state = state.copyWith(
-          baseShippingCost: 0,
+          baseShippingCostCents: 0,
           isLocalDelivery: false,
           availableDeliverySpeeds: const [],
           deliverySpeed: DeliverySpeed.standard,
@@ -249,7 +249,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
     if (!hasPhysicalItems) {
       state = state.copyWith(
-        baseShippingCost: 0,
+        baseShippingCostCents: 0,
         isLocalDelivery: false,
         availableDeliverySpeeds: const [],
         deliverySpeed: DeliverySpeed.standard,
@@ -262,8 +262,6 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     state = state.copyWith(isCalculatingShipping: true, shippingError: null);
 
     try {
-      // cartSubtotalProvider returns INTEGER CENTS — divide by 100.0 to get dollars for analytics/tax/biometric.
-      final subtotal = _ref.read(cartSubtotalProvider) / 100.0;
       final sellerCosts = await _shippingCircuitBreaker.execute(
         () => calculateShippingCost(
           items,
@@ -273,8 +271,8 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
         ),
       );
 
-      final double rawCost = sellerCosts.values.fold(
-        0.0,
+      final int rawCostCents = sellerCosts.values.fold(
+        0,
         (sum, cost) => sum + cost,
       );
       // Use priceCents (integer cents) — no floating-point rounding errors.
@@ -287,9 +285,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
           subtotalCents - state.couponDiscountCents;
       final isFree =
           postCouponSubtotalCents >= BusinessRules.freeShippingThresholdCents;
-      final cost = isFree ? 0.0 : rawCost;
+      final costCents = isFree ? 0 : rawCostCents;
       final adjustedSellerCosts = isFree
-          ? sellerCosts.map((k, v) => MapEntry(k, 0.0))
+          ? sellerCosts.map((k, v) => MapEntry(k, 0))
           : sellerCosts;
 
       final Map<String, String> sellerNames = {};
@@ -323,8 +321,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       if (!mounted) return;
 
       state = state.copyWith(
-        baseShippingCost: cost,
-        sellerShippingCosts: adjustedSellerCosts,
+        baseShippingCostCents: costCents,
+        sellerShippingCostsCents: adjustedSellerCosts.map(
+          (k, v) => MapEntry(k, v.round()),
+        ),
         sellerNames: sellerNames,
         isLocalDelivery: isLocal,
         availableDeliverySpeeds: availableSpeeds,
@@ -340,13 +340,13 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
       final analytics = OrignaBaseAnalyticsService(_ob);
       unawaited(
         analytics.logAddShippingInfo(
-          valueCad: subtotal,
-          shippingCostCad: cost,
+          valueCad: subtotalCents / 100,
+          shippingCostCad: costCents / 100,
           shippingTier: state.deliverySpeed.name,
         ),
       );
 
-      calculateTaxes(subtotalCents, shippingCostCents: (cost * 100).round());
+      calculateTaxes(subtotalCents, shippingCostCents: costCents);
     } on CircuitBreakerOpenException catch (e) {
       AppLogger.w(
         'Checkout: shipping circuit breaker open',
@@ -374,11 +374,9 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// for the authoritative calculation. [subtotalCents] and [shippingCostCents] in integer cents.
   void calculateTaxes(int subtotalCents, {int shippingCostCents = 0}) {
     if (state.address == null) return;
-    final subtotalDollars = subtotalCents / 100.0;
-    final shippingDollars = shippingCostCents / 100.0;
-    final taxableAmount = subtotalDollars + shippingDollars;
-    final taxes = calculateDetailedTaxes(state.address, taxableAmount);
-    state = state.copyWith(taxBreakdown: taxes);
+    final taxableAmountCents = subtotalCents + shippingCostCents;
+    final taxes = calculateDetailedTaxes(state.address, taxableAmountCents);
+    state = state.copyWith(taxBreakdownCents: taxes);
   }
 
   /// Loads the user's default shipping address into state on checkout entry.
@@ -502,11 +500,10 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
     }
 
     state = state.copyWith(isProcessing: true, checkoutError: null);
-    final subtotalDollars = subtotalCents / 100.0;
     final analytics = OrignaBaseAnalyticsService(_ob);
     unawaited(
       analytics.logBeginCheckout(
-        valueCad: subtotalDollars,
+        valueCad: subtotalCents / 100,
         itemCount: items.length,
       ),
     );
@@ -746,10 +743,7 @@ class OrignaBaseCheckoutNotifier extends StateNotifier<CheckoutState> {
   /// - [subtotalCents]: post-discount subtotal in integer cents.
   void _recalculateTotalsAfterCouponChange(int subtotalCents) {
     _ref.read(cartWithDetailsProvider).whenData(calculateShipping);
-    calculateTaxes(
-      subtotalCents,
-      shippingCostCents: (state.shippingCost * 100).round(),
-    );
+    calculateTaxes(subtotalCents, shippingCostCents: state.shippingCostCents);
   }
 
   /// Computes the Haversine distance in km between two coordinate pairs.

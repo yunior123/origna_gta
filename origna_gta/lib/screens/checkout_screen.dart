@@ -540,10 +540,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     if (state.address != null) {
       await notifier.calculateShipping(widget.items);
       if (!mounted) return; // Guard: widget may be disposed during async gap
-      final shipping = ref.read(checkoutStateProvider).shippingCost;
+      final shipping = ref.read(checkoutStateProvider).shippingCostCents;
       notifier.calculateTaxes(
         widget.totalCents,
-        shippingCostCents: (shipping * 100).round(),
+        shippingCostCents:
+            shipping, // Already integer cents — do NOT multiply by 100
       );
     }
   }
@@ -558,10 +559,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     if (state.address != null) {
       await notifier.calculateShipping(widget.items);
       if (!mounted) return; // Guard: widget may be disposed during async gap
-      final shipping = ref.read(checkoutStateProvider).shippingCost;
+      final shipping = ref.read(checkoutStateProvider).shippingCostCents;
       notifier.calculateTaxes(
         widget.totalCents,
-        shippingCostCents: (shipping * 100).round(),
+        shippingCostCents:
+            shipping, // Already integer cents — do NOT multiply by 100
       );
     }
   }

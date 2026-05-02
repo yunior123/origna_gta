@@ -117,7 +117,7 @@ async fn create_index(
     column: &str,
 ) -> Result<(), String> {
     let query = format!(
-        "DEFINE INDEX {} ON TABLE {} COLUMNS ({})",
+        "CREATE INDEX IF NOT EXISTS {} ON {} ({})",
         index_name, table, column
     );
 
@@ -143,7 +143,7 @@ async fn create_composite_index(
 ) -> Result<(), String> {
     let columns_str = columns.join(", ");
     let query = format!(
-        "DEFINE INDEX {} ON TABLE {} COLUMNS ({})",
+        "CREATE INDEX IF NOT EXISTS {} ON {} ({})",
         index_name, table, columns_str
     );
 

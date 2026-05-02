@@ -79,7 +79,7 @@ void main() {
       final state = container.read(checkoutStateProvider);
 
       expect(state.address, isNull);
-      expect(state.baseShippingCost, 0.0);
+      expect(state.baseShippingCostCents, 0.0);
       expect(state.isProcessing, false);
       expect(state.isCalculatingShipping, false);
       expect(state.couponDiscountCents, 0);
@@ -372,7 +372,7 @@ void main() {
       await notifier.calculateShipping([digitalItem]);
 
       final state = container.read(checkoutStateProvider);
-      expect(state.baseShippingCost, equals(0.0));
+      expect(state.baseShippingCostCents, equals(0.0));
       expect(state.shippingError, isNull);
     });
 
@@ -393,7 +393,7 @@ void main() {
       await notifier.calculateShipping([testCartItem]);
 
       final state = container.read(checkoutStateProvider);
-      expect(state.baseShippingCost, greaterThanOrEqualTo(0.0));
+      expect(state.baseShippingCostCents, greaterThanOrEqualTo(0.0));
     });
   });
 }

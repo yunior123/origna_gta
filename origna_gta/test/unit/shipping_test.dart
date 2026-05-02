@@ -55,7 +55,7 @@ void main() {
         item,
       ], DeliverySpeed.standard);
       // Base cost for <=15km is 1.99. Default weight 0.5kg (no surcharge)
-      expect(cost, closeTo(1.99, 0.01));
+      expect(cost, 199);
     });
 
     test('calculateTieredShipping applies weight surcharges correctly', () {
@@ -67,7 +67,7 @@ void main() {
       // Base local cost: 1.99
       // Weight surcharge: (5.0 - 2.0) * 1.5 = 4.50
       // Total: 1.99 + 4.50 = 6.49
-      expect(cost, closeTo(6.49, 0.01));
+      expect(cost, 649);
     });
 
     test('calculateTieredShipping handles volumetric weight', () {
@@ -87,7 +87,7 @@ void main() {
       // Vol weight: 25.0
       // Surcharge: (25.0 - 2.0) * 1.5 = 34.50
       // Total: 1.99 + 34.50 = 36.49
-      expect(cost, closeTo(36.49, 0.01));
+      expect(cost, 3649);
     });
 
     test('calculateTieredShipping applies speed multipliers', () {
@@ -103,9 +103,9 @@ void main() {
         item,
       ], DeliverySpeed.sameDay);
 
-      expect(standardCost, closeTo(1.99, 0.01));
-      expect(expressCost, closeTo(1.99 * 4.0, 0.01));
-      expect(sameDayCost, closeTo(1.99 * 4.5, 0.01));
+      expect(standardCost, 199);
+      expect(expressCost, closeTo(796, 1));
+      expect(sameDayCost, closeTo(896, 1));
     });
 
     test('calculateTieredShipping handles multiple items', () {
@@ -120,7 +120,7 @@ void main() {
       // Base: 1.99
       // Additional items: (2 - 1) * (1.99 * 0.15) = 0.2985
       // Total: ~2.29
-      expect(cost, closeTo(2.29, 0.01));
+      expect(cost, 229);
     });
 
     test('fallback shipping uses regional rates', () {
@@ -132,7 +132,7 @@ void main() {
         ProvinceCodeValues.ontario,
         ProvinceCodeValues.ontario,
       );
-      expect(sameProv, closeTo(12.99, 0.01));
+      expect(sameProv, 1299);
 
       // Different province: 18.99+
       final diffProv = calculateFallbackShipping(
@@ -140,7 +140,7 @@ void main() {
         ProvinceCodeValues.ontario,
         ProvinceCodeValues.britishColumbia,
       );
-      expect(diffProv, greaterThan(12.99));
+      expect(diffProv, greaterThan(1299));
     });
 
     test(
@@ -156,7 +156,7 @@ void main() {
         ], DeliverySpeed.express);
         // Express subtotal: 13.99 * 4.0 = 55.96
 
-        expect(expressCost, closeTo(55.96, 0.01));
+        expect(expressCost, closeTo(5596, 1));
       },
     );
   });

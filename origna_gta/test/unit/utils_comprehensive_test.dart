@@ -35,8 +35,8 @@ void main() {
         postalCode: 'M1M1M1',
         country: 'CA',
       );
-      final breakdownON = calculateDetailedTaxes(addressON, 100);
-      expect(breakdownON['HST'], 13.0);
+      final breakdownON = calculateDetailedTaxes(addressON, 10000);
+      expect(breakdownON['HST'], 1300);
     });
 
     test('calculateDetailedTaxes should return correct breakdown for QC', () {
@@ -47,13 +47,13 @@ void main() {
         postalCode: 'H1H1H1',
         country: 'CA',
       );
-      final breakdownQC = calculateDetailedTaxes(addressQC, 100);
-      expect(breakdownQC['GST'], 5.0);
-      expect(breakdownQC['QST'], closeTo(9.975, 0.001));
+      final breakdownQC = calculateDetailedTaxes(addressQC, 10000);
+      expect(breakdownQC['GST'], 500);
+      expect(breakdownQC['QST'], 998);
     });
 
     test('calculateDetailedTaxes with null address returns empty map', () {
-      final nullAddress = calculateDetailedTaxes(null, 100);
+      final nullAddress = calculateDetailedTaxes(null, 10000);
       expect(nullAddress, isEmpty);
     });
 
@@ -304,39 +304,39 @@ void main() {
     test('calculateFallbackShipping same province', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'ON', 'ON');
-      expect(cost, 12.99);
+      expect(cost, 1299);
     });
 
     test('calculateFallbackShipping adjacent provinces', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'ON', 'QC');
-      expect(cost, 18.99);
+      expect(cost, 1899);
     });
 
     test('calculateFallbackShipping same region', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'ON', 'QC');
       // ON and QC are adjacent AND same region (Central)
-      expect(cost, 18.99); // adjacent takes priority
+      expect(cost, 1899); // adjacent takes priority
     });
 
     test('calculateFallbackShipping far provinces', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'BC', 'NS');
-      expect(cost, 26.99);
+      expect(cost, 2699);
     });
 
     test('calculateFallbackShipping multiple items adds surcharge', () {
       final items = [_makeCartItem(quantity: 3)];
       final cost = calculateFallbackShipping(items, 'ON', 'ON');
       // 12.99 + (3-1) * (12.99 * 0.15)
-      expect(cost, closeTo(12.99 + 2 * 1.9485, 0.01));
+      expect(cost, 1689);
     });
 
     test('calculateTieredShipping short distance standard', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
-      expect(cost, closeTo(1.99, 0.01));
+      expect(cost, 199);
     });
 
     test('calculateTieredShipping medium distance standard', () {
@@ -346,7 +346,7 @@ void main() {
         items,
         DeliverySpeed.standard,
       );
-      expect(cost, closeTo(9.99, 0.01));
+      expect(cost, 999);
     });
 
     test('calculateTieredShipping long distance standard', () {
@@ -356,26 +356,26 @@ void main() {
         items,
         DeliverySpeed.standard,
       );
-      expect(cost, closeTo(26.99, 0.01));
+      expect(cost, 2699);
     });
 
     test('calculateTieredShipping express multiplier short distance', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.express);
-      expect(cost, closeTo(1.99 * 4.0, 0.01));
+      expect(cost, closeTo(796, 1));
     });
 
     test('calculateTieredShipping sameDay multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.sameDay);
-      expect(cost, closeTo(1.99 * 4.5, 0.01));
+      expect(cost, closeTo(896, 1));
     });
 
     test('calculateTieredShipping with heavy item adds weight surcharge', () {
       final items = [_makeCartItem(quantity: 1, weightKg: 5.0)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // baseCost 1.99 + weightSurcharge (5-2)*1.5 = 4.5
-      expect(cost, closeTo(1.99 + 4.5, 0.01));
+      expect(cost, closeTo(649, 1));
     });
 
     test('calculateTieredShipping with volumetric weight', () {
@@ -391,13 +391,13 @@ void main() {
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // volWeight = 50*50*50/5000 = 25kg, effectiveWeight = 25 (> 0.5)
       // surcharge = (25-2)*1.5 = 34.5
-      expect(cost, closeTo(1.99 + 34.5, 0.01));
+      expect(cost, closeTo(3649, 1));
     });
 
     test('calculateTieredShipping 50km tier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(30.0, items, DeliverySpeed.standard);
-      expect(cost, closeTo(4.99, 0.01));
+      expect(cost, 499);
     });
 
     test('calculateTieredShipping 500km tier', () {
@@ -407,7 +407,7 @@ void main() {
         items,
         DeliverySpeed.standard,
       );
-      expect(cost, closeTo(14.99, 0.01));
+      expect(cost, 1499);
     });
 
     test('calculateTieredShipping 1200km tier', () {
@@ -417,7 +417,7 @@ void main() {
         items,
         DeliverySpeed.standard,
       );
-      expect(cost, closeTo(18.99, 0.01));
+      expect(cost, 1899);
     });
 
     test('calculateTieredShipping 2500km tier', () {
@@ -427,19 +427,19 @@ void main() {
         items,
         DeliverySpeed.standard,
       );
-      expect(cost, closeTo(22.99, 0.01));
+      expect(cost, 2299);
     });
 
     test('calculateTieredShipping express 50km tier multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(30.0, items, DeliverySpeed.express);
-      expect(cost, closeTo(4.99 * 1.6, 0.01));
+      expect(cost, closeTo(798, 1));
     });
 
     test('calculateTieredShipping express 150km tier multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(100.0, items, DeliverySpeed.express);
-      expect(cost, closeTo(9.99 * 1.5, 0.01));
+      expect(cost, closeTo(1499, 1));
     });
 
     test('calculateTieredShipping express long distance multiplier', () {
@@ -449,19 +449,19 @@ void main() {
         items,
         DeliverySpeed.express,
       );
-      expect(cost, closeTo(26.99 * 1.6, 0.01));
+      expect(cost, closeTo(4318, 1));
     });
 
     test('calculateTieredShipping sameDay 50km multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(30.0, items, DeliverySpeed.sameDay);
-      expect(cost, closeTo(4.99 * 1.8, 0.01));
+      expect(cost, closeTo(898, 1));
     });
 
     test('calculateTieredShipping sameDay 150km multiplier', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(100.0, items, DeliverySpeed.sameDay);
-      expect(cost, closeTo(9.99 * 1.8, 0.01));
+      expect(cost, closeTo(1798, 1));
     });
 
     test('calculateTieredShipping sameDay long distance multiplier', () {
@@ -471,14 +471,14 @@ void main() {
         items,
         DeliverySpeed.sameDay,
       );
-      expect(cost, closeTo(26.99 * 2.5, 0.01));
+      expect(cost, closeTo(6748, 1));
     });
 
     test('calculateTieredShipping multiple items adds per-item surcharge', () {
       final items = [_makeCartItem(quantity: 3)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // baseCost 1.99 + additional items (3-1)*1.99*0.15
-      expect(cost, closeTo(1.99 + 2 * 1.99 * 0.15, 0.01));
+      expect(cost, closeTo(259, 1));
     });
   });
 
@@ -834,9 +834,9 @@ void main() {
         postalCode: 'V5V',
         country: 'CA',
       );
-      final b = calculateDetailedTaxes(addr, 200.0);
-      expect(b['GST'], 10.0);
-      expect(b['PST'], closeTo(14.0, 0.001));
+      final b = calculateDetailedTaxes(addr, 20000);
+      expect(b['GST'], 1000);
+      expect(b['PST'], 1400);
     });
 
     test('unknown province defaults to GST 5%', () {
@@ -847,8 +847,8 @@ void main() {
         postalCode: '000',
         country: 'CA',
       );
-      final b = calculateDetailedTaxes(addr, 100.0);
-      expect(b['GST'], 5.0);
+      final b = calculateDetailedTaxes(addr, 10000);
+      expect(b['GST'], 500);
       expect(b.length, 1);
     });
 
@@ -860,8 +860,8 @@ void main() {
         postalCode: 'T2T',
         country: 'CA',
       );
-      final b = calculateDetailedTaxes(addr, 100.0);
-      expect(b['GST'], 5.0);
+      final b = calculateDetailedTaxes(addr, 10000);
+      expect(b['GST'], 500);
       expect(b.length, 1);
     });
 
@@ -873,8 +873,8 @@ void main() {
         postalCode: 'M5V',
         country: 'CA',
       );
-      final b = calculateDetailedTaxes(addr, 0.0);
-      expect(b['HST'], 0.0);
+      final b = calculateDetailedTaxes(addr, 0);
+      expect(b['HST'], 0);
     });
   });
 
@@ -1099,20 +1099,20 @@ void main() {
       // NB and NL are NOT adjacent but ARE same region (Atlantic)
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'NB', 'NL');
-      expect(cost, 22.99); // same region rate
+      expect(cost, 2299); // same region rate
     });
 
     test('single item no extra surcharge', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'ON', 'ON');
-      expect(cost, 12.99); // just base, no additional
+      expect(cost, 1299); // just base, no additional
     });
 
     test('zero additional items when quantity is 1', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateFallbackShipping(items, 'BC', 'NS');
       // (1-1).clamp(0,999) = 0, so no surcharge
-      expect(cost, 26.99);
+      expect(cost, 2699);
     });
   });
 
@@ -1124,7 +1124,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(15.0, items, DeliverySpeed.standard),
-        closeTo(1.99, 0.01),
+        199,
       );
     });
 
@@ -1132,7 +1132,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(15.01, items, DeliverySpeed.standard),
-        closeTo(4.99, 0.01),
+        499,
       );
     });
 
@@ -1140,7 +1140,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(50.0, items, DeliverySpeed.standard),
-        closeTo(4.99, 0.01),
+        499,
       );
     });
 
@@ -1148,7 +1148,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(50.01, items, DeliverySpeed.standard),
-        closeTo(9.99, 0.01),
+        999,
       );
     });
 
@@ -1156,7 +1156,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(150.0, items, DeliverySpeed.standard),
-        closeTo(9.99, 0.01),
+        999,
       );
     });
 
@@ -1164,7 +1164,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(500.0, items, DeliverySpeed.standard),
-        closeTo(14.99, 0.01),
+        1499,
       );
     });
 
@@ -1172,7 +1172,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(1200.0, items, DeliverySpeed.standard),
-        closeTo(18.99, 0.01),
+        1899,
       );
     });
 
@@ -1180,7 +1180,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(2500.0, items, DeliverySpeed.standard),
-        closeTo(22.99, 0.01),
+        2299,
       );
     });
 
@@ -1188,7 +1188,7 @@ void main() {
       final items = [_makeCartItem(quantity: 1)];
       expect(
         calculateTieredShipping(2500.01, items, DeliverySpeed.standard),
-        closeTo(26.99, 0.01),
+        2699,
       );
     });
   });
@@ -1200,27 +1200,27 @@ void main() {
     test('exactly 2kg has no weight surcharge', () {
       final items = [_makeCartItem(quantity: 1, weightKg: 2.0)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
-      expect(cost, closeTo(1.99, 0.01)); // no surcharge
+      expect(cost, 199); // no surcharge
     });
 
     test('2.1kg has small weight surcharge', () {
       final items = [_makeCartItem(quantity: 1, weightKg: 2.1)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // surcharge = (2.1 - 2.0) * 1.5 = 0.15
-      expect(cost, closeTo(1.99 + 0.15, 0.01));
+      expect(cost, closeTo(214, 1));
     });
 
     test('weight surcharge multiplied by quantity', () {
       final items = [_makeCartItem(quantity: 3, weightKg: 5.0)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
       // surcharge = (5-2)*1.5*3 = 13.5, additional items = (3-1)*1.99*0.15 = 0.597
-      expect(cost, closeTo(1.99 + 13.5 + 0.597, 0.01));
+      expect(cost, closeTo(1609, 1));
     });
 
     test('null weight defaults to 0.5kg (no surcharge)', () {
       final items = [_makeCartItem(quantity: 1)];
       final cost = calculateTieredShipping(10.0, items, DeliverySpeed.standard);
-      expect(cost, closeTo(1.99, 0.01));
+      expect(cost, 199);
     });
   });
 

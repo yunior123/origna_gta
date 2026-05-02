@@ -503,7 +503,7 @@ async fn refund_order_item(
         Some(refund_amount_cents),
         "requested_by_customer",
         &idempotency_key,
-        &[("orderId", &req.order_id), ("productId", &req.product_id)],
+        &[(fields::ORDER_ID, &req.order_id), (fields::PRODUCT_ID, &req.product_id)],
     )
     .await;
     // Rollback the atomic reservation on Stripe failure to avoid a
@@ -768,7 +768,7 @@ async fn cancel_order(
             None, // full refund
             "requested_by_customer",
             &idempotency_key,
-            &[("orderId", &req.order_id)],
+            &[(fields::ORDER_ID, &req.order_id)],
         )
         .await
         {
@@ -1582,7 +1582,7 @@ mod tests {
             Some(1250),
             "requested_by_customer",
             "refund_order_1_item_1",
-            &[("orderId", "order_1"), ("productId", "prod_1")],
+            &[(fields::ORDER_ID, "order_1"), (fields::PRODUCT_ID, "prod_1")],
         )
         .await
         .unwrap();

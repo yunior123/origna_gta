@@ -5,9 +5,9 @@ part of '../editproduct_screen.dart';
 // ============================================================================
 
 extension _EditProductSubmitSection on _EditProductScreenState {
-  double? _parseSubmittedPrice() {
+  int? _parseSubmittedPriceCents() {
     final priceText = _priceController.text.trim();
-    final parsedPrice = double.tryParse(priceText);
+    final parsedPrice = parseMoneyToCents(priceText);
     if (parsedPrice != null) return parsedPrice;
 
     AppLogger.w(
@@ -26,8 +26,8 @@ extension _EditProductSubmitSection on _EditProductScreenState {
   void handleSave(EditProductViewModel viewModel) {
     if (!_formKey.currentState!.validate()) return;
 
-    final price = _parseSubmittedPrice();
-    if (price == null) return;
+    final priceCents = _parseSubmittedPriceCents();
+    if (priceCents == null) return;
 
     final state = ref.read(editProductViewModelProvider(widget.product));
 
@@ -71,9 +71,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
             type: DeliveryTypeValues.standard,
             description: 'product.standard_delivery'.tr(),
             estimatedDays: int.tryParse(_standardDaysController.text) ?? 5,
-            costCents:
-                ((double.tryParse(_standardPriceController.text) ?? 0.0) * 100)
-                    .round(),
+            costCents: parseMoneyToCents(_standardPriceController.text) ?? 0,
             quantityDiscounts: existingQuantityDiscounts,
             additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
@@ -83,9 +81,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
             type: DeliveryTypeValues.express,
             description: 'product.express_delivery'.tr(),
             estimatedDays: int.tryParse(_expressDaysController.text) ?? 2,
-            costCents:
-                ((double.tryParse(_expressPriceController.text) ?? 9.99) * 100)
-                    .round(),
+            costCents: parseMoneyToCents(_expressPriceController.text) ?? 999,
             quantityDiscounts: existingQuantityDiscounts,
             additionalItemCostCents: existingAdditionalItemCostCents,
             maxItemsPerShipment: existingMaxItems,
@@ -95,9 +91,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
             type: DeliveryTypeValues.sameDay,
             description: 'product.same_day_delivery'.tr(),
             estimatedDays: 0,
-            costCents:
-                ((double.tryParse(_sameDayPriceController.text) ?? 14.99) * 100)
-                    .round(),
+            costCents: parseMoneyToCents(_sameDayPriceController.text) ?? 1499,
           ),
       ];
     }
@@ -119,7 +113,7 @@ extension _EditProductSubmitSection on _EditProductScreenState {
       descriptionF: _descriptionFController.text.trim().isEmpty
           ? null
           : _descriptionFController.text.trim(),
-      price: price,
+      priceCents: priceCents,
       stock: int.tryParse(_stockController.text.trim()) ?? 0,
       categoryId: int.tryParse(_categoryController.text.trim()) ?? 0,
       street: _streetController.text.trim(),
@@ -136,9 +130,9 @@ extension _EditProductSubmitSection on _EditProductScreenState {
       taxCode: _taxCodeController.text.trim(),
       deliveryOptions: deliveryOptions,
       inventory: updatedInventory,
-      compareAtPrice: _compareAtPriceController.text.trim().isEmpty
+      compareAtPriceCents: _compareAtPriceController.text.trim().isEmpty
           ? null
-          : double.tryParse(_compareAtPriceController.text.trim()),
+          : parseMoneyToCents(_compareAtPriceController.text.trim()),
     );
   }
 

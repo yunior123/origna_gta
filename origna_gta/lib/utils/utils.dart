@@ -183,17 +183,17 @@ final taxConfig = provinceTaxRates;
 
 /// Calculates per-tax-type breakdown for display (e.g., GST: $2.50, QST: $4.99).
 ///
-/// [total] is in dollars. Returns empty map if address is null.
+/// [totalCents] is in integer cents. Returns empty map if address is null.
 /// Uses the province from [address.state] to look up applicable rates.
-Map<String, double> calculateDetailedTaxes(Address? address, double total) {
+Map<String, int> calculateDetailedTaxes(Address? address, int totalCents) {
   if (address == null) return {};
 
   final province = address.state;
   final rates = provinceTaxRates[province] ?? {'GST': 0.05};
 
-  Map<String, double> breakdown = {};
+  Map<String, int> breakdown = {};
   rates.forEach((name, rate) {
-    breakdown[name] = total * rate;
+    breakdown[name] = (totalCents * rate).round();
   });
   return breakdown;
 }
@@ -201,7 +201,8 @@ Map<String, double> calculateDetailedTaxes(Address? address, double total) {
 /// Fallback shipping calculation when coordinates are unavailable.
 /// Uses province-based flat rates for Canada.
 /// Cuba uses weight-based maritime shipping calculation.
-double calculateFallbackShipping(
+/// Returns integer cents.
+int calculateFallbackShipping(
   List<CartItemDetailModel> items,
   String sellerProvince,
   String buyerProvince,
@@ -211,23 +212,23 @@ double calculateFallbackShipping(
   }
 
   final totalItems = items.fold(0, (i, item) => i + item.quantity);
-  double baseCost = 26.99;
+  int baseCostCents = 2699;
 
   if (sellerProvince == buyerProvince) {
-    baseCost = 12.99;
+    baseCostCents = 1299;
   } else if (_areAdjacentProvinces(sellerProvince, buyerProvince)) {
-    baseCost = 18.99;
+    baseCostCents = 1899;
   } else if (_areSameRegion(sellerProvince, buyerProvince)) {
-    baseCost = 22.99;
+    baseCostCents = 2299;
   }
 
-  final additionalItemsCost =
-      (totalItems - 1).clamp(0, 999) * (baseCost * 0.15);
+  final additionalItemsCostCents =
+      (totalItems - 1).clamp(0, 999) * (baseCostCents * 0.15).round();
 
-  return baseCost + additionalItemsCost;
+  return baseCostCents + additionalItemsCostCents;
 }
 
-double _calculateMaritimeShipping(List<CartItemDetailModel> items) {
+int _calculateMaritimeShipping(List<CartItemDetailModel> items) {
   double totalWeightKg = 0.0;
   for (final item in items) {
     final weightKg = (item.weightKg ?? MaritimeShippingConstants.minWeightKg)
@@ -245,13 +246,13 @@ double _calculateMaritimeShipping(List<CartItemDetailModel> items) {
     costCents += MaritimeShippingConstants.heavySurchargeCents.toDouble();
   }
 
-  return costCents / 100.0;
+  return costCents.round();
 }
 
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.
 /// Aligns with backend shipping_service.py for deterministic totals.
-/// Returns a Map of sellerId to shipping cost.
-Future<Map<String, double>> calculateShippingCost(
+/// Returns a Map of sellerId to shipping cost in integer cents.
+Future<Map<String, int>> calculateShippingCost(
   List<CartItemDetailModel> items,
   Address? buyerAddress, {
   DeliverySpeed chosenSpeed = DeliverySpeed.standard,
@@ -268,7 +269,7 @@ Future<Map<String, double>> calculateShippingCost(
     buyerProvince,
   );
   if (isCubaShipping) {
-    final Map<String, double> sellerCosts = {};
+    final Map<String, int> sellerCosts = {};
     final itemsBySeller = <String, List<CartItemDetailModel>>{};
     for (var item in items) {
       itemsBySeller.putIfAbsent(item.sellerId, () => []).add(item);
@@ -280,7 +281,7 @@ Future<Map<String, double>> calculateShippingCost(
     return sellerCosts;
   }
 
-  final Map<String, double> sellerCosts = {};
+  final Map<String, int> sellerCosts = {};
 
   final Map<String, List<CartItemDetailModel>> itemsBySeller = {};
   for (var item in items) {
@@ -290,7 +291,7 @@ Future<Map<String, double>> calculateShippingCost(
   for (var entry in itemsBySeller.entries) {
     final sellerId = entry.key;
     final sellerItems = entry.value;
-    double sellerTotal = 0.0;
+    int sellerTotalCents = 0;
 
     final seller = sellerItems.first.sellerAddress;
     final sellerState = seller.state;
@@ -298,7 +299,7 @@ Future<Map<String, double>> calculateShippingCost(
 
     final chargeableItems = sellerItems.where((i) => !i.freeShipping).toList();
     if (chargeableItems.isEmpty) {
-      sellerCosts[sellerId] = 0.0;
+      sellerCosts[sellerId] = 0;
       continue;
     }
 
@@ -306,13 +307,13 @@ Future<Map<String, double>> calculateShippingCost(
       (i) => i.isLocalDeliveryOnly || i.isPerishable,
     );
     if (hasLocalRestriction && sellerState != buyerState) {
-      sellerTotal += 50.0;
+      sellerTotalCents += 50;
     }
 
     final hasFixedPrice = _hasFixedPriceForSpeed(chargeableItems, chosenSpeed);
     if (hasFixedPrice.isEnabled) {
-      sellerTotal += hasFixedPrice.total;
-      sellerCosts[sellerId] = sellerTotal;
+      sellerTotalCents += hasFixedPrice.total;
+      sellerCosts[sellerId] = sellerTotalCents;
       continue;
     }
 
@@ -347,17 +348,17 @@ Future<Map<String, double>> calculateShippingCost(
           final distanceKm = distanceMeters / 1000.0;
 
           if (hasLocalRestriction && distanceKm > 100) {
-            sellerTotal += 75.0;
-            sellerCosts[sellerId] = sellerTotal;
+            sellerTotalCents += 75;
+            sellerCosts[sellerId] = sellerTotalCents;
             continue;
           }
 
-          sellerTotal += _calculateTieredShipping(
+          sellerTotalCents += _calculateTieredShipping(
             distanceKm,
             chargeableItems,
             chosenSpeed,
           );
-          sellerCosts[sellerId] = sellerTotal;
+          sellerCosts[sellerId] = sellerTotalCents;
           continue;
         }
       } catch (e, stack) {
@@ -365,23 +366,23 @@ Future<Map<String, double>> calculateShippingCost(
       }
     }
 
-    sellerTotal += calculateFallbackShipping(
+    sellerTotalCents += calculateFallbackShipping(
       chargeableItems,
       sellerState,
       buyerState,
     );
-    sellerCosts[sellerId] = sellerTotal;
+    sellerCosts[sellerId] = sellerTotalCents;
   }
 
   return sellerCosts;
 }
 
-double calculateTieredShipping(
+int calculateTieredShipping(
   double distanceKm,
   List<CartItemDetailModel> sellerItems,
   DeliverySpeed speed,
 ) {
-  return _calculateTieredShipping(distanceKm, sellerItems, speed);
+  return _calculateTieredShipping(distanceKm, sellerItems, speed).round();
 }
 
 /// Check if current user's email is verified. Returns true if verified or in emulator mode.
@@ -849,28 +850,28 @@ bool _areSameRegion(String p1, String p2) {
   return false;
 }
 
-double _calculateTieredShipping(
+int _calculateTieredShipping(
   double distanceKm,
   List<CartItemDetailModel> sellerItems,
   DeliverySpeed speed,
 ) {
-  double baseCost = 26.99;
+  int baseCostCents = 2699;
 
   if (distanceKm <= 15) {
-    baseCost = 1.99;
+    baseCostCents = 199;
   } else if (distanceKm <= 50) {
-    baseCost = 4.99;
+    baseCostCents = 499;
   } else if (distanceKm <= 150) {
-    baseCost = 9.99;
+    baseCostCents = 999;
   } else if (distanceKm <= 500) {
-    baseCost = 14.99;
+    baseCostCents = 1499;
   } else if (distanceKm <= 1200) {
-    baseCost = 18.99;
+    baseCostCents = 1899;
   } else if (distanceKm <= 2500) {
-    baseCost = 22.99;
+    baseCostCents = 2299;
   }
 
-  double weightSurcharge = 0;
+  int weightSurchargeCents = 0;
   int totalItems = 0;
   for (final item in sellerItems) {
     final qty = item.quantity;
@@ -884,14 +885,14 @@ double _calculateTieredShipping(
     final effectiveWeight = actualWeight > volWeight ? actualWeight : volWeight;
 
     if (effectiveWeight > 2.0) {
-      weightSurcharge += (effectiveWeight - 2.0) * 1.5 * qty;
+      weightSurchargeCents += ((effectiveWeight - 2.0) * 150 * qty).round();
     }
   }
 
-  final subtotal =
-      baseCost +
-      weightSurcharge +
-      ((totalItems - 1).clamp(0, 999) * (baseCost * 0.15));
+  final subtotalCents =
+      baseCostCents +
+      weightSurchargeCents +
+      ((totalItems - 1).clamp(0, 999) * (baseCostCents * 0.15).round());
 
   double multiplier = 1.0;
   if (speed == DeliverySpeed.express) {
@@ -916,14 +917,14 @@ double _calculateTieredShipping(
     }
   }
 
-  return subtotal * multiplier;
+  return (subtotalCents * multiplier).round();
 }
 
 _FixedPriceResult _hasFixedPriceForSpeed(
   List<CartItemDetailModel> items,
   DeliverySpeed speed,
 ) {
-  double total = 0;
+  int totalCents = 0;
   for (final item in items) {
     final matches = item.deliveryOptions.where((o) => o.type == speed.value);
     if (matches.isEmpty) {
@@ -938,10 +939,10 @@ _FixedPriceResult _hasFixedPriceForSpeed(
       return const _FixedPriceResult(isEnabled: false, total: 0);
     }
 
-    total += cost;
+    totalCents += (cost * 100).round();
   }
 
-  return _FixedPriceResult(isEnabled: true, total: total);
+  return _FixedPriceResult(isEnabled: true, total: totalCents);
 }
 
 /// Centralized error handler - logs to console and GlitchTip
@@ -1178,7 +1179,7 @@ enum VideoValidationError { none, tooLarge, tooLong, invalidFormat }
 
 class _FixedPriceResult {
   final bool isEnabled;
-  final double total;
+  final int total;
 
   const _FixedPriceResult({required this.isEnabled, required this.total});
 }

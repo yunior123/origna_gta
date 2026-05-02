@@ -572,7 +572,7 @@ class _FreeShippingBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shippingCost = ref.watch(
-      checkoutStateProvider.select((s) => s.shippingCost),
+      checkoutStateProvider.select((s) => s.shippingCostCents),
     );
     final isCalculating = ref.watch(
       checkoutStateProvider.select((s) => s.isCalculatingShipping),

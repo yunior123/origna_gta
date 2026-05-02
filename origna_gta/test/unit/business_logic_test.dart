@@ -42,7 +42,7 @@ void main() {
     });
 
     test('calculateDetailedTaxes returns empty map when address is null', () {
-      final result = calculateDetailedTaxes(null, 100.0);
+      final result = calculateDetailedTaxes(null, 10000);
       expect(result, isEmpty);
     });
 
@@ -55,10 +55,10 @@ void main() {
         country: 'Canada',
       );
 
-      final result = calculateDetailedTaxes(address, 100.0);
+      final result = calculateDetailedTaxes(address, 10000);
 
       expect(result.containsKey('HST'), true);
-      expect(result['HST'], closeTo(13.0, 0.01));
+      expect(result['HST'], 1300);
     });
 
     test(
@@ -72,12 +72,12 @@ void main() {
           country: 'Canada',
         );
 
-        final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 10000);
 
         expect(result.containsKey('GST'), true);
         expect(result.containsKey('PST'), true);
-        expect(result['GST'], closeTo(5.0, 0.01));
-        expect(result['PST'], closeTo(7.0, 0.01));
+        expect(result['GST'], 500);
+        expect(result['PST'], 700);
       },
     );
 
@@ -92,12 +92,12 @@ void main() {
           country: 'Canada',
         );
 
-        final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 10000);
 
         expect(result.containsKey('GST'), true);
         expect(result.containsKey('QST'), true);
-        expect(result['GST'], closeTo(5.0, 0.01));
-        expect(result['QST'], closeTo(9.975, 0.01));
+        expect(result['GST'], 500);
+        expect(result['QST'], 998);
       },
     );
 
@@ -112,11 +112,11 @@ void main() {
           country: 'Canada',
         );
 
-        final result = calculateDetailedTaxes(address, 100.0);
+        final result = calculateDetailedTaxes(address, 10000);
 
         expect(result.length, 1);
         expect(result.containsKey('GST'), true);
-        expect(result['GST'], closeTo(5.0, 0.01));
+        expect(result['GST'], 500);
       },
     );
   });

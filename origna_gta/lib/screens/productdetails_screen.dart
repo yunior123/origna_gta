@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:origna_gta/features/products/stock_notification_provider.dart';
@@ -776,36 +775,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: kIsWeb
-                      ? Image.network(
-                          resolveMediaUrl(imageUrls[i]),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return ModernSkeletonLoader.imagePlaceholder();
-                          },
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.image_not_supported,
-                                size: 100,
-                                color: DesignTokens.white,
-                              ),
-                        )
-                      : WebCachedNetworkImage(
-                          imageUrl: resolveMediaUrl(imageUrls[i]),
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.contain,
-                          placeholder: (c, u) =>
-                              ModernSkeletonLoader.imagePlaceholder(),
-                          errorWidget: (c, u, e) => const Icon(
-                            Icons.image_not_supported,
-                            size: 100,
-                            color: DesignTokens.white,
-                          ),
-                        ),
+                  child: WebCachedNetworkImage(
+                    imageUrl: resolveMediaUrl(imageUrls[i]),
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.contain,
+                    placeholder: (c, u) =>
+                        ModernSkeletonLoader.imagePlaceholder(),
+                    errorWidget: (c, u, e) => const Icon(
+                      Icons.image_not_supported,
+                      size: 100,
+                      color: DesignTokens.white,
+                    ),
+                  ),
                 ),
               ),
             ),

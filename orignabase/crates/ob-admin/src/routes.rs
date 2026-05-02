@@ -7,6 +7,7 @@ use ob_auth::middleware::AuthContext;
 use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use ob_database::DatabaseClient;
+use sqlx::Row;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -580,14 +581,13 @@ impl CreateIndexRequest {
     }
 
     /// Generate the SQL CREATE INDEX statement.
-    pub fn to_surreal_query(&self) -> String {
-        let unique_clause = if self.unique { " UNIQUE" } else { "" };
+    pub fn to_sql_query(&self) -> String {
+        let unique_clause = if self.unique { "UNIQUE " } else { "" };
         format!(
-            "DEFINE INDEX {} ON {} FIELDS {}{}",
+            "CREATE {unique_clause}INDEX IF NOT EXISTS {} ON {} ({})",
             self.index_name(),
             self.collection,
             self.fields.join(", "),
-            unique_clause,
         )
     }
 }
@@ -621,7 +621,7 @@ async fn create_index(
         return Err(Error::Validation("At least one field is required".into()));
     }
 
-    let query = body.to_surreal_query();
+    let query = body.to_sql_query();
     state.db.query_raw_value(&query).await?;
 
     Ok(Json(json!({
@@ -632,12 +632,27 @@ async fn create_index(
     })))
 }
 
-/// GET /_admin/indexes — List all indexes via INFO FOR DB.
+/// GET /_admin/indexes — List all indexes via pg_indexes.
 async fn list_indexes(State(state): State<AdminState>) -> Result<Json<Value>> {
-    let info = state.db.query_raw_value("INFO FOR DB").await?;
-    // INFO FOR DB returns an object with "tables", "indexes", etc.
-    // Extract index info from the response
-    let indexes = info.get("indexes").cloned().unwrap_or(json!({})); // ignore-magic: SurrealDB INFO FOR DB response key
+    let rows = sqlx::query(
+        "SELECT schemaname, tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY tablename, indexname",
+    )
+    .fetch_all(state.db.inner().pool())
+    .await
+    .map_err(|e| Error::Database(format!("Failed to list indexes: {e}")))?;
+
+    let indexes: Vec<Value> = rows
+        .into_iter()
+        .map(|row| {
+            json!({
+                "schema": row.get::<String, _>("schemaname"),
+                "table": row.get::<String, _>("tablename"),
+                "name": row.get::<String, _>("indexname"),
+                "definition": row.get::<String, _>("indexdef"),
+            })
+        })
+        .collect();
+
     Ok(Json(json!({ "indexes": indexes })))
 }
 
@@ -659,7 +674,7 @@ async fn drop_index(
         return Err(Error::Validation("Invalid collection name".into()));
     }
 
-    let query = format!("REMOVE INDEX {name} ON {}", body.collection);
+    let query = format!("DROP INDEX IF EXISTS {name}");
     if let Err(err) = state.db.query_raw_value(&query).await {
         let message = err.to_string();
         if message.contains("does not exist") && message.contains("index") {
@@ -1249,10 +1264,10 @@ mod tests {
             fields: vec!["status".to_string(), "price".to_string()],
             unique: false,
         };
-        let query = req.to_surreal_query();
+        let query = req.to_sql_query();
         assert_eq!(
             query,
-            "DEFINE INDEX idx_products_status_price ON products FIELDS status, price"
+            "CREATE INDEX IF NOT EXISTS idx_products_status_price ON products (status, price)"
         );
     }
 
@@ -1263,10 +1278,10 @@ mod tests {
             fields: vec!["email".to_string()],
             unique: true,
         };
-        let query = req.to_surreal_query();
+        let query = req.to_sql_query();
         assert_eq!(
             query,
-            "DEFINE INDEX idx_users_email ON users FIELDS email UNIQUE"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email)"
         );
     }
 
@@ -1361,8 +1376,8 @@ mod tests {
             unique: false,
         };
         assert_eq!(
-            req.to_surreal_query(),
-            "DEFINE INDEX idx_orders_customer_id_status_created_at ON orders FIELDS customer_id, status, created_at"
+            req.to_sql_query(),
+            "CREATE INDEX IF NOT EXISTS idx_orders_customer_id_status_created_at ON orders (customer_id, status, created_at)"
         );
     }
 
@@ -1686,7 +1701,7 @@ mod tests {
             fields: vec!["order_id".to_string(), "product_id".to_string()],
             unique: true,
         };
-        let query = req.to_surreal_query();
+        let query = req.to_sql_query();
         assert!(query.contains("UNIQUE"));
         assert!(query.contains("order_id, product_id"));
         assert_eq!(req.index_name(), "idx_order_items_order_id_product_id");

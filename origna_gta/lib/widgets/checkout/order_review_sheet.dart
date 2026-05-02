@@ -38,7 +38,7 @@ class OrderReviewSheet extends ConsumerWidget {
       checkoutStateProvider.select((s) => s.couponCode),
     );
     final shippingCost = ref.watch(
-      checkoutStateProvider.select((s) => s.shippingCost),
+      checkoutStateProvider.select((s) => s.shippingCostCents),
     );
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

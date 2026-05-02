@@ -37,14 +37,12 @@ final checkoutTaxRateProvider = Provider.autoDispose<double>((ref) {
 /// - [cartSubtotalProvider] returns integer cents — no conversion needed.
 /// - Coupon discount clamped to 0 minimum — negative totals are impossible.
 final checkoutTotalProvider = Provider.autoDispose<int>((ref) {
-  final (couponDiscountCents, taxAmount, shippingCost) = ref.watch(
+  final (couponDiscountCents, taxCents, shippingCents) = ref.watch(
     checkoutStateProvider.select(
-      (s) => (s.couponDiscountCents, s.taxAmount, s.shippingCost),
+      (s) => (s.couponDiscountCents, s.taxAmountCents, s.shippingCostCents),
     ),
   );
   final subtotalCents = ref.watch(cartSubtotalProvider);
-  final taxCents = (taxAmount * 100).round();
-  final shippingCents = (shippingCost * 100).round();
   return (subtotalCents - couponDiscountCents).clamp(0, 2147483647) +
       taxCents +
       shippingCents;
@@ -79,10 +77,10 @@ final checkoutBuyerTotalProvider = Provider.autoDispose
       final effective = ref.watch(
         checkoutEffectiveSubtotalProvider(params.subtotalCents),
       );
-      final shippingCost = ref.watch(
-        checkoutStateProvider.select((s) => s.shippingCost),
+      final shippingCostCents = ref.watch(
+        checkoutStateProvider.select((s) => s.shippingCostCents),
       );
-      final shippingCostCents = (shippingCost * 100).round();
+      // shippingCostCents is already integer cents — do NOT multiply by 100
       final taxRate = getTaxRate(params.province);
       final taxableBase = effective + shippingCostCents;
       final taxCents = (taxableBase * taxRate).round();
@@ -96,10 +94,10 @@ final checkoutTaxAmountProvider = Provider.autoDispose
       final effective = ref.watch(
         checkoutEffectiveSubtotalProvider(params.subtotalCents),
       );
-      final shippingCost = ref.watch(
-        checkoutStateProvider.select((s) => s.shippingCost),
+      final shippingCostCents = ref.watch(
+        checkoutStateProvider.select((s) => s.shippingCostCents),
       );
-      final shippingCostCents = (shippingCost * 100).round();
+      // shippingCostCents is already integer cents — do NOT multiply by 100
       final taxRate = getTaxRate(params.province);
       return ((effective + shippingCostCents) * taxRate).round();
     });
@@ -115,10 +113,10 @@ final checkoutTaxBreakdownProvider = Provider.autoDispose
       final effective = ref.watch(
         checkoutEffectiveSubtotalProvider(params.subtotalCents),
       );
-      final shippingCost = ref.watch(
-        checkoutStateProvider.select((s) => s.shippingCost),
+      final shippingCostCents = ref.watch(
+        checkoutStateProvider.select((s) => s.shippingCostCents),
       );
-      final shippingCostCents = (shippingCost * 100).round();
+      // shippingCostCents is already integer cents — do NOT multiply by 100
       final taxableBase = effective + shippingCostCents;
       final rates = provinceTaxRates[params.province] ?? {'HST': 0.13};
       return {

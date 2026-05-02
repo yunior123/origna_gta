@@ -339,7 +339,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
   Future<void> updateProduct({
     required String name,
     required String description,
-    required double price,
+    required int priceCents,
     required int stock,
     required int categoryId,
     required String street,
@@ -356,16 +356,13 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
     models.InventoryConfig? inventory,
 
     /// Original/crossed-out price for discount display (null = no sale, must be > price)
-    double? compareAtPrice,
+    int? compareAtPriceCents,
     // Bill 96: French translation fields
     String? nameF,
     String? descriptionF,
   }) async {
     // Guard: prevent double-submit
     if (state.isLoading) return;
-
-    // Input boundary: convert dollars to cents immediately
-    final priceCents = (price * 100).round();
 
     // CRITICAL: Ownership guard — prevent editing another seller's product
     final currentUid = _ref.read(userIdProvider);
@@ -388,15 +385,15 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
       state = state.copyWith(errorMessage: 'Description is required');
       return;
     }
-    if (price <= 0.99) {
+    if (priceCents <= 99) {
       state = state.copyWith(errorMessage: 'product.please_enter_price'.tr());
       return;
     }
-    if (price > 100000) {
+    if (priceCents > 10000000) {
       state = state.copyWith(errorMessage: 'product.price_limit_exceeded'.tr());
       return;
     }
-    if (compareAtPrice != null && compareAtPrice - price < 0.50) {
+    if (compareAtPriceCents != null && compareAtPriceCents - priceCents < 50) {
       state = state.copyWith(
         errorMessage: 'product.compare_at_price_must_be_higher'.tr(),
       );
@@ -624,9 +621,7 @@ class EditProductViewModel extends StateNotifier<EditProductState> {
         freeShipping: state.freeShipping,
         taxCode: normalizedTaxCode,
         inventory: inventory ?? _product.inventory,
-        compareAtPriceCents: compareAtPrice != null
-            ? (compareAtPrice * 100).round()
-            : null,
+        compareAtPriceCents: compareAtPriceCents,
       );
 
       // Build update map and add bookSourceUrl only if seller re-entered it

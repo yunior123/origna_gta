@@ -12,6 +12,7 @@ use ob_analytics::{AnalyticsState, analytics_router};
 use ob_auth::routes::{AuthState, auth_router};
 use ob_core::{Config, Environment};
 use ob_database::DatabaseClient;
+use sqlx::Row;
 use ob_functions::routes::FunctionsState;
 use ob_functions::{
     CronScheduler, DbTriggerExecutor, FunctionLimits, FunctionRegistry, WasmRuntime,
@@ -486,7 +487,15 @@ match /users/{userId} {
             let db = DatabaseClient::connect(&config.database).await?;
             match action {
                 SchemaAction::Inspect => {
-                    let tables = db.query_raw("INFO FOR DB").await?;
+                    let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(
+                        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
+                    )
+                    .fetch_all(db.inner().pool())
+                    .await?;
+                    let tables: Vec<String> = rows
+                        .iter()
+                        .map(|r| r.get::<String, _>("tablename"))
+                        .collect();
                     println!("{}", serde_json::to_string_pretty(&tables)?);
                     Ok(())
                 }
@@ -494,7 +503,7 @@ match /users/{userId} {
                     let migrations_dir = std::path::Path::new("migrations");
                     std::fs::create_dir_all(migrations_dir)?;
                     let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S");
-                    let filename = format!("{timestamp}_{name}.surql");
+                    let filename = format!("{timestamp}_{name}.sql");
                     let path = migrations_dir.join(&filename);
                     std::fs::write(
                         &path,
@@ -511,7 +520,7 @@ match /users/{userId} {
                     }
                     let mut entries: Vec<_> = std::fs::read_dir(migrations_dir)?
                         .filter_map(|e| e.ok())
-                        .filter(|e| e.path().extension().map(|x| x == "surql").unwrap_or(false))
+                        .filter(|e| e.path().extension().map(|x| x == "sql").unwrap_or(false))
                         .collect();
                     entries.sort_by_key(|e| e.file_name());
                     for entry in entries {
@@ -525,8 +534,8 @@ match /users/{userId} {
                 SchemaAction::Down => {
                     anyhow::bail!(
                         "Down migrations not yet implemented.\n  \
-                         Create a rollback file:  migrations/<timestamp>_<name>.down.surql\n  \
-                         Then run it manually:    orignabase schema up  (with the .down.surql file)"
+                         Create a rollback file:  migrations/<timestamp>_<name>.down.sql\n  \
+                         Then run it manually:    orignabase schema up  (with the .down.sql file)"
                     );
                 }
                 SchemaAction::Indexes => apply_indexes(&db).await,
@@ -1412,14 +1421,16 @@ async fn backup_database(config: &Config, output: &str) -> Result<()> {
     let db = ob_database::DatabaseClient::connect(&config.database).await?;
 
     // List all tables in the database
-    let tables_result = db.query_raw_value("INFO FOR DB").await?;
+    let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
+    )
+    .fetch_all(db.inner().pool())
+    .await?;
 
-    let table_names: Vec<String> = tables_result
-        .get("tables")
-        .or_else(|| tables_result.get("tb"))
-        .and_then(|v| v.as_object())
-        .map(|obj| obj.keys().cloned().collect())
-        .unwrap_or_default();
+    let table_names: Vec<String> = rows
+        .iter()
+        .map(|r| r.get::<String, _>("tablename"))
+        .collect();
 
     if table_names.is_empty() {
         println!("No tables found in database. Nothing to back up.");
@@ -1959,13 +1970,9 @@ unique = false"#
         }
 
         let name = format!("idx_{}_{}", idx.collection, idx.fields.join("_"));
-        let unique = if idx.unique.unwrap_or(false) {
-            " UNIQUE"
-        } else {
-            ""
-        };
+        let unique = if idx.unique.unwrap_or(false) { "UNIQUE " } else { "" };
         let query = format!(
-            "DEFINE INDEX {name} ON {} FIELDS {}{unique}",
+            "CREATE {unique}INDEX IF NOT EXISTS {name} ON {} ({})",
             idx.collection,
             idx.fields.join(", ")
         );

@@ -54,8 +54,7 @@ void main() {
         }
 
         // 3. Verify Non-Premium status in app logic.
-        // subscriptionStreamProvider may throw 403 when no subscription doc exists
-        // (SurrealDB isOwner fails on null resource) — treat as non-premium.
+        // subscriptionStreamProvider may throw 403 when no subscription doc exists — treat as non-premium.
         bool isInitiallyPremium = false;
         try {
           final subInitial = await container

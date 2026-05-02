@@ -14,7 +14,7 @@ class _OrderSummary extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final shippingCost = ref.watch(
-      checkoutStateProvider.select((state) => state.shippingCost),
+      checkoutStateProvider.select((state) => state.shippingCostCents),
     );
     final isCalculating = ref.watch(
       checkoutStateProvider.select((state) => state.isCalculatingShipping),
@@ -145,7 +145,7 @@ class _OrderSummary extends ConsumerWidget {
                   builder: (context) {
                     final sellerCosts = ref.watch(
                       checkoutStateProvider.select(
-                        (s) => s.sellerShippingCosts,
+                        (s) => s.sellerShippingCostsCents,
                       ),
                     );
                     final sellerNames = ref.watch(

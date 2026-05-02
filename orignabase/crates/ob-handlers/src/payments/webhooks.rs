@@ -329,8 +329,8 @@ async fn store_webhook_event(
 }
 
 /// Atomic dedup: try to create webhook event. Returns true if new, false if duplicate.
-/// Uses CREATE which fails on duplicate IDs — eliminates TOCTOU race between
-/// is_duplicate_webhook() and store_webhook_event().
+/// Uses the Stripe event ID as the document ID so PostgreSQL's unique constraint
+/// prevents concurrent duplicates — no SELECT-then-INSERT TOCTOU race.
 async fn try_store_webhook_event_atomic(
     state: &HandlersState,
     event: &StripeWebhookEvent,
@@ -346,24 +346,7 @@ async fn try_store_webhook_event_atomic(
         ));
     }
 
-    // Check if event already exists (query by data->>'id' since table id is auto-generated UUID).
-    let existing = state
-        .db
-        .query_bind(
-            &format!(
-                "SELECT id FROM {} WHERE data->>'id' = $1 LIMIT 1",
-                collections::WEBHOOK_EVENTS
-            ),
-            serde_json::json!({ "event_id": &event.id }),
-        )
-        .await;
-
-    if let Ok(rows) = existing
-        && !rows.is_empty()
-    {
-        return Ok(false); // Duplicate event
-    }
-
+    // Use Stripe event ID as document ID — INSERT ON CONFLICT handles dedup atomically.
     let event_data = serde_json::json!({
         fields::ID: event.id,
         fields::TYPE: event.r#type,
@@ -373,6 +356,8 @@ async fn try_store_webhook_event_atomic(
         fields::DATA: event.data,
     });
 
+    // Attempt insert — create_document reads "id" from data and uses ON CONFLICT DO NOTHING.
+    // If a document with this ID already exists, the DB rejects it — atomic dedup.
     let result = state
         .db
         .create_document(collections::WEBHOOK_EVENTS, event_data)
@@ -386,6 +371,7 @@ async fn try_store_webhook_event_atomic(
                 || err_str.contains("duplicate")
                 || err_str.contains("unique constraint")
                 || err_str.contains("RecordIdAlreadyExists")
+                || err_str.contains("conflict")
             {
                 Ok(false)
             } else {

@@ -53,16 +53,18 @@ abstract class CheckoutState with _$CheckoutState {
 
   const factory CheckoutState({
     Address? address,
-    @Default(0.0)
-    double baseShippingCost, // Base shipping before delivery speed surcharge
+    @Default(0)
+    int
+    baseShippingCostCents, // Base shipping before delivery speed surcharge (integer cents)
     @Default({})
-    Map<String, double> sellerShippingCosts, // Breakdown per seller
+    Map<String, int>
+    sellerShippingCostsCents, // Breakdown per seller (integer cents)
     @Default({}) Map<String, String> sellerNames, // Seller names for display
     @Default(DeliverySpeed.standard) DeliverySpeed deliverySpeed,
     @Default([DeliverySpeed.standard])
     List<DeliverySpeed> availableDeliverySpeeds,
     @Default(false) bool isLocalDelivery, // Within ~50km of seller
-    @Default({}) Map<String, double> taxBreakdown,
+    @Default({}) Map<String, int> taxBreakdownCents,
     @Default(false) bool isCalculatingShipping,
     String? shippingError,
     @Default(false) bool isProcessing,
@@ -82,17 +84,18 @@ abstract class CheckoutState with _$CheckoutState {
     @Default(false) bool hasInternationalItems,
   }) = _CheckoutState;
 
-  /// Total shipping cost including delivery speed surcharge
-  /// Standard (free) uses base cost, express/same-day add surcharge
-  double get shippingCost {
+  /// Total shipping cost in cents including delivery speed surcharge.
+  /// Standard uses base cost, express/same-day add surcharge.
+  int get shippingCostCents {
     if (deliverySpeed == DeliverySpeed.standard) {
-      return baseShippingCost;
+      return baseShippingCostCents;
     }
-    return baseShippingCost + deliverySpeed.baseSurcharge;
+    return baseShippingCostCents + deliverySpeed.baseSurchargeCents;
   }
 
-  double get taxAmount =>
-      taxBreakdown.values.fold(0.0, (total, v) => total + v);
+  /// Total tax amount in cents.
+  int get taxAmountCents =>
+      taxBreakdownCents.values.fold(0, (total, v) => total + v);
 }
 
 // ============================================================================

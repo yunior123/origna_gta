@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
-// firebase_auth removed — using AppAuthUser from providers
 import 'package:origna_gta/screens/product_card_screen.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/repositories/product_repository.dart';

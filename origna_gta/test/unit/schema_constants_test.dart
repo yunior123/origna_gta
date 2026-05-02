@@ -10,7 +10,7 @@ void main() {
       );
       expect(
         SchemaRegistry.getTimestampField(Collections.products),
-        Fields.createdAt,
+        Fields.dateCreated,
       );
       expect(
         SchemaRegistry.getTimestampField(Collections.orders),
@@ -22,7 +22,7 @@ void main() {
       );
       expect(
         SchemaRegistry.getTimestampField(Collections.cart),
-        Fields.createdAt,
+        Fields.dateCreated,
       );
     });
 

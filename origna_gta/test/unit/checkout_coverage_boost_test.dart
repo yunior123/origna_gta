@@ -192,7 +192,7 @@ void main() {
         await notifier.calculateShipping([createTestItem(isDigital: true)]);
 
         final state = container.read(checkoutStateProvider);
-        expect(state.baseShippingCost, 0);
+        expect(state.baseShippingCostCents, 0);
         expect(state.isCalculatingShipping, isFalse);
       },
     );
@@ -224,7 +224,7 @@ void main() {
         await notifier.calculateShipping([createTestItem(isDigital: true)]);
 
         final state = container.read(checkoutStateProvider);
-        expect(state.baseShippingCost, 0);
+        expect(state.baseShippingCostCents, 0);
       },
     );
   });
@@ -235,7 +235,7 @@ void main() {
       notifier.calculateTaxes(10000);
 
       final state = container.read(checkoutStateProvider);
-      expect(state.taxBreakdown, isEmpty);
+      expect(state.taxBreakdownCents, isEmpty);
     });
 
     test('calculateTaxes with address computes taxes', () {
@@ -253,8 +253,8 @@ void main() {
 
       final state = container.read(checkoutStateProvider);
       // Ontario HST is 13%
-      expect(state.taxBreakdown, isNotEmpty);
-      expect(state.taxBreakdown.containsKey('HST'), isTrue);
+      expect(state.taxBreakdownCents, isNotEmpty);
+      expect(state.taxBreakdownCents.containsKey('HST'), isTrue);
     });
   });
 
@@ -374,23 +374,23 @@ void main() {
   group('CheckoutState computed properties', () {
     test('shippingCost returns base for standard', () {
       const state = CheckoutState(
-        baseShippingCost: 10.0,
+        baseShippingCostCents: 1000,
         deliverySpeed: DeliverySpeed.standard,
       );
-      expect(state.shippingCost, 10.0);
+      expect(state.shippingCostCents, 1000);
     });
 
     test('shippingCost adds surcharge for express', () {
       const state = CheckoutState(
-        baseShippingCost: 10.0,
+        baseShippingCostCents: 1000,
         deliverySpeed: DeliverySpeed.express,
       );
-      expect(state.shippingCost, greaterThan(10.0));
+      expect(state.shippingCostCents, greaterThan(1000));
     });
 
     test('taxAmount sums all tax components', () {
-      const state = CheckoutState(taxBreakdown: {'GST': 5.0, 'PST': 7.0});
-      expect(state.taxAmount, 12.0);
+      const state = CheckoutState(taxBreakdownCents: {'GST': 500, 'PST': 700});
+      expect(state.taxAmountCents, 1200);
     });
   });
 

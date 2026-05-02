@@ -51,8 +51,7 @@ void main() {
         final currentUserId = ob.auth.currentUserId;
         expect(currentUserId, isNotNull);
 
-        // May be null if user has no subscription; 403 when doc doesn't exist
-        // (SurrealDB isOwner fails on null resource) — both mean "no subscription".
+        // May be null if user has no subscription; 403 when doc doesn't exist — both mean "no subscription".
         try {
           final subDoc = await ob
               .collection(Collections.subscriptions)

@@ -14,11 +14,11 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CheckoutState {
 
- Address? get address; double get baseShippingCost;// Base shipping before delivery speed surcharge
- Map<String, double> get sellerShippingCosts;// Breakdown per seller
+ Address? get address; int get baseShippingCostCents;// Base shipping before delivery speed surcharge (integer cents)
+ Map<String, int> get sellerShippingCostsCents;// Breakdown per seller (integer cents)
  Map<String, String> get sellerNames;// Seller names for display
  DeliverySpeed get deliverySpeed; List<DeliverySpeed> get availableDeliverySpeeds; bool get isLocalDelivery;// Within ~50km of seller
- Map<String, double> get taxBreakdown; bool get isCalculatingShipping; String? get shippingError; bool get isProcessing; String? get idempotencyKey; String? get checkoutError; String get paymentProvider; String? get couponCode; int get couponDiscountCents; bool get isCouponLoading; String? get couponError;/// F-77: Server-calculated tax amount in cents returned from create_checkout_session.
+ Map<String, int> get taxBreakdownCents; bool get isCalculatingShipping; String? get shippingError; bool get isProcessing; String? get idempotencyKey; String? get checkoutError; String get paymentProvider; String? get couponCode; int get couponDiscountCents; bool get isCouponLoading; String? get couponError;/// F-77: Server-calculated tax amount in cents returned from create_checkout_session.
 /// Use this for display in the review screen instead of client-side estimates.
  int get serverTaxAmountCents;/// F-74: Indicates if any item in the cart is shipped from outside Canada.
  bool get hasInternationalItems;
@@ -32,16 +32,16 @@ $CheckoutStateCopyWith<CheckoutState> get copyWith => _$CheckoutStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckoutState&&(identical(other.address, address) || other.address == address)&&(identical(other.baseShippingCost, baseShippingCost) || other.baseShippingCost == baseShippingCost)&&const DeepCollectionEquality().equals(other.sellerShippingCosts, sellerShippingCosts)&&const DeepCollectionEquality().equals(other.sellerNames, sellerNames)&&(identical(other.deliverySpeed, deliverySpeed) || other.deliverySpeed == deliverySpeed)&&const DeepCollectionEquality().equals(other.availableDeliverySpeeds, availableDeliverySpeeds)&&(identical(other.isLocalDelivery, isLocalDelivery) || other.isLocalDelivery == isLocalDelivery)&&const DeepCollectionEquality().equals(other.taxBreakdown, taxBreakdown)&&(identical(other.isCalculatingShipping, isCalculatingShipping) || other.isCalculatingShipping == isCalculatingShipping)&&(identical(other.shippingError, shippingError) || other.shippingError == shippingError)&&(identical(other.isProcessing, isProcessing) || other.isProcessing == isProcessing)&&(identical(other.idempotencyKey, idempotencyKey) || other.idempotencyKey == idempotencyKey)&&(identical(other.checkoutError, checkoutError) || other.checkoutError == checkoutError)&&(identical(other.paymentProvider, paymentProvider) || other.paymentProvider == paymentProvider)&&(identical(other.couponCode, couponCode) || other.couponCode == couponCode)&&(identical(other.couponDiscountCents, couponDiscountCents) || other.couponDiscountCents == couponDiscountCents)&&(identical(other.isCouponLoading, isCouponLoading) || other.isCouponLoading == isCouponLoading)&&(identical(other.couponError, couponError) || other.couponError == couponError)&&(identical(other.serverTaxAmountCents, serverTaxAmountCents) || other.serverTaxAmountCents == serverTaxAmountCents)&&(identical(other.hasInternationalItems, hasInternationalItems) || other.hasInternationalItems == hasInternationalItems));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CheckoutState&&(identical(other.address, address) || other.address == address)&&(identical(other.baseShippingCostCents, baseShippingCostCents) || other.baseShippingCostCents == baseShippingCostCents)&&const DeepCollectionEquality().equals(other.sellerShippingCostsCents, sellerShippingCostsCents)&&const DeepCollectionEquality().equals(other.sellerNames, sellerNames)&&(identical(other.deliverySpeed, deliverySpeed) || other.deliverySpeed == deliverySpeed)&&const DeepCollectionEquality().equals(other.availableDeliverySpeeds, availableDeliverySpeeds)&&(identical(other.isLocalDelivery, isLocalDelivery) || other.isLocalDelivery == isLocalDelivery)&&const DeepCollectionEquality().equals(other.taxBreakdownCents, taxBreakdownCents)&&(identical(other.isCalculatingShipping, isCalculatingShipping) || other.isCalculatingShipping == isCalculatingShipping)&&(identical(other.shippingError, shippingError) || other.shippingError == shippingError)&&(identical(other.isProcessing, isProcessing) || other.isProcessing == isProcessing)&&(identical(other.idempotencyKey, idempotencyKey) || other.idempotencyKey == idempotencyKey)&&(identical(other.checkoutError, checkoutError) || other.checkoutError == checkoutError)&&(identical(other.paymentProvider, paymentProvider) || other.paymentProvider == paymentProvider)&&(identical(other.couponCode, couponCode) || other.couponCode == couponCode)&&(identical(other.couponDiscountCents, couponDiscountCents) || other.couponDiscountCents == couponDiscountCents)&&(identical(other.isCouponLoading, isCouponLoading) || other.isCouponLoading == isCouponLoading)&&(identical(other.couponError, couponError) || other.couponError == couponError)&&(identical(other.serverTaxAmountCents, serverTaxAmountCents) || other.serverTaxAmountCents == serverTaxAmountCents)&&(identical(other.hasInternationalItems, hasInternationalItems) || other.hasInternationalItems == hasInternationalItems));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,address,baseShippingCost,const DeepCollectionEquality().hash(sellerShippingCosts),const DeepCollectionEquality().hash(sellerNames),deliverySpeed,const DeepCollectionEquality().hash(availableDeliverySpeeds),isLocalDelivery,const DeepCollectionEquality().hash(taxBreakdown),isCalculatingShipping,shippingError,isProcessing,idempotencyKey,checkoutError,paymentProvider,couponCode,couponDiscountCents,isCouponLoading,couponError,serverTaxAmountCents,hasInternationalItems]);
+int get hashCode => Object.hashAll([runtimeType,address,baseShippingCostCents,const DeepCollectionEquality().hash(sellerShippingCostsCents),const DeepCollectionEquality().hash(sellerNames),deliverySpeed,const DeepCollectionEquality().hash(availableDeliverySpeeds),isLocalDelivery,const DeepCollectionEquality().hash(taxBreakdownCents),isCalculatingShipping,shippingError,isProcessing,idempotencyKey,checkoutError,paymentProvider,couponCode,couponDiscountCents,isCouponLoading,couponError,serverTaxAmountCents,hasInternationalItems]);
 
 @override
 String toString() {
-  return 'CheckoutState(address: $address, baseShippingCost: $baseShippingCost, sellerShippingCosts: $sellerShippingCosts, sellerNames: $sellerNames, deliverySpeed: $deliverySpeed, availableDeliverySpeeds: $availableDeliverySpeeds, isLocalDelivery: $isLocalDelivery, taxBreakdown: $taxBreakdown, isCalculatingShipping: $isCalculatingShipping, shippingError: $shippingError, isProcessing: $isProcessing, idempotencyKey: $idempotencyKey, checkoutError: $checkoutError, paymentProvider: $paymentProvider, couponCode: $couponCode, couponDiscountCents: $couponDiscountCents, isCouponLoading: $isCouponLoading, couponError: $couponError, serverTaxAmountCents: $serverTaxAmountCents, hasInternationalItems: $hasInternationalItems)';
+  return 'CheckoutState(address: $address, baseShippingCostCents: $baseShippingCostCents, sellerShippingCostsCents: $sellerShippingCostsCents, sellerNames: $sellerNames, deliverySpeed: $deliverySpeed, availableDeliverySpeeds: $availableDeliverySpeeds, isLocalDelivery: $isLocalDelivery, taxBreakdownCents: $taxBreakdownCents, isCalculatingShipping: $isCalculatingShipping, shippingError: $shippingError, isProcessing: $isProcessing, idempotencyKey: $idempotencyKey, checkoutError: $checkoutError, paymentProvider: $paymentProvider, couponCode: $couponCode, couponDiscountCents: $couponDiscountCents, isCouponLoading: $isCouponLoading, couponError: $couponError, serverTaxAmountCents: $serverTaxAmountCents, hasInternationalItems: $hasInternationalItems)';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $CheckoutStateCopyWith<$Res>  {
   factory $CheckoutStateCopyWith(CheckoutState value, $Res Function(CheckoutState) _then) = _$CheckoutStateCopyWithImpl;
 @useResult
 $Res call({
- Address? address, double baseShippingCost, Map<String, double> sellerShippingCosts, Map<String, String> sellerNames, DeliverySpeed deliverySpeed, List<DeliverySpeed> availableDeliverySpeeds, bool isLocalDelivery, Map<String, double> taxBreakdown, bool isCalculatingShipping, String? shippingError, bool isProcessing, String? idempotencyKey, String? checkoutError, String paymentProvider, String? couponCode, int couponDiscountCents, bool isCouponLoading, String? couponError, int serverTaxAmountCents, bool hasInternationalItems
+ Address? address, int baseShippingCostCents, Map<String, int> sellerShippingCostsCents, Map<String, String> sellerNames, DeliverySpeed deliverySpeed, List<DeliverySpeed> availableDeliverySpeeds, bool isLocalDelivery, Map<String, int> taxBreakdownCents, bool isCalculatingShipping, String? shippingError, bool isProcessing, String? idempotencyKey, String? checkoutError, String paymentProvider, String? couponCode, int couponDiscountCents, bool isCouponLoading, String? couponError, int serverTaxAmountCents, bool hasInternationalItems
 });
 
 
@@ -69,17 +69,17 @@ class _$CheckoutStateCopyWithImpl<$Res>
 
 /// Create a copy of CheckoutState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? address = freezed,Object? baseShippingCost = null,Object? sellerShippingCosts = null,Object? sellerNames = null,Object? deliverySpeed = null,Object? availableDeliverySpeeds = null,Object? isLocalDelivery = null,Object? taxBreakdown = null,Object? isCalculatingShipping = null,Object? shippingError = freezed,Object? isProcessing = null,Object? idempotencyKey = freezed,Object? checkoutError = freezed,Object? paymentProvider = null,Object? couponCode = freezed,Object? couponDiscountCents = null,Object? isCouponLoading = null,Object? couponError = freezed,Object? serverTaxAmountCents = null,Object? hasInternationalItems = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? address = freezed,Object? baseShippingCostCents = null,Object? sellerShippingCostsCents = null,Object? sellerNames = null,Object? deliverySpeed = null,Object? availableDeliverySpeeds = null,Object? isLocalDelivery = null,Object? taxBreakdownCents = null,Object? isCalculatingShipping = null,Object? shippingError = freezed,Object? isProcessing = null,Object? idempotencyKey = freezed,Object? checkoutError = freezed,Object? paymentProvider = null,Object? couponCode = freezed,Object? couponDiscountCents = null,Object? isCouponLoading = null,Object? couponError = freezed,Object? serverTaxAmountCents = null,Object? hasInternationalItems = null,}) {
   return _then(_self.copyWith(
 address: freezed == address ? _self.address : address // ignore: cast_nullable_to_non_nullable
-as Address?,baseShippingCost: null == baseShippingCost ? _self.baseShippingCost : baseShippingCost // ignore: cast_nullable_to_non_nullable
-as double,sellerShippingCosts: null == sellerShippingCosts ? _self.sellerShippingCosts : sellerShippingCosts // ignore: cast_nullable_to_non_nullable
-as Map<String, double>,sellerNames: null == sellerNames ? _self.sellerNames : sellerNames // ignore: cast_nullable_to_non_nullable
+as Address?,baseShippingCostCents: null == baseShippingCostCents ? _self.baseShippingCostCents : baseShippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,sellerShippingCostsCents: null == sellerShippingCostsCents ? _self.sellerShippingCostsCents : sellerShippingCostsCents // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,sellerNames: null == sellerNames ? _self.sellerNames : sellerNames // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,deliverySpeed: null == deliverySpeed ? _self.deliverySpeed : deliverySpeed // ignore: cast_nullable_to_non_nullable
 as DeliverySpeed,availableDeliverySpeeds: null == availableDeliverySpeeds ? _self.availableDeliverySpeeds : availableDeliverySpeeds // ignore: cast_nullable_to_non_nullable
 as List<DeliverySpeed>,isLocalDelivery: null == isLocalDelivery ? _self.isLocalDelivery : isLocalDelivery // ignore: cast_nullable_to_non_nullable
-as bool,taxBreakdown: null == taxBreakdown ? _self.taxBreakdown : taxBreakdown // ignore: cast_nullable_to_non_nullable
-as Map<String, double>,isCalculatingShipping: null == isCalculatingShipping ? _self.isCalculatingShipping : isCalculatingShipping // ignore: cast_nullable_to_non_nullable
+as bool,taxBreakdownCents: null == taxBreakdownCents ? _self.taxBreakdownCents : taxBreakdownCents // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,isCalculatingShipping: null == isCalculatingShipping ? _self.isCalculatingShipping : isCalculatingShipping // ignore: cast_nullable_to_non_nullable
 as bool,shippingError: freezed == shippingError ? _self.shippingError : shippingError // ignore: cast_nullable_to_non_nullable
 as String?,isProcessing: null == isProcessing ? _self.isProcessing : isProcessing // ignore: cast_nullable_to_non_nullable
 as bool,idempotencyKey: freezed == idempotencyKey ? _self.idempotencyKey : idempotencyKey // ignore: cast_nullable_to_non_nullable
@@ -176,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Address? address,  double baseShippingCost,  Map<String, double> sellerShippingCosts,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, double> taxBreakdown,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Address? address,  int baseShippingCostCents,  Map<String, int> sellerShippingCostsCents,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, int> taxBreakdownCents,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CheckoutState() when $default != null:
-return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdown,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
+return $default(_that.address,_that.baseShippingCostCents,_that.sellerShippingCostsCents,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdownCents,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
   return orElse();
 
 }
@@ -197,10 +197,10 @@ return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Address? address,  double baseShippingCost,  Map<String, double> sellerShippingCosts,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, double> taxBreakdown,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Address? address,  int baseShippingCostCents,  Map<String, int> sellerShippingCostsCents,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, int> taxBreakdownCents,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)  $default,) {final _that = this;
 switch (_that) {
 case _CheckoutState():
-return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdown,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
+return $default(_that.address,_that.baseShippingCostCents,_that.sellerShippingCostsCents,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdownCents,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -217,10 +217,10 @@ return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Address? address,  double baseShippingCost,  Map<String, double> sellerShippingCosts,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, double> taxBreakdown,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Address? address,  int baseShippingCostCents,  Map<String, int> sellerShippingCostsCents,  Map<String, String> sellerNames,  DeliverySpeed deliverySpeed,  List<DeliverySpeed> availableDeliverySpeeds,  bool isLocalDelivery,  Map<String, int> taxBreakdownCents,  bool isCalculatingShipping,  String? shippingError,  bool isProcessing,  String? idempotencyKey,  String? checkoutError,  String paymentProvider,  String? couponCode,  int couponDiscountCents,  bool isCouponLoading,  String? couponError,  int serverTaxAmountCents,  bool hasInternationalItems)?  $default,) {final _that = this;
 switch (_that) {
 case _CheckoutState() when $default != null:
-return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdown,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
+return $default(_that.address,_that.baseShippingCostCents,_that.sellerShippingCostsCents,_that.sellerNames,_that.deliverySpeed,_that.availableDeliverySpeeds,_that.isLocalDelivery,_that.taxBreakdownCents,_that.isCalculatingShipping,_that.shippingError,_that.isProcessing,_that.idempotencyKey,_that.checkoutError,_that.paymentProvider,_that.couponCode,_that.couponDiscountCents,_that.isCouponLoading,_that.couponError,_that.serverTaxAmountCents,_that.hasInternationalItems);case _:
   return null;
 
 }
@@ -232,23 +232,23 @@ return $default(_that.address,_that.baseShippingCost,_that.sellerShippingCosts,_
 
 
 class _CheckoutState extends CheckoutState {
-  const _CheckoutState({this.address, this.baseShippingCost = 0.0, final  Map<String, double> sellerShippingCosts = const {}, final  Map<String, String> sellerNames = const {}, this.deliverySpeed = DeliverySpeed.standard, final  List<DeliverySpeed> availableDeliverySpeeds = const [DeliverySpeed.standard], this.isLocalDelivery = false, final  Map<String, double> taxBreakdown = const {}, this.isCalculatingShipping = false, this.shippingError, this.isProcessing = false, this.idempotencyKey, this.checkoutError, this.paymentProvider = PaymentProviderValues.stripe, this.couponCode, this.couponDiscountCents = 0, this.isCouponLoading = false, this.couponError, this.serverTaxAmountCents = 0, this.hasInternationalItems = false}): _sellerShippingCosts = sellerShippingCosts,_sellerNames = sellerNames,_availableDeliverySpeeds = availableDeliverySpeeds,_taxBreakdown = taxBreakdown,super._();
+  const _CheckoutState({this.address, this.baseShippingCostCents = 0, final  Map<String, int> sellerShippingCostsCents = const {}, final  Map<String, String> sellerNames = const {}, this.deliverySpeed = DeliverySpeed.standard, final  List<DeliverySpeed> availableDeliverySpeeds = const [DeliverySpeed.standard], this.isLocalDelivery = false, final  Map<String, int> taxBreakdownCents = const {}, this.isCalculatingShipping = false, this.shippingError, this.isProcessing = false, this.idempotencyKey, this.checkoutError, this.paymentProvider = PaymentProviderValues.stripe, this.couponCode, this.couponDiscountCents = 0, this.isCouponLoading = false, this.couponError, this.serverTaxAmountCents = 0, this.hasInternationalItems = false}): _sellerShippingCostsCents = sellerShippingCostsCents,_sellerNames = sellerNames,_availableDeliverySpeeds = availableDeliverySpeeds,_taxBreakdownCents = taxBreakdownCents,super._();
   
 
 @override final  Address? address;
-@override@JsonKey() final  double baseShippingCost;
-// Base shipping before delivery speed surcharge
- final  Map<String, double> _sellerShippingCosts;
-// Base shipping before delivery speed surcharge
-@override@JsonKey() Map<String, double> get sellerShippingCosts {
-  if (_sellerShippingCosts is EqualUnmodifiableMapView) return _sellerShippingCosts;
+@override@JsonKey() final  int baseShippingCostCents;
+// Base shipping before delivery speed surcharge (integer cents)
+ final  Map<String, int> _sellerShippingCostsCents;
+// Base shipping before delivery speed surcharge (integer cents)
+@override@JsonKey() Map<String, int> get sellerShippingCostsCents {
+  if (_sellerShippingCostsCents is EqualUnmodifiableMapView) return _sellerShippingCostsCents;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_sellerShippingCosts);
+  return EqualUnmodifiableMapView(_sellerShippingCostsCents);
 }
 
-// Breakdown per seller
+// Breakdown per seller (integer cents)
  final  Map<String, String> _sellerNames;
-// Breakdown per seller
+// Breakdown per seller (integer cents)
 @override@JsonKey() Map<String, String> get sellerNames {
   if (_sellerNames is EqualUnmodifiableMapView) return _sellerNames;
   // ignore: implicit_dynamic_type
@@ -266,12 +266,12 @@ class _CheckoutState extends CheckoutState {
 
 @override@JsonKey() final  bool isLocalDelivery;
 // Within ~50km of seller
- final  Map<String, double> _taxBreakdown;
+ final  Map<String, int> _taxBreakdownCents;
 // Within ~50km of seller
-@override@JsonKey() Map<String, double> get taxBreakdown {
-  if (_taxBreakdown is EqualUnmodifiableMapView) return _taxBreakdown;
+@override@JsonKey() Map<String, int> get taxBreakdownCents {
+  if (_taxBreakdownCents is EqualUnmodifiableMapView) return _taxBreakdownCents;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(_taxBreakdown);
+  return EqualUnmodifiableMapView(_taxBreakdownCents);
 }
 
 @override@JsonKey() final  bool isCalculatingShipping;
@@ -300,16 +300,16 @@ _$CheckoutStateCopyWith<_CheckoutState> get copyWith => __$CheckoutStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckoutState&&(identical(other.address, address) || other.address == address)&&(identical(other.baseShippingCost, baseShippingCost) || other.baseShippingCost == baseShippingCost)&&const DeepCollectionEquality().equals(other._sellerShippingCosts, _sellerShippingCosts)&&const DeepCollectionEquality().equals(other._sellerNames, _sellerNames)&&(identical(other.deliverySpeed, deliverySpeed) || other.deliverySpeed == deliverySpeed)&&const DeepCollectionEquality().equals(other._availableDeliverySpeeds, _availableDeliverySpeeds)&&(identical(other.isLocalDelivery, isLocalDelivery) || other.isLocalDelivery == isLocalDelivery)&&const DeepCollectionEquality().equals(other._taxBreakdown, _taxBreakdown)&&(identical(other.isCalculatingShipping, isCalculatingShipping) || other.isCalculatingShipping == isCalculatingShipping)&&(identical(other.shippingError, shippingError) || other.shippingError == shippingError)&&(identical(other.isProcessing, isProcessing) || other.isProcessing == isProcessing)&&(identical(other.idempotencyKey, idempotencyKey) || other.idempotencyKey == idempotencyKey)&&(identical(other.checkoutError, checkoutError) || other.checkoutError == checkoutError)&&(identical(other.paymentProvider, paymentProvider) || other.paymentProvider == paymentProvider)&&(identical(other.couponCode, couponCode) || other.couponCode == couponCode)&&(identical(other.couponDiscountCents, couponDiscountCents) || other.couponDiscountCents == couponDiscountCents)&&(identical(other.isCouponLoading, isCouponLoading) || other.isCouponLoading == isCouponLoading)&&(identical(other.couponError, couponError) || other.couponError == couponError)&&(identical(other.serverTaxAmountCents, serverTaxAmountCents) || other.serverTaxAmountCents == serverTaxAmountCents)&&(identical(other.hasInternationalItems, hasInternationalItems) || other.hasInternationalItems == hasInternationalItems));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CheckoutState&&(identical(other.address, address) || other.address == address)&&(identical(other.baseShippingCostCents, baseShippingCostCents) || other.baseShippingCostCents == baseShippingCostCents)&&const DeepCollectionEquality().equals(other._sellerShippingCostsCents, _sellerShippingCostsCents)&&const DeepCollectionEquality().equals(other._sellerNames, _sellerNames)&&(identical(other.deliverySpeed, deliverySpeed) || other.deliverySpeed == deliverySpeed)&&const DeepCollectionEquality().equals(other._availableDeliverySpeeds, _availableDeliverySpeeds)&&(identical(other.isLocalDelivery, isLocalDelivery) || other.isLocalDelivery == isLocalDelivery)&&const DeepCollectionEquality().equals(other._taxBreakdownCents, _taxBreakdownCents)&&(identical(other.isCalculatingShipping, isCalculatingShipping) || other.isCalculatingShipping == isCalculatingShipping)&&(identical(other.shippingError, shippingError) || other.shippingError == shippingError)&&(identical(other.isProcessing, isProcessing) || other.isProcessing == isProcessing)&&(identical(other.idempotencyKey, idempotencyKey) || other.idempotencyKey == idempotencyKey)&&(identical(other.checkoutError, checkoutError) || other.checkoutError == checkoutError)&&(identical(other.paymentProvider, paymentProvider) || other.paymentProvider == paymentProvider)&&(identical(other.couponCode, couponCode) || other.couponCode == couponCode)&&(identical(other.couponDiscountCents, couponDiscountCents) || other.couponDiscountCents == couponDiscountCents)&&(identical(other.isCouponLoading, isCouponLoading) || other.isCouponLoading == isCouponLoading)&&(identical(other.couponError, couponError) || other.couponError == couponError)&&(identical(other.serverTaxAmountCents, serverTaxAmountCents) || other.serverTaxAmountCents == serverTaxAmountCents)&&(identical(other.hasInternationalItems, hasInternationalItems) || other.hasInternationalItems == hasInternationalItems));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,address,baseShippingCost,const DeepCollectionEquality().hash(_sellerShippingCosts),const DeepCollectionEquality().hash(_sellerNames),deliverySpeed,const DeepCollectionEquality().hash(_availableDeliverySpeeds),isLocalDelivery,const DeepCollectionEquality().hash(_taxBreakdown),isCalculatingShipping,shippingError,isProcessing,idempotencyKey,checkoutError,paymentProvider,couponCode,couponDiscountCents,isCouponLoading,couponError,serverTaxAmountCents,hasInternationalItems]);
+int get hashCode => Object.hashAll([runtimeType,address,baseShippingCostCents,const DeepCollectionEquality().hash(_sellerShippingCostsCents),const DeepCollectionEquality().hash(_sellerNames),deliverySpeed,const DeepCollectionEquality().hash(_availableDeliverySpeeds),isLocalDelivery,const DeepCollectionEquality().hash(_taxBreakdownCents),isCalculatingShipping,shippingError,isProcessing,idempotencyKey,checkoutError,paymentProvider,couponCode,couponDiscountCents,isCouponLoading,couponError,serverTaxAmountCents,hasInternationalItems]);
 
 @override
 String toString() {
-  return 'CheckoutState(address: $address, baseShippingCost: $baseShippingCost, sellerShippingCosts: $sellerShippingCosts, sellerNames: $sellerNames, deliverySpeed: $deliverySpeed, availableDeliverySpeeds: $availableDeliverySpeeds, isLocalDelivery: $isLocalDelivery, taxBreakdown: $taxBreakdown, isCalculatingShipping: $isCalculatingShipping, shippingError: $shippingError, isProcessing: $isProcessing, idempotencyKey: $idempotencyKey, checkoutError: $checkoutError, paymentProvider: $paymentProvider, couponCode: $couponCode, couponDiscountCents: $couponDiscountCents, isCouponLoading: $isCouponLoading, couponError: $couponError, serverTaxAmountCents: $serverTaxAmountCents, hasInternationalItems: $hasInternationalItems)';
+  return 'CheckoutState(address: $address, baseShippingCostCents: $baseShippingCostCents, sellerShippingCostsCents: $sellerShippingCostsCents, sellerNames: $sellerNames, deliverySpeed: $deliverySpeed, availableDeliverySpeeds: $availableDeliverySpeeds, isLocalDelivery: $isLocalDelivery, taxBreakdownCents: $taxBreakdownCents, isCalculatingShipping: $isCalculatingShipping, shippingError: $shippingError, isProcessing: $isProcessing, idempotencyKey: $idempotencyKey, checkoutError: $checkoutError, paymentProvider: $paymentProvider, couponCode: $couponCode, couponDiscountCents: $couponDiscountCents, isCouponLoading: $isCouponLoading, couponError: $couponError, serverTaxAmountCents: $serverTaxAmountCents, hasInternationalItems: $hasInternationalItems)';
 }
 
 
@@ -320,7 +320,7 @@ abstract mixin class _$CheckoutStateCopyWith<$Res> implements $CheckoutStateCopy
   factory _$CheckoutStateCopyWith(_CheckoutState value, $Res Function(_CheckoutState) _then) = __$CheckoutStateCopyWithImpl;
 @override @useResult
 $Res call({
- Address? address, double baseShippingCost, Map<String, double> sellerShippingCosts, Map<String, String> sellerNames, DeliverySpeed deliverySpeed, List<DeliverySpeed> availableDeliverySpeeds, bool isLocalDelivery, Map<String, double> taxBreakdown, bool isCalculatingShipping, String? shippingError, bool isProcessing, String? idempotencyKey, String? checkoutError, String paymentProvider, String? couponCode, int couponDiscountCents, bool isCouponLoading, String? couponError, int serverTaxAmountCents, bool hasInternationalItems
+ Address? address, int baseShippingCostCents, Map<String, int> sellerShippingCostsCents, Map<String, String> sellerNames, DeliverySpeed deliverySpeed, List<DeliverySpeed> availableDeliverySpeeds, bool isLocalDelivery, Map<String, int> taxBreakdownCents, bool isCalculatingShipping, String? shippingError, bool isProcessing, String? idempotencyKey, String? checkoutError, String paymentProvider, String? couponCode, int couponDiscountCents, bool isCouponLoading, String? couponError, int serverTaxAmountCents, bool hasInternationalItems
 });
 
 
@@ -337,17 +337,17 @@ class __$CheckoutStateCopyWithImpl<$Res>
 
 /// Create a copy of CheckoutState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? address = freezed,Object? baseShippingCost = null,Object? sellerShippingCosts = null,Object? sellerNames = null,Object? deliverySpeed = null,Object? availableDeliverySpeeds = null,Object? isLocalDelivery = null,Object? taxBreakdown = null,Object? isCalculatingShipping = null,Object? shippingError = freezed,Object? isProcessing = null,Object? idempotencyKey = freezed,Object? checkoutError = freezed,Object? paymentProvider = null,Object? couponCode = freezed,Object? couponDiscountCents = null,Object? isCouponLoading = null,Object? couponError = freezed,Object? serverTaxAmountCents = null,Object? hasInternationalItems = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? address = freezed,Object? baseShippingCostCents = null,Object? sellerShippingCostsCents = null,Object? sellerNames = null,Object? deliverySpeed = null,Object? availableDeliverySpeeds = null,Object? isLocalDelivery = null,Object? taxBreakdownCents = null,Object? isCalculatingShipping = null,Object? shippingError = freezed,Object? isProcessing = null,Object? idempotencyKey = freezed,Object? checkoutError = freezed,Object? paymentProvider = null,Object? couponCode = freezed,Object? couponDiscountCents = null,Object? isCouponLoading = null,Object? couponError = freezed,Object? serverTaxAmountCents = null,Object? hasInternationalItems = null,}) {
   return _then(_CheckoutState(
 address: freezed == address ? _self.address : address // ignore: cast_nullable_to_non_nullable
-as Address?,baseShippingCost: null == baseShippingCost ? _self.baseShippingCost : baseShippingCost // ignore: cast_nullable_to_non_nullable
-as double,sellerShippingCosts: null == sellerShippingCosts ? _self._sellerShippingCosts : sellerShippingCosts // ignore: cast_nullable_to_non_nullable
-as Map<String, double>,sellerNames: null == sellerNames ? _self._sellerNames : sellerNames // ignore: cast_nullable_to_non_nullable
+as Address?,baseShippingCostCents: null == baseShippingCostCents ? _self.baseShippingCostCents : baseShippingCostCents // ignore: cast_nullable_to_non_nullable
+as int,sellerShippingCostsCents: null == sellerShippingCostsCents ? _self._sellerShippingCostsCents : sellerShippingCostsCents // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,sellerNames: null == sellerNames ? _self._sellerNames : sellerNames // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,deliverySpeed: null == deliverySpeed ? _self.deliverySpeed : deliverySpeed // ignore: cast_nullable_to_non_nullable
 as DeliverySpeed,availableDeliverySpeeds: null == availableDeliverySpeeds ? _self._availableDeliverySpeeds : availableDeliverySpeeds // ignore: cast_nullable_to_non_nullable
 as List<DeliverySpeed>,isLocalDelivery: null == isLocalDelivery ? _self.isLocalDelivery : isLocalDelivery // ignore: cast_nullable_to_non_nullable
-as bool,taxBreakdown: null == taxBreakdown ? _self._taxBreakdown : taxBreakdown // ignore: cast_nullable_to_non_nullable
-as Map<String, double>,isCalculatingShipping: null == isCalculatingShipping ? _self.isCalculatingShipping : isCalculatingShipping // ignore: cast_nullable_to_non_nullable
+as bool,taxBreakdownCents: null == taxBreakdownCents ? _self._taxBreakdownCents : taxBreakdownCents // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,isCalculatingShipping: null == isCalculatingShipping ? _self.isCalculatingShipping : isCalculatingShipping // ignore: cast_nullable_to_non_nullable
 as bool,shippingError: freezed == shippingError ? _self.shippingError : shippingError // ignore: cast_nullable_to_non_nullable
 as String?,isProcessing: null == isProcessing ? _self.isProcessing : isProcessing // ignore: cast_nullable_to_non_nullable
 as bool,idempotencyKey: freezed == idempotencyKey ? _self.idempotencyKey : idempotencyKey // ignore: cast_nullable_to_non_nullable

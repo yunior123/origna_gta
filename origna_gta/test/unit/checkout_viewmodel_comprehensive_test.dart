@@ -100,7 +100,7 @@ void main() {
 
     test('initial state has zero shipping cost', () {
       final state = container.read(checkoutStateProvider);
-      expect(state.baseShippingCost, 0.0);
+      expect(state.baseShippingCostCents, 0.0);
     });
 
     test('initial state has standard delivery speed', () {
@@ -572,7 +572,10 @@ void main() {
           createTestItem(isDigital: true),
         ]);
 
-        expect(container.read(checkoutStateProvider).baseShippingCost, 0.0);
+        expect(
+          container.read(checkoutStateProvider).baseShippingCostCents,
+          0.0,
+        );
         expect(container.read(checkoutStateProvider).shippingError, isNull);
       },
     );
@@ -592,39 +595,39 @@ void main() {
 
     test('shippingCost adds surcharge for express', () {
       final state = CheckoutState(
-        baseShippingCost: 10.0,
+        baseShippingCostCents: 1000,
         deliverySpeed: DeliverySpeed.express,
       );
 
-      expect(state.shippingCost, greaterThan(state.baseShippingCost));
+      expect(state.shippingCostCents, greaterThan(state.baseShippingCostCents));
     });
 
     test('shippingCost equals base cost for standard', () {
       const state = CheckoutState(
-        baseShippingCost: 10.0,
+        baseShippingCostCents: 1000,
         deliverySpeed: DeliverySpeed.standard,
       );
 
-      expect(state.shippingCost, 10.0);
+      expect(state.shippingCostCents, 1000);
     });
 
     test('taxAmount sums tax breakdown', () {
-      final state = CheckoutState(taxBreakdown: {'GST': 5.0, 'PST': 7.0});
+      final state = CheckoutState(taxBreakdownCents: {'GST': 500, 'PST': 700});
 
-      expect(state.taxAmount, 12.0);
+      expect(state.taxAmountCents, 1200);
     });
   });
 
   group('CheckoutState copyWith Tests', () {
     test('copyWith preserves values when not specified', () {
       final state = CheckoutState(
-        baseShippingCost: 15.0,
+        baseShippingCostCents: 1500,
         deliverySpeed: DeliverySpeed.express,
       );
 
       final copied = state.copyWith();
 
-      expect(copied.baseShippingCost, 15.0);
+      expect(copied.baseShippingCostCents, 1500);
       expect(copied.deliverySpeed, DeliverySpeed.express);
     });
 

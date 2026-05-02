@@ -1,6 +1,5 @@
 import 'package:origna_gta/utils/app_logger.dart';
 import 'package:origna_gta/utils/constants.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/features/products/product_detail_viewmodel.dart';
@@ -231,26 +230,6 @@ class _GalleryImage extends StatelessWidget {
         tag: 'product',
       );
       return const _ImageErrorPlaceholder();
-    }
-
-    if (kIsWeb) {
-      return Image.network(
-        resolvedSource,
-        fit: fit,
-        width: width,
-        height: height,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return ModernSkeletonLoader.imagePlaceholder();
-        },
-        errorBuilder: (context, error, stackTrace) {
-          AppLogger.w(
-            'ProductImageGallery: Image.network error for "$resolvedSource": $error',
-            tag: 'product',
-          );
-          return const _ImageErrorPlaceholder();
-        },
-      );
     }
 
     return WebCachedNetworkImage(

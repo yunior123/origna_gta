@@ -90,7 +90,7 @@ void main() {
 
   group('calculateDetailedTaxes', () {
     test('returns empty map for null address', () {
-      expect(calculateDetailedTaxes(null, 100.0), isEmpty);
+      expect(calculateDetailedTaxes(null, 10000), isEmpty);
     });
 
     test('calculates Ontario HST', () {
@@ -101,9 +101,9 @@ void main() {
         postalCode: 'M1M 1M1',
         country: 'CA',
       );
-      final result = calculateDetailedTaxes(addr, 100.0);
+      final result = calculateDetailedTaxes(addr, 10000);
       expect(result.containsKey('HST'), isTrue);
-      expect(result['HST'], closeTo(13.0, 0.01));
+      expect(result['HST'], 1300);
     });
 
     test('calculates Quebec GST+QST', () {
@@ -114,11 +114,11 @@ void main() {
         postalCode: 'H1H 1H1',
         country: 'CA',
       );
-      final result = calculateDetailedTaxes(addr, 100.0);
+      final result = calculateDetailedTaxes(addr, 10000);
       expect(result.containsKey('GST'), isTrue);
       expect(result.containsKey('QST'), isTrue);
-      expect(result['GST'], closeTo(5.0, 0.01));
-      expect(result['QST'], closeTo(9.975, 0.01));
+      expect(result['GST'], 500);
+      expect(result['QST'], 998);
     });
 
     test('calculates BC GST+PST', () {
@@ -129,7 +129,7 @@ void main() {
         postalCode: 'V1V 1V1',
         country: 'CA',
       );
-      final result = calculateDetailedTaxes(addr, 100.0);
+      final result = calculateDetailedTaxes(addr, 10000);
       expect(result.containsKey('GST'), isTrue);
       expect(result.containsKey('PST'), isTrue);
     });
@@ -142,10 +142,10 @@ void main() {
         postalCode: 'T1T 1T1',
         country: 'CA',
       );
-      final result = calculateDetailedTaxes(addr, 100.0);
+      final result = calculateDetailedTaxes(addr, 10000);
       expect(result.length, 1);
       expect(result.containsKey('GST'), isTrue);
-      expect(result['GST'], closeTo(5.0, 0.01));
+      expect(result['GST'], 500);
     });
 
     test('defaults to GST for unknown province', () {
@@ -156,7 +156,7 @@ void main() {
         postalCode: 'X1X 1X1',
         country: 'CA',
       );
-      final result = calculateDetailedTaxes(addr, 100.0);
+      final result = calculateDetailedTaxes(addr, 10000);
       expect(result.containsKey('GST'), isTrue);
     });
   });
@@ -338,12 +338,12 @@ void main() {
 
     test('same province gets lowest rate', () {
       final cost = calculateFallbackShipping([makeItem()], 'ON', 'ON');
-      expect(cost, closeTo(12.99, 0.01));
+      expect(cost, 1299);
     });
 
     test('different province gets higher rate', () {
       final cost = calculateFallbackShipping([makeItem()], 'ON', 'BC');
-      expect(cost, greaterThan(12.99));
+      expect(cost, greaterThan(1299));
     });
 
     test('multiple items add cost', () {
@@ -352,7 +352,7 @@ void main() {
         'ON',
         'ON',
       );
-      expect(cost, greaterThan(12.99));
+      expect(cost, greaterThan(1299));
     });
   });
 

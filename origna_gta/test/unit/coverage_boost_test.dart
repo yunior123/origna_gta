@@ -635,7 +635,7 @@ void main() {
   // ==========================================================================
   group('calculateDetailedTaxes', () {
     test('null address returns empty map', () {
-      expect(calculateDetailedTaxes(null, 100.0), isEmpty);
+      expect(calculateDetailedTaxes(null, 10000), isEmpty);
     });
 
     test('Ontario address returns HST breakdown', () {
@@ -646,8 +646,8 @@ void main() {
         postalCode: 'M5V',
         country: 'CA',
       );
-      final taxes = calculateDetailedTaxes(addr, 100.0);
-      expect(taxes['HST'], closeTo(13.0, 0.01));
+      final taxes = calculateDetailedTaxes(addr, 10000);
+      expect(taxes['HST'], 1300);
     });
 
     test('Quebec address returns GST + QST', () {
@@ -658,9 +658,9 @@ void main() {
         postalCode: 'H1A',
         country: 'CA',
       );
-      final taxes = calculateDetailedTaxes(addr, 100.0);
-      expect(taxes['GST'], closeTo(5.0, 0.01));
-      expect(taxes['QST'], closeTo(9.975, 0.01));
+      final taxes = calculateDetailedTaxes(addr, 10000);
+      expect(taxes['GST'], 500);
+      expect(taxes['QST'], 998);
     });
 
     test('unknown province defaults to GST only', () {
@@ -671,8 +671,8 @@ void main() {
         postalCode: '000',
         country: 'CA',
       );
-      final taxes = calculateDetailedTaxes(addr, 100.0);
-      expect(taxes['GST'], closeTo(5.0, 0.01));
+      final taxes = calculateDetailedTaxes(addr, 10000);
+      expect(taxes['GST'], 500);
     });
   });
 
@@ -692,23 +692,23 @@ void main() {
 
     test('same province = lowest base cost', () {
       final cost = calculateFallbackShipping(singleItem, 'ON', 'ON');
-      expect(cost, closeTo(12.99, 0.01));
+      expect(cost, 1299);
     });
 
     test('adjacent provinces = medium base cost', () {
       final cost = calculateFallbackShipping(singleItem, 'ON', 'QC');
-      expect(cost, closeTo(18.99, 0.01));
+      expect(cost, 1899);
     });
 
     test('same region = higher base cost', () {
       final cost = calculateFallbackShipping(singleItem, 'BC', 'AB');
       // BC-AB are adjacent, so 18.99
-      expect(cost, closeTo(18.99, 0.01));
+      expect(cost, 1899);
     });
 
     test('cross-country = highest base cost', () {
       final cost = calculateFallbackShipping(singleItem, 'BC', 'NS');
-      expect(cost, closeTo(26.99, 0.01));
+      expect(cost, 2699);
     });
 
     test('multiple items adds surcharge', () {
@@ -723,7 +723,7 @@ void main() {
       ];
       final cost = calculateFallbackShipping(items, 'ON', 'ON');
       // baseCost = 12.99, additionalItems = 2 * (12.99 * 0.15) = 3.897
-      expect(cost, closeTo(12.99 + 2 * (12.99 * 0.15), 0.01));
+      expect(cost, 1689);
     });
   });
 

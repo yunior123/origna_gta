@@ -120,7 +120,7 @@ impl QueryTranslator {
         match op {
             "_eq" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 if value.is_null() {
                     Some(format!("{field_expr} IS NULL"))
                 } else {
@@ -129,7 +129,7 @@ impl QueryTranslator {
             }
             "_neq" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 if value.is_null() {
                     Some(format!("{field_expr} IS NOT NULL"))
                 } else {
@@ -138,29 +138,29 @@ impl QueryTranslator {
             }
             "_gt" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 Some(format!("{field_expr} > {val_str}"))
             }
             "_gte" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 Some(format!("{field_expr} >= {val_str}"))
             }
             "_lt" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 Some(format!("{field_expr} < {val_str}"))
             }
             "_lte" => {
                 let field_expr = Self::sql_typed_field_expr(field, value)?;
-                let val_str = Self::value_to_surreal(value);
+                let val_str = Self::format_sql_literal(value);
                 Some(format!("{field_expr} <= {val_str}"))
             }
             "_in" => {
                 if let Some(arr) = value.as_array() {
                     let expr_hint = arr.first().unwrap_or(&Value::Null);
                     let field_expr = Self::sql_typed_field_expr(field, expr_hint)?;
-                    let items: Vec<String> = arr.iter().map(Self::value_to_surreal).collect();
+                    let items: Vec<String> = arr.iter().map(Self::format_sql_literal).collect();
                     Some(format!("{field_expr} IN ({})", items.join(", ")))
                 } else {
                     None
@@ -192,7 +192,7 @@ impl QueryTranslator {
         }
     }
 
-    fn value_to_surreal(value: &Value) -> String {
+    fn format_sql_literal(value: &Value) -> String {
         match value {
             Value::String(s) => format!("'{}'", escape_sql_string(s)),
             Value::Number(n) => n.to_string(),
@@ -451,7 +451,7 @@ mod tests {
     }
 
     #[test]
-    fn test_value_to_surreal_bool() {
+    fn test_format_sql_literal_bool() {
         let filters = json!({ "active": { "_eq": true } });
         let result = QueryTranslator::filters_to_where(&filters);
         assert_eq!(result, "WHERE NULLIF(data->>'active', '')::boolean = true");
@@ -482,14 +482,14 @@ mod tests {
     }
 
     #[test]
-    fn test_value_to_surreal_null() {
+    fn test_format_sql_literal_null() {
         let filters = json!({ "deleted_at": { "_eq": null } });
         let result = QueryTranslator::filters_to_where(&filters);
         assert_eq!(result, "WHERE data->>'deleted_at' IS NULL");
     }
 
     #[test]
-    fn test_value_to_surreal_non_primitive() {
+    fn test_format_sql_literal_non_primitive() {
         // An object value gets serialized via serde_json::to_string
         let filters = json!({ "meta": { "_eq": {"key": "val"} } });
         let result = QueryTranslator::filters_to_where(&filters);

@@ -243,9 +243,15 @@ fn json_to_text(val: &Value) -> String {
 // The goal is mechanical: turn SurrealQL into valid PostgreSQL while keeping the
 // same semantics so existing handler code and tests keep working.
 
+/// Escape a string value for safe interpolation into a PostgreSQL string literal.
+/// Doubles single quotes and backslashes to prevent SQL injection.
+fn pg_escape(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\'', "''")
+}
+
 /// Pre-process a raw SurrealDB query (no bind params) into valid PostgreSQL.
 /// Used by `query_raw` which passes SQL directly to PG.
-pub(crate) fn translate_surreal_raw(query: &str) -> String {
+pub(crate) fn translate_query_raw(query: &str) -> String {
     let mut q = query.to_string();
 
     // ── 1. CREATE table CONTENT { ... } ────────────────────────────────
@@ -277,7 +283,8 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
             obj.insert("id".to_string(), Value::String(id.clone()));
             let data = serde_json::to_string(&Value::Object(obj)).unwrap_or_default();
             q = format!(
-                "INSERT INTO {table} (id, data) VALUES ('{id}', '{data}'::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING id, data::TEXT, created_at, updated_at"
+                "INSERT INTO {table} (id, data) VALUES ('{}', '{}'::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING id, data::TEXT, created_at, updated_at",
+                pg_escape(&id), pg_escape(&data)
             );
             return q;
         }
@@ -308,7 +315,8 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
                 obj.insert("id".to_string(), Value::String(id.clone()));
                 let data_str = serde_json::to_string(&data).unwrap_or_default();
                 q = format!(
-                    "INSERT INTO {table} (id, data) VALUES ('{id}', '{data_str}'::jsonb) RETURNING id, data::TEXT, created_at, updated_at"
+                    "INSERT INTO {table} (id, data) VALUES ('{}', '{}'::jsonb) RETURNING id, data::TEXT, created_at, updated_at",
+                    pg_escape(&id), pg_escape(&data_str)
                 );
             }
             return q;
@@ -325,7 +333,8 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
                 let table = parts[0].trim();
                 let id = parts[1].trim().trim_matches('\'').trim_matches('"');
                 q = format!(
-                    "DELETE FROM {table} WHERE id = '{id}' RETURNING id, data::TEXT, created_at, updated_at"
+                    "DELETE FROM {table} WHERE id = '{}' RETURNING id, data::TEXT, created_at, updated_at",
+                    pg_escape(id)
                 );
                 return q;
             }
@@ -350,11 +359,12 @@ pub(crate) fn translate_surreal_raw(query: &str) -> String {
                     let before = &q[..from_idx + 5];
                     let after_ref = &after_from[end..];
                     // Check if WHERE already exists
+                    let safe_id = pg_escape(id);
                     if after_ref.to_uppercase().contains("WHERE") {
                         q = format!("{before}{table}{after_ref}")
-                            .replace("WHERE", &format!("WHERE id = '{id}' AND"));
+                            .replace("WHERE", &format!("WHERE id = '{safe_id}' AND"));
                     } else {
-                        q = format!("{before}{table} WHERE id = '{id}'{after_ref}");
+                        q = format!("{before}{table} WHERE id = '{safe_id}'{after_ref}");
                     }
                 }
             }
@@ -1362,7 +1372,7 @@ impl DatabaseStore for PgDatabaseStore {
 
     async fn query_raw(&self, query: &str) -> AppResult<Vec<Value>> {
         // Translate SurrealDB raw queries to PostgreSQL
-        let pg_query = translate_surreal_raw(query);
+        let pg_query = translate_query_raw(query);
 
         if let Some(table) = extract_table_name(&pg_query)
             && let Err(e) = self.ensure_table(&table).await
@@ -1378,7 +1388,7 @@ impl DatabaseStore for PgDatabaseStore {
     }
 
     async fn query_raw_value(&self, query: &str) -> AppResult<Value> {
-        let pg_query = translate_surreal_raw(query);
+        let pg_query = translate_query_raw(query);
 
         if let Some(table) = extract_table_name(&pg_query)
             && let Err(e) = self.ensure_table(&table).await
@@ -1402,7 +1412,7 @@ impl DatabaseStore for PgDatabaseStore {
         // If binds are empty, use raw translator which handles more SurrealDB patterns
         let is_empty_binds = binds.as_object().is_some_and(|o| o.is_empty());
         if is_empty_binds {
-            let pg_query = translate_surreal_raw(query);
+            let pg_query = translate_query_raw(query);
             if let Some(table) = extract_table_name(&pg_query)
                 && let Err(e) = self.ensure_table(&table).await
             {

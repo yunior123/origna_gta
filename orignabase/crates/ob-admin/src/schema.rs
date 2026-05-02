@@ -32,36 +32,34 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
         ob_core::validate_identifier(&field.name)?;
     }
 
-    // Define the table
-    let mut query = format!("DEFINE TABLE {} SCHEMAFULL;\n", schema.name);
+    // Build CREATE TABLE statement
+    let mut query = format!("CREATE TABLE IF NOT EXISTS {} (\n", schema.name);
 
-    for field in &schema.fields {
-        let query_type = to_surreal_type(&field.field_type);
-        query.push_str(&format!(
-            "DEFINE FIELD {} ON TABLE {} TYPE {}",
-            field.name, schema.name, query_type
-        ));
-        if !field.required {
-            // PostgreSQL uses CHECK constraints for required fields
-            // For optional: wrap in option
-        }
-        query.push_str(";\n");
-
-        if field.unique {
-            query.push_str(&format!(
-                "DEFINE INDEX idx_{0}_{1} ON TABLE {0} FIELDS {1} UNIQUE;\n",
-                schema.name, field.name
-            ));
-        } else if field.indexed {
-            query.push_str(&format!(
-                "DEFINE INDEX idx_{0}_{1} ON TABLE {0} FIELDS {1};\n",
-                schema.name, field.name
-            ));
-        }
+    for (i, field) in schema.fields.iter().enumerate() {
+        let pg_type = to_pg_type(&field.field_type);
+        let not_null = if field.required { " NOT NULL" } else { "" };
+        let comma = if i < schema.fields.len() - 1 { "," } else { "" };
+        query.push_str(&format!("  {} {}{}{}\n", field.name, pg_type, not_null, comma));
     }
 
-    // DEFINE TABLE/FIELD returns no records, use query_raw_value
+    query.push_str(");\n");
+
     db.query_raw_value(&query).await?;
+
+    // Create indexes separately
+    for field in &schema.fields {
+        if field.unique {
+            db.query_raw_value(&format!(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_{0}_{1} ON {0} ({1});",
+                schema.name, field.name
+            )).await?;
+        } else if field.indexed {
+            db.query_raw_value(&format!(
+                "CREATE INDEX IF NOT EXISTS idx_{0}_{1} ON {0} ({1});",
+                schema.name, field.name
+            )).await?;
+        }
+    }
     tracing::info!("Created collection: {}", schema.name);
     Ok(())
 }
@@ -93,22 +91,22 @@ pub async fn drop_collection(db: &DatabaseClient, name: &str) -> Result<()> {
     if !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return Err(ob_core::Error::Validation("Invalid collection name".into()));
     }
-    db.query_raw_value(&format!("REMOVE TABLE {name}")).await?;
+    db.query_raw_value(&format!("DROP TABLE IF EXISTS {name} CASCADE")).await?;
     tracing::info!("Dropped collection: {name}");
     Ok(())
 }
 
-fn to_surreal_type(t: &str) -> &str {
+fn to_pg_type(t: &str) -> &'static str {
     match t {
-        "string" => "string",
-        "int" | "integer" => "int",
-        "float" | "double" | "number" => "float",
-        "bool" | "boolean" => "bool",
-        "datetime" | "timestamp" => "datetime",
-        "object" | "map" => "object",
-        "array" | "list" => "array",
-        "record" => "record",
-        _ => "any",
+        "string" => "TEXT",
+        "int" | "integer" => "INTEGER",
+        "float" | "double" | "number" => "DOUBLE PRECISION",
+        "bool" | "boolean" => "BOOLEAN",
+        "datetime" | "timestamp" => "TIMESTAMPTZ",
+        "object" | "map" => "JSONB",
+        "array" | "list" => "JSONB",
+        "record" => "TEXT",
+        _ => "TEXT",
     }
 }
 
@@ -117,27 +115,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_surreal_type_mapping() {
-        assert_eq!(to_surreal_type("string"), "string");
-        assert_eq!(to_surreal_type("integer"), "int");
-        assert_eq!(to_surreal_type("boolean"), "bool");
-        assert_eq!(to_surreal_type("datetime"), "datetime");
-        assert_eq!(to_surreal_type("unknown"), "any");
+    fn test_pg_type_mapping() {
+        assert_eq!(to_pg_type("string"), "TEXT");
+        assert_eq!(to_pg_type("integer"), "INTEGER");
+        assert_eq!(to_pg_type("boolean"), "BOOLEAN");
+        assert_eq!(to_pg_type("datetime"), "TIMESTAMPTZ");
+        assert_eq!(to_pg_type("unknown"), "TEXT");
     }
 
     #[test]
-    fn test_surreal_type_mapping_all_variants() {
-        assert_eq!(to_surreal_type("int"), "int");
-        assert_eq!(to_surreal_type("float"), "float");
-        assert_eq!(to_surreal_type("double"), "float");
-        assert_eq!(to_surreal_type("number"), "float");
-        assert_eq!(to_surreal_type("bool"), "bool");
-        assert_eq!(to_surreal_type("timestamp"), "datetime");
-        assert_eq!(to_surreal_type("object"), "object");
-        assert_eq!(to_surreal_type("map"), "object");
-        assert_eq!(to_surreal_type("array"), "array");
-        assert_eq!(to_surreal_type("list"), "array");
-        assert_eq!(to_surreal_type("record"), "record");
+    fn test_pg_type_mapping_all_variants() {
+        assert_eq!(to_pg_type("int"), "INTEGER");
+        assert_eq!(to_pg_type("float"), "DOUBLE PRECISION");
+        assert_eq!(to_pg_type("double"), "DOUBLE PRECISION");
+        assert_eq!(to_pg_type("number"), "DOUBLE PRECISION");
+        assert_eq!(to_pg_type("bool"), "BOOLEAN");
+        assert_eq!(to_pg_type("timestamp"), "TIMESTAMPTZ");
+        assert_eq!(to_pg_type("object"), "JSONB");
+        assert_eq!(to_pg_type("map"), "JSONB");
+        assert_eq!(to_pg_type("array"), "JSONB");
+        assert_eq!(to_pg_type("list"), "JSONB");
+        assert_eq!(to_pg_type("record"), "TEXT");
     }
 
     #[test]
