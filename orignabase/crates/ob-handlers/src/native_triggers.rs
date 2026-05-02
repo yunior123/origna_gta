@@ -471,7 +471,7 @@ impl NativeTriggerExecutor {
         payload: Value,
     ) -> bool {
         let created_at = chrono::Utc::now().to_rfc3339();
-        let query = "CREATE type::thing($table, $id) CONTENT $data RETURN AFTER".to_string();
+        let query = format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::NOTIFICATIONS);
         self.state
             .db
             .query_bind(
@@ -519,7 +519,7 @@ impl NativeTriggerExecutor {
                 .db
                 .query_bind(
                     &format!(
-                        "SELECT * FROM {} WHERE productId = $product_id AND userId = $user_id AND notifiedAt = NONE",
+                        "SELECT * FROM {} WHERE data->>'productId' = $product_id AND data->>'userId' = $user_id AND data->>'notifiedAt' IS NULL",
                         collections::STOCK_NOTIFICATIONS
                     ),
                     json!({
@@ -561,12 +561,12 @@ impl NativeTriggerExecutor {
         data: &Value,
     ) -> Result<(), ob_core::Error> {
         let now = chrono::Utc::now().to_rfc3339();
-        let query = "CREATE type::thing($table, $id) CONTENT $data RETURN AFTER";
+        let query = format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::NOTIFICATIONS);
         let create_result = self
             .state
             .db
             .query_bind(
-                query,
+                &query,
                 json!({
                     "table": collections::NOTIFICATIONS,
                     "id": notification_id,
@@ -690,9 +690,8 @@ impl NativeTriggerExecutor {
             .state
             .db
             .query_bind(
-                "UPSERT type::thing($table, $id) CONTENT $data RETURN AFTER",
+                &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING *", collections::MAIL_LOGS),
                 json!({
-                    "table": collections::MAIL_LOGS,
                     "id": mail_log_id,
                     fields::DATA: {
                         fields::NOTIFICATION_ID: notification_id,
@@ -726,9 +725,8 @@ impl NativeTriggerExecutor {
             .state
             .db
             .query_bind(
-                "UPDATE type::thing($table, $id) MERGE $data RETURN AFTER",
+                &format!("UPDATE {} SET data = data || $data::jsonb, updated_at = now() WHERE id = $id RETURNING *", collections::MAIL_LOGS),
                 json!({
-                    "table": collections::MAIL_LOGS,
                     "id": mail_log_id,
                     "data": {
                         fields::STATUS: status,
@@ -798,9 +796,8 @@ impl NativeTriggerExecutor {
                 .state
                 .db
                 .query_bind(
-                    "UPSERT type::thing($table, $id) CONTENT $data RETURN AFTER",
+                    &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING *", collections::PENDING_NOTIFICATIONS),
                     json!({
-                        "table": collections::PENDING_NOTIFICATIONS,
                         "id": pending_id,
                         "data": {
                             fields::NOTIFICATION_ID: notification_id,
@@ -838,9 +835,8 @@ impl NativeTriggerExecutor {
                 .state
                 .db
                 .query_bind(
-                    "UPDATE type::thing($table, $id) MERGE $data RETURN AFTER",
+                    &format!("UPDATE {} SET data = data || $data::jsonb, updated_at = now() WHERE id = $id RETURNING *", collections::PENDING_NOTIFICATIONS),
                     json!({
-                        "table": collections::PENDING_NOTIFICATIONS,
                         "id": pending_id,
                         "data": {
                             fields::STATUS: if sent { "sent" } else { "pending" },
@@ -2026,7 +2022,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2072,7 +2068,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2128,7 +2124,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2137,7 +2133,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -2206,7 +2202,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2306,7 +2302,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2370,7 +2366,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2379,7 +2375,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -2457,7 +2453,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2562,7 +2558,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2957,7 +2953,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -2998,7 +2994,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -3050,7 +3046,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -3092,7 +3088,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -3101,7 +3097,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -3151,7 +3147,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -3160,7 +3156,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -3291,7 +3287,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -3358,7 +3354,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM stock_notifications WHERE userId = $uid",
+                "SELECT * FROM stock_notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4255,7 +4251,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4305,7 +4301,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4348,7 +4344,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4495,7 +4491,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM stock_notifications WHERE userId = $uid",
+                "SELECT * FROM stock_notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4540,7 +4536,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4593,7 +4589,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4602,7 +4598,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &seller_id}),
             )
             .await
@@ -4650,7 +4646,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4697,7 +4693,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM notifications WHERE userId = $uid",
+                "SELECT * FROM notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await
@@ -4942,7 +4938,7 @@ mod tests {
             .state
             .db
             .query_raw(&format!(
-                "CREATE {} SET user_id = 'buyer_fcm', token = 'fcm_token_xyz'",
+                "INSERT INTO {} (id, data) VALUES (gen_random_uuid(), '{{\"user_id\": \"buyer_fcm\", \"token\": \"fcm_token_xyz\"}}'::jsonb)",
                 collections::PUSH_TOKENS
             ))
             .await
@@ -4984,7 +4980,7 @@ mod tests {
             .state
             .db
             .query_raw(&format!(
-                "CREATE {} SET user_id = 'buyer_multi', token = 'tok_1'",
+                "INSERT INTO {} (id, data) VALUES (gen_random_uuid(), '{{\"user_id\": \"buyer_multi\", \"token\": \"tok_1\"}}'::jsonb)",
                 collections::PUSH_TOKENS
             ))
             .await
@@ -4993,7 +4989,7 @@ mod tests {
             .state
             .db
             .query_raw(&format!(
-                "CREATE {} SET user_id = 'buyer_multi', token = 'tok_2'",
+                "INSERT INTO {} (id, data) VALUES (gen_random_uuid(), '{{\"user_id\": \"buyer_multi\", \"token\": \"tok_2\"}}'::jsonb)",
                 collections::PUSH_TOKENS
             ))
             .await
@@ -5086,7 +5082,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM stock_notifications WHERE userId = $uid",
+                "SELECT * FROM stock_notifications WHERE data->>'userId' = $uid",
                 json!({fields::UID: &buyer_id}),
             )
             .await

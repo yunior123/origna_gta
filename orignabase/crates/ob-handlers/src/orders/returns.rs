@@ -463,7 +463,7 @@ async fn create_return_request(
 
     // Check for existing active return request
     let query = format!(
-        "SELECT * FROM {} WHERE orderId = $order_id AND productId = $product_id AND buyerId = $user_id LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'orderId' = $order_id AND data->>'productId' = $product_id AND data->>'buyerId' = $user_id LIMIT 1",
         collections::RETURN_REQUESTS,
     );
     let existing = state
@@ -2592,7 +2592,7 @@ mod tests {
         state
             .db
             .query_raw(&format!(
-                "CREATE {} SET user_id = 'adm1', token = 'fcm_tok_1'",
+                "INSERT INTO {} (id, data) VALUES (gen_random_uuid(), '{{\"user_id\": \"adm1\", \"token\": \"fcm_tok_1\"}}'::jsonb)",
                 collections::PUSH_TOKENS
             ))
             .await

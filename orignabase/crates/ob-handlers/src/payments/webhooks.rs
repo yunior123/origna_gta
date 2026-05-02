@@ -415,9 +415,7 @@ async fn find_order_by_metadata_id(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE id = type::thing('{}', $order_key) OR id = $order_id OR {} = $order_key LIMIT 1",
-                collections::ORDERS
-                ,
+                "SELECT * FROM {} WHERE id = $order_key OR id = $order_id OR data->>'{}' = $order_key LIMIT 1",
                 collections::ORDERS,
                 fields::ORDER_ID,
             ),
@@ -1347,7 +1345,7 @@ async fn handle_checkout_session_completed(
         && let Err(err) = state
             .db
             .query_bind_value(
-                &format!("DELETE {} WHERE userId = $buyer_id", collections::CART),
+                &format!("DELETE FROM {} WHERE data->>'userId' = $buyer_id", collections::CART),
                 serde_json::json!({"buyer_id": buyer_id}),
             )
             .await
@@ -4216,7 +4214,7 @@ mod tests {
         let coupon_rows: Vec<Value> = state
             .db
             .query_bind_value(
-                "SELECT * FROM coupon_uses WHERE orderId = $order_id AND couponCode = $coupon_code LIMIT 1",
+                "SELECT * FROM coupon_uses WHERE data->>'orderId' = $order_id AND data->>'couponCode' = $coupon_code LIMIT 1",
                 json!({
                     "order_id": "coupon_order",
                     "coupon_code": "SAVE10",

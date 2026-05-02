@@ -383,7 +383,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'",
+                "SELECT * FROM {} WHERE data->>'productId' = '{}' AND data->>'userId' = '{}'",
                 collections::STOCK_NOTIFICATIONS,
                 prod,
                 buyer
@@ -618,7 +618,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM {} WHERE productId = '{}' AND userId = '{}'",
+                "SELECT * FROM {} WHERE data->>'productId' = '{}' AND data->>'userId' = '{}'",
                 collections::STOCK_NOTIFICATIONS,
                 prod,
                 buyer

@@ -638,7 +638,7 @@ async fn add_buyer_address(
     let _ = state.db.get_document(collections::USERS, &user_id).await?;
 
     let count_query = format!(
-        "SELECT count() FROM {} WHERE {} = $user_id GROUP ALL",
+        "SELECT COUNT(*) FROM {} WHERE data->>'{}' = $user_id",
         collections::ADDRESSES,
         fields::USER_ID,
     );

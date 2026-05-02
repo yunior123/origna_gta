@@ -900,9 +900,8 @@ mod tests {
         state
             .db
             .query_bind(
-                "CREATE type::thing($table, $id) CONTENT $data",
+                &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::PRODUCT_QUESTIONS),
                 json!({
-                    "table": collections::PRODUCT_QUESTIONS,
                     "id": q_id_1.clone(),
                     "data": {
                         fields::PRODUCT_ID: prod_id,

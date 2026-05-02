@@ -221,7 +221,7 @@ async fn get_product_recommendations(
         .db
         .query_bind_value(
             &format!(
-                "SELECT productId FROM {} WHERE categoryId = $cid AND productId != $pid AND {} = $status ORDER BY purchaseCount DESC LIMIT 5",
+                "SELECT data->>'productId' FROM {} WHERE data->>'categoryId' = $cid AND data->>'productId' != $pid AND data->>'{}' = $status ORDER BY (data->>'purchaseCount')::bigint DESC LIMIT 5",
                 collections::PRODUCTS,
                 fields::LIFECYCLE_STATUS,
             ),
@@ -442,7 +442,7 @@ async fn list_orders(
 
     // Use parameterized query to prevent injection
     let mut query = format!(
-        "SELECT * FROM {} WHERE buyerId = $user_id",
+        "SELECT * FROM {} WHERE data->>'buyerId' = $user_id",
         collections::ORDERS,
     );
     let mut bind_params = serde_json::Map::new();
@@ -455,7 +455,7 @@ async fn list_orders(
 
     let limit = qs.limit.clamp(1, 100);
     let offset = qs.offset.max(0);
-    query.push_str(" ORDER BY createdAt DESC LIMIT $limit OFFSET $offset");
+    query.push_str(" ORDER BY created_at DESC LIMIT $limit OFFSET $offset");
     bind_params.insert("limit".into(), json!(limit));
     bind_params.insert("offset".into(), json!(offset));
 

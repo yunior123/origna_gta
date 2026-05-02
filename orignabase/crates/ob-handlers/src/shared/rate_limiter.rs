@@ -83,7 +83,7 @@ pub async fn check_user_rate_limit(
     let window_start = now_secs - (window_minutes * 60);
 
     let query = format!(
-        "SELECT count() FROM {} WHERE userId = $user_id AND action = $action AND createdAt >= $window_start GROUP ALL",
+        "SELECT COUNT(*) FROM {} WHERE data->>'userId' = $user_id AND data->>'action' = $action AND (data->>'createdAt')::bigint >= $window_start",
         collections::RATE_LIMITS
     );
 

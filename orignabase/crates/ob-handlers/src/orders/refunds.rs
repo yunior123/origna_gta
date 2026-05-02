@@ -2046,7 +2046,7 @@ mod tests {
         let events = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM events WHERE orderId = '{}' AND eventType = 'order_cancelled'",
+                "SELECT * FROM events WHERE data->>'orderId' = '{}' AND data->>'eventType' = 'order_cancelled'",
                 order_id
             ))
             .await

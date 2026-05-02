@@ -350,7 +350,7 @@ async fn validate_checkout_coupon(
     }
 
     let reservation_count_query = format!(
-        "SELECT count() AS count FROM {} WHERE {} = $coupon_id GROUP ALL",
+        "SELECT COUNT(*) AS count FROM {} WHERE data->>'{}' = $coupon_id",
         collections::COUPON_USES,
         fields::COUPON_ID,
     );
@@ -375,7 +375,7 @@ async fn validate_checkout_coupon(
     }
 
     let user_usage_query = format!(
-        "SELECT count() AS count FROM {} WHERE {} = $coupon_id AND {} = $user_id GROUP ALL",
+        "SELECT COUNT(*) AS count FROM {} WHERE data->>'{}' = $coupon_id AND data->>'{}' = $user_id",
         collections::COUPON_USES,
         fields::COUPON_ID,
         fields::USER_ID,
@@ -1051,11 +1051,10 @@ async fn create_checkout_session(
     let mut tx = Transaction::new();
 
     // Operation 1: Create the order
-    // Use CREATE with explicit ID to ensure the order_id is used as the record key
+    // Use INSERT with explicit ID to ensure the order_id is used as the record key
     tx.add(
-        "CREATE $table CONTENT $data",
+        &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::ORDERS),
         Some(serde_json::json!({
-            "table": collections::ORDERS,
             "id": order_id,
             "data": order_doc,
         })),
@@ -1063,9 +1062,8 @@ async fn create_checkout_session(
 
     if let Some(coupon_code) = &normalized_coupon_code {
         tx.add(
-            "CREATE $table CONTENT $data",
+            &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::COUPON_USES),
             Some(serde_json::json!({
-                "table": collections::COUPON_USES,
                 "data": {
                     fields::COUPON_ID: coupon_code,
                     fields::COUPON_CODE: coupon_code,

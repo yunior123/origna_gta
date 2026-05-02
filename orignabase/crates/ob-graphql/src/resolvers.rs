@@ -1,6 +1,7 @@
 use async_graphql::{Context, Object, Result as GqlResult};
 use ob_auth::AuthContext;
 use ob_database::DatabaseClient;
+use ob_database::fields;
 use ob_realtime::registry::{ChangeAction, ChangeEvent};
 use ob_search::SearchClient;
 use ob_security::{RuleEngine, SecurityContext};
@@ -554,7 +555,7 @@ impl MutationRoot {
 
         // Emit realtime change event
         if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-            let doc_id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let doc_id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("unknown");
             if let Err(e) = tx
                 .send(ChangeEvent {
                     action: ChangeAction::Create,
@@ -651,7 +652,7 @@ impl MutationRoot {
 
         // Emit realtime change event
         if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-            let doc_id = doc.get("id").and_then(|v| v.as_str()).unwrap_or(&id);
+            let doc_id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(&id);
             if let Err(e) = tx
                 .send(ChangeEvent {
                     action: ChangeAction::Update,
@@ -872,7 +873,7 @@ impl MutationRoot {
         // Emit change events
         if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
             for doc in &results {
-                let doc_id = doc.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                let doc_id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("unknown");
                 if let Err(e) = tx
                     .send(ChangeEvent {
                         action: ChangeAction::Create,
@@ -1007,7 +1008,7 @@ impl MutationRoot {
                 async_graphql::Error::new("Each update entry must be an object with id and data")
             })?;
             let id = obj
-                .get("id")
+                .get(fields::ID)
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| async_graphql::Error::new("Each update must have an id"))?;
             let data = obj

@@ -3,7 +3,7 @@
 //! Wraps multiple queries in a real ACID transaction using PostgreSQL's BEGIN/COMMIT.
 
 use crate::DatabaseClient;
-use crate::pg_store::{bind_json_value, translate_surreal_to_pg};
+use crate::pg_store::{bind_json_value, named_to_positional};
 use ob_core::{Error, Result};
 use serde_json::Value;
 
@@ -60,8 +60,8 @@ impl Transaction {
 
         for (query, binds) in &self.queries {
             if let Some(binds) = binds {
-                // Translate query to PostgreSQL and bind parameters
-                let (pg_query, bind_values) = translate_surreal_to_pg(query, binds.clone())
+                // Convert named params ($param_name) to positional ($1, $2, ...)
+                let (pg_query, bind_values) = named_to_positional(query, binds.clone())
                     .map_err(|e| {
                         Error::Database(format!("Transaction query translation failed: {e}"))
                     })?;
