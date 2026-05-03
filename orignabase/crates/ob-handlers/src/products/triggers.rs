@@ -9,6 +9,7 @@ use serde_json::Value;
 use tracing::{error, info, warn};
 
 use crate::shared::schema::{collections, fields};
+use ob_database::fields as db_fields;
 
 /// Sync a newly created product to Meilisearch.
 ///
@@ -30,7 +31,7 @@ pub async fn on_product_created(
 
     // Validate seller is not suspended
     let seller_id = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -48,7 +49,7 @@ pub async fn on_product_created(
         if suspended {
             warn!(product_id = %product_id, seller_id = %seller_id, "Product from suspended seller — deactivating");
             let update = serde_json::json!({
-                fields::LIFECYCLE_STATUS: "draft",
+                db_fields::LIFECYCLE_STATUS: "draft",
                 "deactivationReason": "Seller is suspended",
             });
             db.update_document(collections::PRODUCTS, product_id, update)
@@ -60,7 +61,7 @@ pub async fn on_product_created(
 
     // Validate price
     let price = product
-        .get(fields::PRICE_CENTS)
+        .get(db_fields::PRICE_CENTS)
         .and_then(|v| v.as_f64())
         .or_else(|| product.get("price").and_then(|v| v.as_f64()))
         .unwrap_or(0.0);
@@ -68,7 +69,7 @@ pub async fn on_product_created(
     if price <= 0.0 || price > 10_000_000.0 {
         warn!(product_id = %product_id, price = price, "Invalid price — deactivating");
         let update = serde_json::json!({
-            fields::LIFECYCLE_STATUS: "draft",
+            db_fields::LIFECYCLE_STATUS: "draft",
             "deactivationReason": format!("Invalid price: {price}"),
         });
         db.update_document(collections::PRODUCTS, product_id, update)
@@ -86,7 +87,7 @@ pub async fn on_product_created(
     if stock < 0 {
         warn!(product_id = %product_id, stock = stock, "Negative stock — deactivating");
         let update = serde_json::json!({
-            fields::LIFECYCLE_STATUS: "draft",
+            db_fields::LIFECYCLE_STATUS: "draft",
             "deactivationReason": "Negative stock quantity",
         });
         db.update_document(collections::PRODUCTS, product_id, update)
@@ -97,7 +98,7 @@ pub async fn on_product_created(
 
     // Index to Meilisearch
     let lifecycle = product
-        .get(fields::LIFECYCLE_STATUS)
+        .get(db_fields::LIFECYCLE_STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -135,7 +136,7 @@ pub async fn on_product_updated(
     }
 
     let lifecycle = product
-        .get(fields::LIFECYCLE_STATUS)
+        .get(db_fields::LIFECYCLE_STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -299,12 +300,12 @@ mod tests {
     #[test]
     fn test_product_validation_price() {
         let product = json!({
-            "priceCents": 0,
+            db_fields::PRICE_CENTS: 0,
             "stockQuantity": 10,
             "lifecycleStatus": "active",
         });
         let price = product
-            .get("priceCents")
+            .get(db_fields::PRICE_CENTS)
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
         assert!(price <= 0.0, "Zero price should fail validation");
@@ -314,9 +315,9 @@ mod tests {
 
     #[test]
     fn test_seller_id_extraction_present() {
-        let product = json!({ "sellerId": "seller-1" });
+        let product = json!({ db_fields::SELLER_ID: "seller-1" });
         let sid = product
-            .get("sellerId")
+            .get(db_fields::SELLER_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         assert_eq!(sid, "seller-1");
@@ -326,7 +327,7 @@ mod tests {
     fn test_seller_id_extraction_missing() {
         let product = json!({ "name": "Widget" });
         let sid = product
-            .get("sellerId")
+            .get(db_fields::SELLER_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         assert_eq!(sid, "");
@@ -337,7 +338,7 @@ mod tests {
         // priceCents missing, falls back to "price"
         let product = json!({ "price": 42.5 });
         let price = product
-            .get(fields::PRICE_CENTS)
+            .get(db_fields::PRICE_CENTS)
             .and_then(|v| v.as_f64())
             .or_else(|| product.get("price").and_then(|v| v.as_f64()))
             .unwrap_or(0.0);
@@ -348,7 +349,7 @@ mod tests {
     fn test_price_missing_both_fields() {
         let product = json!({ "name": "Widget" });
         let price = product
-            .get(fields::PRICE_CENTS)
+            .get(db_fields::PRICE_CENTS)
             .and_then(|v| v.as_f64())
             .or_else(|| product.get("price").and_then(|v| v.as_f64()))
             .unwrap_or(0.0);
@@ -398,7 +399,7 @@ mod tests {
     fn test_lifecycle_status_extraction() {
         let product = json!({ "lifecycleStatus": "active" });
         let lc = product
-            .get(fields::LIFECYCLE_STATUS)
+            .get(db_fields::LIFECYCLE_STATUS)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         assert_eq!(lc, "active");
@@ -408,7 +409,7 @@ mod tests {
     fn test_lifecycle_status_missing() {
         let product = json!({});
         let lc = product
-            .get(fields::LIFECYCLE_STATUS)
+            .get(db_fields::LIFECYCLE_STATUS)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         assert_eq!(lc, "");

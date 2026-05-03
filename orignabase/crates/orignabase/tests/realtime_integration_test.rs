@@ -6,6 +6,7 @@
 //!   OB_TEST_URL=http://localhost:8080 (or remote OrignaBase instance)
 
 use futures_util::{SinkExt, StreamExt};
+use ob_database::fields;
 use serde_json::{Value, json};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use uuid::Uuid;
@@ -32,7 +33,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
     let token = body["access_token"].as_str().unwrap().to_string(); // ignore-magic
-    let user_id = body["user"]["id"].as_str().unwrap().to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap().to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -150,7 +151,7 @@ async fn test_ws_subscribe_collection() {
             "subscribed", // ignore-magic
             "Should confirm subscription: {msg:?}"
         );
-        assert_eq!(msg["id"], sub_id); // ignore-magic
+        assert_eq!(msg[fields::ID], sub_id); // ignore-magic
     }
 }
 
@@ -326,6 +327,6 @@ async fn test_ws_subscribe_to_specific_document() {
             "subscribed", // ignore-magic
             "Should confirm doc subscription: {msg:?}"
         );
-        assert_eq!(msg["id"], sub_id); // ignore-magic
+        assert_eq!(msg[fields::ID], sub_id); // ignore-magic
     }
 }

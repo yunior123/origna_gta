@@ -10,6 +10,7 @@ use crate::HandlersState;
 use crate::shared::auth::{require_admin, resolve_self_user_id};
 use crate::shared::schema::{COUNTRY_CANADA, UserRole, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_email, validate_string, validate_uid};
+use ob_database::fields as db_fields;
 use std::sync::OnceLock;
 
 // =============================================================================
@@ -307,9 +308,9 @@ async fn update_profile(
 
     let now = Utc::now().to_rfc3339();
     let mut update_data = serde_json::Map::new();
-    update_data.insert(fields::UPDATED_AT.to_string(), json!(now));
+    update_data.insert(db_fields::UPDATED_AT.to_string(), json!(now));
 
-    let mut updated_fields = vec![fields::UPDATED_AT.to_string()];
+    let mut updated_fields = vec![db_fields::UPDATED_AT.to_string()];
 
     // Handle name update
     if let Some(ref name_raw) = req.name {
@@ -319,8 +320,8 @@ async fn update_profile(
                 "Name must be between {MIN_NAME_LENGTH} and {MAX_NAME_LENGTH} characters"
             )));
         }
-        update_data.insert(fields::NAME.to_string(), json!(name));
-        updated_fields.push(fields::NAME.to_string());
+        update_data.insert(db_fields::NAME.to_string(), json!(name));
+        updated_fields.push(db_fields::NAME.to_string());
     }
 
     // Handle address update
@@ -376,7 +377,7 @@ async fn update_profile(
             fields::TAX_EXEMPTION.to_string(),
             json!({
                 fields::GST_NUMBER: gst,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         );
         updated_fields.push(fields::TAX_EXEMPTION.to_string());
@@ -410,13 +411,13 @@ async fn get_profile(
 
     Ok(success(json!({
         fields::UID: user_id,
-        fields::EMAIL: user_doc.get(fields::EMAIL),
-        fields::NAME: user_doc.get(fields::NAME),
+        db_fields::EMAIL: user_doc.get(db_fields::EMAIL),
+        db_fields::NAME: user_doc.get(db_fields::NAME),
         fields::ADDRESS: user_doc.get(fields::ADDRESS),
         fields::TAX_EXEMPTION: user_doc.get(fields::TAX_EXEMPTION),
         fields::ROLES: user_doc.get(fields::ROLES),
-        fields::CREATED_AT: user_doc.get(fields::CREATED_AT),
-        fields::UPDATED_AT: user_doc.get(fields::UPDATED_AT),
+        db_fields::CREATED_AT: user_doc.get(db_fields::CREATED_AT),
+        db_fields::UPDATED_AT: user_doc.get(db_fields::UPDATED_AT),
         fields::SUSPENDED: user_doc.get(fields::SUSPENDED).and_then(|v| v.as_bool()).unwrap_or(false),
         fields::TERMS_VERSION: user_doc.get(fields::TERMS_VERSION),
         fields::PRIVACY_POLICY_VERSION: user_doc.get(fields::PRIVACY_POLICY_VERSION),
@@ -448,16 +449,16 @@ async fn email_consent(
             collections::USERS,
             &user_id,
             json!({
-                fields::EMAIL_CONSENT: req.consent,
+                db_fields::EMAIL_CONSENT: req.consent,
                 fields::CONSENT_TIMESTAMP: now,
                 fields::CONSENT_METHOD: consent_method,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
 
     Ok(success(json!({
-        fields::EMAIL_CONSENT: req.consent,
+        db_fields::EMAIL_CONSENT: req.consent,
     })))
 }
 
@@ -486,7 +487,7 @@ async fn notification_preferences(
 
     let now = Utc::now().to_rfc3339();
     let mut update = serde_json::Map::new();
-    update.insert(fields::UPDATED_AT.to_string(), json!(now));
+    update.insert(db_fields::UPDATED_AT.to_string(), json!(now));
 
     if let Some(v) = req.notify_new_products {
         update.insert(fields::NOTIFY_NEW_PRODUCTS.to_string(), json!(v));
@@ -564,14 +565,14 @@ async fn create_profile(
             collections::USERS,
             json!({
                 fields::UID: user_id,
-                fields::EMAIL: req.email,
-                fields::NAME: name,
+                db_fields::EMAIL: req.email,
+                db_fields::NAME: name,
                 fields::ROLES: roles,
-                fields::CREATED_AT: now,
+                db_fields::CREATED_AT: now,
                 fields::LANGUAGE: lang,
                 // Legal compliance (CASL / PIPEDA / Law 25)
                 fields::DATA_PROCESSING_CONSENT: true,
-                fields::EMAIL_CONSENT: true,
+                db_fields::EMAIL_CONSENT: true,
                 fields::MARKETING_OPT_IN: marketing_opt_in,
                 fields::CONSENT_TIMESTAMP: now,
                 fields::TERMS_ACCEPTED_AT: now,
@@ -600,7 +601,7 @@ async fn cleanup_fcm_token(
     // FCM tokens are stored as documents in a subcollection-like pattern.
     // In PostgreSQL we use a flat table with userId + token fields.
     let query = format!(
-        "SELECT * FROM {} WHERE {} = $uid AND {} = $token LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = $uid AND data->>'{}' = $token LIMIT 1",
         collections::FCM_TOKENS,
         fields::UID,
         fields::TOKEN,
@@ -616,7 +617,10 @@ async fn cleanup_fcm_token(
         return Ok(success(json!({ "deleted": false })));
     }
 
-    let token_id = results[0].get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let token_id = results[0]
+        .get(db_fields::ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if !token_id.is_empty() {
         let id = token_id
@@ -640,7 +644,7 @@ async fn add_buyer_address(
     let count_query = format!(
         "SELECT COUNT(*) FROM {} WHERE data->>'{}' = $user_id",
         collections::ADDRESSES,
-        fields::USER_ID,
+        db_fields::USER_ID,
     );
     let count_rows = state
         .db
@@ -667,10 +671,9 @@ async fn add_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id",
+            "UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{isDefault}}', 'false'::jsonb), '{{updatedAt}}', to_jsonb($now::text)), updated_at = now() WHERE data->>'{}' = $user_id",
             collections::ADDRESSES,
-            fields::UPDATED_AT,
-            fields::USER_ID,
+            db_fields::USER_ID,
         );
         let _ = state
             .db
@@ -683,18 +686,18 @@ async fn add_buyer_address(
         .create_document(
             collections::ADDRESSES,
             json!({
-                fields::USER_ID: user_id,
+                db_fields::USER_ID: user_id,
                 fields::LABEL: req.label.as_deref().unwrap_or(""),
                 fields::IS_DEFAULT: req.is_default,
                 fields::ADDRESS: address,
-                fields::CREATED_AT: now,
-                fields::UPDATED_AT: now,
+                db_fields::CREATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
 
     let address_id = created
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(|id| strip_record_prefix(collections::ADDRESSES, id).to_string())
         .unwrap_or_default();
@@ -716,7 +719,7 @@ async fn update_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(db_fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
@@ -733,10 +736,9 @@ async fn update_buyer_address(
 
     if req.is_default {
         let clear_query = format!(
-            "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id AND id != $address_id",
+            "UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{isDefault}}', 'false'::jsonb), '{{updatedAt}}', to_jsonb($now::text)), updated_at = now() WHERE data->>'{}' = $user_id AND id != $address_id",
             collections::ADDRESSES,
-            fields::UPDATED_AT,
-            fields::USER_ID,
+            db_fields::USER_ID,
         );
         let _ = state
             .db
@@ -756,7 +758,7 @@ async fn update_buyer_address(
                 fields::LABEL: req.label.as_deref().unwrap_or(""),
                 fields::IS_DEFAULT: req.is_default,
                 fields::ADDRESS: address,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -778,7 +780,7 @@ async fn delete_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(db_fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
@@ -795,9 +797,9 @@ async fn delete_buyer_address(
 
     if was_default {
         let query = format!(
-            "SELECT * FROM {} WHERE {} = $user_id ORDER BY data->>'createdAt' DESC LIMIT 1",
+            "SELECT * FROM {} WHERE data->>'{}' = $user_id ORDER BY data->>'createdAt' DESC LIMIT 1",
             collections::ADDRESSES,
-            fields::USER_ID,
+            db_fields::USER_ID,
         );
         if let Some(next_address) = state
             .db
@@ -805,7 +807,7 @@ async fn delete_buyer_address(
             .await?
             .into_iter()
             .next()
-            && let Some(raw_id) = next_address.get("id").and_then(|v| v.as_str())
+            && let Some(raw_id) = next_address.get(db_fields::ID).and_then(|v| v.as_str())
         {
             let next_id = strip_record_prefix(collections::ADDRESSES, raw_id);
             let _ = state
@@ -813,7 +815,7 @@ async fn delete_buyer_address(
                 .update_document(
                     collections::ADDRESSES,
                     next_id,
-                    json!({ fields::IS_DEFAULT: true, fields::UPDATED_AT: Utc::now().to_rfc3339() }),
+                    json!({ fields::IS_DEFAULT: true, db_fields::UPDATED_AT: Utc::now().to_rfc3339() }),
                 )
                 .await;
         }
@@ -836,7 +838,7 @@ async fn set_default_buyer_address(
         .get_document(collections::ADDRESSES, &req.address_id)
         .await?;
 
-    if existing.get(fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
+    if existing.get(db_fields::USER_ID).and_then(|v| v.as_str()) != Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
             "Address ownership mismatch".into(),
         ));
@@ -844,10 +846,9 @@ async fn set_default_buyer_address(
 
     let now = Utc::now().to_rfc3339();
     let clear_query = format!(
-        "UPDATE {} SET isDefault = false, {} = $now WHERE {} = $user_id",
+        "UPDATE {} SET data = jsonb_set(jsonb_set(data, '{{isDefault}}', 'false'::jsonb), '{{updatedAt}}', to_jsonb($now::text)), updated_at = now() WHERE data->>'{}' = $user_id",
         collections::ADDRESSES,
-        fields::UPDATED_AT,
-        fields::USER_ID,
+        db_fields::USER_ID,
     );
     let _ = state
         .db
@@ -861,7 +862,7 @@ async fn set_default_buyer_address(
             &req.address_id,
             json!({
                 fields::IS_DEFAULT: true,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -918,7 +919,7 @@ async fn suspend_seller(
                 fields::SUSPENDED_AT: now,
                 fields::SUSPENDED_BY: admin_id,
                 fields::SUSPEND_REASON: reason,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await
@@ -954,7 +955,7 @@ async fn unsuspend_seller(
                 fields::SUSPENDED_AT: serde_json::Value::Null,
                 fields::SUSPENDED_BY: serde_json::Value::Null,
                 fields::SUSPEND_REASON: serde_json::Value::Null,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await
@@ -1365,7 +1366,7 @@ mod tests {
             .upsert_document(
                 collections::USERS,
                 &user_id,
-                json!({ fields::EMAIL: &email }),
+                json!({ db_fields::EMAIL: &email }),
             )
             .await
             .unwrap();
@@ -1416,14 +1417,14 @@ mod tests {
         let users: Vec<serde_json::Value> = state
             .db
             .query_bind_value(
-                "SELECT * FROM users WHERE uid = $uid LIMIT 1",
+                "SELECT * FROM users WHERE data->>'uid' = $uid LIMIT 1",
                 json!({fields::UID: &user_id}),
             )
             .await
             .unwrap();
         let user = users.first().unwrap();
         let email_prefix = email.split('@').next().unwrap();
-        assert_eq!(user[fields::NAME], email_prefix);
+        assert_eq!(user[db_fields::NAME], email_prefix);
         assert_eq!(user[fields::PREFERRED_LANGUAGE], "en");
         assert_eq!(user[fields::ROLES], json!(["buyer"]));
         assert_eq!(user["consentMethod"], "signup_form");
@@ -1470,7 +1471,7 @@ mod tests {
             .upsert_document(
                 collections::USERS,
                 &user_id,
-                json!({ fields::EMAIL: "user@example.com" }),
+                json!({ db_fields::EMAIL: "user@example.com" }),
             )
             .await
             .unwrap();
@@ -1499,7 +1500,7 @@ mod tests {
             .get_document(collections::USERS, &user_id)
             .await
             .unwrap();
-        assert_eq!(user[fields::NAME], "Updated Name");
+        assert_eq!(user[db_fields::NAME], "Updated Name");
         assert_eq!(user[fields::PREFERRED_LANGUAGE], "fr");
         assert_eq!(user["taxExemption"]["gstNumber"], "123456789RT0001");
     }
@@ -1517,8 +1518,8 @@ mod tests {
                 collections::USERS,
                 "user_1",
                 json!({
-                    fields::EMAIL: "user@example.com",
-                    fields::NAME: "User",
+                    db_fields::EMAIL: "user@example.com",
+                    db_fields::NAME: "User",
                     fields::ROLES: ["buyer"],
                 }),
             )
@@ -1535,8 +1536,8 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(resp.data[fields::EMAIL], "user@example.com");
-        assert_eq!(resp.data[fields::NAME], "User");
+        assert_eq!(resp.data[db_fields::EMAIL], "user@example.com");
+        assert_eq!(resp.data[db_fields::NAME], "User");
     }
 
     #[tokio::test]
@@ -1560,7 +1561,7 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(resp.data[fields::EMAIL_CONSENT], false);
+        assert_eq!(resp.data[db_fields::EMAIL_CONSENT], false);
         let user = state
             .db
             .get_document(collections::USERS, &user_id)
@@ -1715,7 +1716,7 @@ mod tests {
 
         assert_eq!(resp.data["deleted"], true);
         let query = format!(
-            "SELECT * FROM {} WHERE {} = $uid AND {} = $token",
+            "SELECT * FROM {} WHERE data->>'{}' = $uid AND data->>'{}' = $token",
             collections::FCM_TOKENS,
             fields::UID,
             fields::TOKEN,
@@ -1761,7 +1762,7 @@ mod tests {
             .get_document(collections::ADDRESSES, address_id)
             .await
             .unwrap();
-        assert_eq!(address["userId"], user_id.as_str());
+        assert_eq!(address[db_fields::USER_ID], user_id.as_str());
         assert_eq!(address["isDefault"], true);
         assert_eq!(address["address"][fields::POSTAL_CODE], "M5V2H1");
     }
@@ -1817,7 +1818,7 @@ mod tests {
                 json!({
                     "userId": &user_id,
                     "isDefault": true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -1830,7 +1831,7 @@ mod tests {
                 json!({
                     "userId": &user_id,
                     "isDefault": false,
-                    fields::CREATED_AT: "2026-01-02T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-02T00:00:00Z",
                 }),
             )
             .await
@@ -2103,7 +2104,7 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(resp.data[fields::EMAIL_CONSENT], true);
+        assert_eq!(resp.data[db_fields::EMAIL_CONSENT], true);
         let user = state
             .db
             .get_document(collections::USERS, &user_id)
@@ -2351,7 +2352,7 @@ mod tests {
                 json!({
                     "userId": "user_1",
                     "isDefault": false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await

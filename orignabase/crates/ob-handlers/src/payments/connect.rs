@@ -11,6 +11,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{app_config, collections, fields};
 use crate::shared::validation::{validate_email, validate_uid};
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -117,7 +118,7 @@ async fn create_account(
         .email
         .clone()
         .or_else(|| {
-            user.get(fields::EMAIL)
+            user.get(db_fields::EMAIL)
                 .and_then(|v| v.as_str())
                 .map(ToString::to_string)
         })
@@ -159,7 +160,7 @@ async fn create_account(
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Parse error: {e}")))?;
 
-    let account_id = account["id"]
+    let account_id = account[db_fields::ID]
         .as_str()
         .ok_or_else(|| ob_core::Error::Internal("Missing account ID from Stripe".into()))?;
 
@@ -170,7 +171,7 @@ async fn create_account(
         fields::PAYOUTS_ENABLED: false,
         fields::CHARGES_ENABLED: false,
         fields::ONBOARDING_COMPLETED: false,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -349,7 +350,7 @@ async fn get_account_status(
         fields::CHARGES_ENABLED: charges_enabled,
         fields::PAYOUTS_ENABLED: payouts_enabled,
         fields::ONBOARDING_COMPLETED: onboarding_completed,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -500,7 +501,7 @@ mod tests {
                 "seller_1",
                 json!({
                     fields::STRIPE_ACCOUNT_ID: "acct_existing",
-                    fields::EMAIL: "seller@example.com",
+                    db_fields::EMAIL: "seller@example.com",
                 }),
             )
             .await
@@ -576,7 +577,7 @@ mod tests {
                 collections::USERS,
                 &uid,
                 json!({
-                    fields::EMAIL: "seller2@example.com",
+                    db_fields::EMAIL: "seller2@example.com",
                 }),
             )
             .await
@@ -822,7 +823,7 @@ mod tests {
             .upsert_document(
                 collections::USERS,
                 "seller_err",
-                json!({ fields::EMAIL: "seller@example.com" }),
+                json!({ db_fields::EMAIL: "seller@example.com" }),
             )
             .await
             .unwrap();

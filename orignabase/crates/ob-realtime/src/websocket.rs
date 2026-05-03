@@ -438,6 +438,7 @@ pub fn realtime_router(registry: Arc<SubscriptionRegistry>, jwt_keys: JwtKeys) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ob_database::fields;
 
     // ── extract_ws_token tests ──
 
@@ -625,7 +626,7 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "subscribed");
-        assert_eq!(parsed["id"], "sub1");
+        assert_eq!(parsed[fields::ID], "sub1");
     }
 
     #[test]
@@ -636,7 +637,7 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "unsubscribed");
-        assert_eq!(parsed["id"], "sub1");
+        assert_eq!(parsed[fields::ID], "sub1");
     }
 
     #[test]
@@ -800,7 +801,7 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "subscribed");
-        assert_eq!(parsed["id"], "");
+        assert_eq!(parsed[fields::ID], "");
     }
 
     #[test]
@@ -811,7 +812,7 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["type"], "unsubscribed");
-        assert_eq!(parsed["id"], "sub_42");
+        assert_eq!(parsed[fields::ID], "sub_42");
     }
 
     #[test]
@@ -1121,8 +1122,8 @@ mod tests {
         let json = serde_json::to_string(&msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed["event"]["action"], "update");
-        assert_eq!(parsed["event"]["before_data"]["status"], "confirmed");
-        assert_eq!(parsed["event"]["after_data"]["status"], "shipped");
+        assert_eq!(parsed["event"]["before_data"][fields::STATUS], "confirmed");
+        assert_eq!(parsed["event"]["after_data"][fields::STATUS], "shipped");
     }
 
     #[test]

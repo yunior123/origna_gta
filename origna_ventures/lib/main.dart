@@ -22,6 +22,18 @@ const _fullDeckPdfUrl =
     'https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf';
 const _demoUrl = 'https://dev.orignagta.ca';
 
+typedef VenturesUrlLauncher = Future<bool> Function(
+  Uri uri, {
+  LaunchMode mode,
+  String? webOnlyWindowName,
+});
+
+@visibleForTesting
+http.Client? venturesHttpClient;
+
+@visibleForTesting
+VenturesUrlLauncher? venturesUrlLauncher;
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const OrignaVenturesApp());
@@ -1897,7 +1909,8 @@ class _TierCardState extends State<_TierCard>
       _status = null;
     });
     try {
-      final response = await http
+      final client = venturesHttpClient ?? http.Client();
+      final response = await client
           .post(
             Uri.parse('$venturesApiBase/payments/create-checkout-session'),
             headers: {'Content-Type': 'application/json'},
@@ -1926,7 +1939,7 @@ class _TierCardState extends State<_TierCard>
       if (url != null && url.isNotEmpty) {
         final checkoutUri = Uri.parse(url);
         if (kIsWeb) {
-          final launched = await launchUrl(
+          final launched = await _launchVenturesUrl(
             checkoutUri,
             webOnlyWindowName: '_self',
           );
@@ -1935,7 +1948,7 @@ class _TierCardState extends State<_TierCard>
           }
           return;
         } else {
-          final launched = await launchUrl(
+          final launched = await _launchVenturesUrl(
             checkoutUri,
             mode: LaunchMode.externalApplication,
           );
@@ -1992,6 +2005,18 @@ class _TierCardState extends State<_TierCard>
       }
     }
   }
+}
+
+Future<bool> _launchVenturesUrl(
+  Uri uri, {
+  LaunchMode mode = LaunchMode.platformDefault,
+  String? webOnlyWindowName,
+}) {
+  final launcher = venturesUrlLauncher;
+  if (launcher != null) {
+    return launcher(uri, mode: mode, webOnlyWindowName: webOnlyWindowName);
+  }
+  return launchUrl(uri, mode: mode, webOnlyWindowName: webOnlyWindowName);
 }
 
 Map<String, dynamic> _decodeCheckoutBody(String rawBody) {

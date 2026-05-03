@@ -2,6 +2,7 @@
 //!
 //! Run with: `cd orignabase && cargo test --test admin_integration_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 
 fn base_url() -> String {
@@ -91,11 +92,13 @@ async fn test_admin_list_users_includes_email_for_account_identification() {
     // before opening the per-user detail view.
     for user in users.iter().take(5) {
         assert!(
-            user.get("email").and_then(|email| email.as_str()).is_some(), // ignore-magic
+            user.get(fields::EMAIL)
+                .and_then(|email| email.as_str())
+                .is_some(), // ignore-magic
             "User list should include email for account identification"
         );
 
-        let has_id = user.get("id").is_some();
+        let has_id = user.get(fields::ID).is_some();
         let has_role = user.get("roles").is_some();
         assert!(
             has_id && has_role,
@@ -136,7 +139,7 @@ async fn test_admin_get_user_requires_admin_role() {
         .expect("admin list users should succeed");
     assert!(!users.is_empty(), "Should return at least one user");
 
-    let user_id = users[0]["id"] // ignore-magic
+    let user_id = users[0][fields::ID] // ignore-magic
         .as_str()
         .map(|s| s.to_string())
         .unwrap_or_default();
@@ -149,7 +152,7 @@ async fn test_admin_get_user_requires_admin_role() {
     let user = get_user(&client, &admin_token, &user_id)
         .await
         .expect("admin get user should succeed");
-    let id = user["id"].as_str().unwrap_or(""); // ignore-magic
+    let id = user[fields::ID].as_str().unwrap_or(""); // ignore-magic
     assert_eq!(id, user_id, "Should return requested user");
 }
 

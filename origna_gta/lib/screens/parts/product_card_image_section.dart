@@ -116,8 +116,10 @@ class _ProductCardImageSection extends ConsumerWidget {
                                       DesignTokens.transparent,
                                       BlendMode.multiply,
                                     ),
-                              child: WebCachedNetworkImage(
+                              child: CachedNetworkImage(
                                 imageUrl: imageUrls[index],
+                                imageRenderMethodForWeb:
+                                    _productCardWebRenderMethod,
                                 width: double.infinity,
                                 height: double.infinity,
                                 fit: BoxFit.cover,
@@ -228,8 +230,9 @@ class _ProductCardImageSection extends ConsumerWidget {
   }
 
   Widget _networkImage(String imageUrl) {
-    return WebCachedNetworkImage(
+    return CachedNetworkImage(
       imageUrl: imageUrl,
+      imageRenderMethodForWeb: _productCardWebRenderMethod,
       width: double.infinity,
       height: double.infinity,
       fit: BoxFit.cover,

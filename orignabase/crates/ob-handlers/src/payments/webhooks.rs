@@ -12,6 +12,7 @@ use crate::HandlersState;
 use crate::email;
 use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields};
 use ob_database::Transaction;
+use ob_database::fields as db_fields;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -315,7 +316,7 @@ async fn store_webhook_event(
         .create_document(
             collections::WEBHOOK_EVENTS,
             serde_json::json!({
-                fields::ID: event.id,
+                db_fields::ID: event.id,
                 fields::TYPE: event.r#type,
                 fields::TIMESTAMP: timestamp,
                 fields::TIMESTAMP_ISO: timestamp_rfc3339,
@@ -348,7 +349,7 @@ async fn try_store_webhook_event_atomic(
 
     // Use Stripe event ID as document ID — INSERT ON CONFLICT handles dedup atomically.
     let event_data = serde_json::json!({
-        fields::ID: event.id,
+        db_fields::ID: event.id,
         fields::TYPE: event.r#type,
         fields::TIMESTAMP: timestamp,
         fields::TIMESTAMP_ISO: timestamp_rfc3339,
@@ -394,7 +395,7 @@ async fn find_order_by_payment_intent(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE {} = $pi_id LIMIT 1",
+                "SELECT * FROM {} WHERE data->>'{}' = $pi_id LIMIT 1",
                 collections::ORDERS,
                 fields::PAYMENT_INTENT_ID
             ),
@@ -442,7 +443,7 @@ async fn update_order_status(
 ) -> Result<bool, ob_core::Error> {
     let now = chrono::Utc::now().to_rfc3339();
     let order_status_path = format!("'{{{}}}'", fields::ORDER_STATUS);
-    let updated_at_path = format!("'{{{}}}'", fields::UPDATED_AT);
+    let updated_at_path = format!("'{{{}}}'", db_fields::UPDATED_AT);
 
     let rows = state
         .db
@@ -492,7 +493,7 @@ async fn restore_stock_for_order(
     order: &Value,
 ) -> Result<(), ob_core::Error> {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
 
@@ -571,7 +572,7 @@ async fn decrement_stock_for_order(
     order: &Value,
 ) -> Result<(), ob_core::Error> {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
 
@@ -605,8 +606,9 @@ async fn decrement_stock_for_order(
 
             tx.add(
                 &format!(
-                    "UPDATE {} SET {} -= $qty WHERE id = $id",
+                    "UPDATE {} SET data = jsonb_set(data, '{{{}}}', to_jsonb(GREATEST(COALESCE(NULLIF(data->>'{}', ''), '0')::int - $qty::int, 0)), true), updated_at = now() WHERE id = $id",
                     collections::PRODUCTS,
+                    fields::STOCK_QUANTITY,
                     fields::STOCK_QUANTITY
                 ),
                 Some(serde_json::json!({
@@ -645,7 +647,7 @@ async fn mark_coupon_redeemed(
         .db
         .query_bind_value(
             &format!(
-                "UPDATE {} SET {} = $now WHERE {} = $order_id AND {} = $code",
+                "UPDATE {} SET data = jsonb_set(data, '{{{}}}', to_jsonb($now::text), true), updated_at = now() WHERE data->>'{}' = $order_id AND data->>'{}' = $code",
                 collections::COUPON_USES,
                 fields::REDEEMED_AT,
                 fields::ORDER_ID,
@@ -676,7 +678,7 @@ async fn release_coupon_reservation(
         .db
         .query_bind_value(
             &format!(
-                "DELETE FROM {} WHERE {} = $order_id AND {} IS NULL",
+                "DELETE FROM {} WHERE data->>'{}' = $order_id AND data->>'{}' IS NULL",
                 collections::COUPON_USES,
                 fields::ORDER_ID,
                 fields::REDEEMED_AT
@@ -715,7 +717,7 @@ async fn upsert_refund_record(
         fields::STRIPE_REFUND_STATUS: refund.status,
         fields::PAYMENT_INTENT_ID: refund.payment_intent_id,
         fields::REASON: refund.reason,
-        fields::UPDATED_AT: now.to_rfc3339(),
+        db_fields::UPDATED_AT: now.to_rfc3339(),
     });
 
     if let Some(reason) = refund.failure_reason {
@@ -728,8 +730,8 @@ async fn upsert_refund_record(
         .await
         .unwrap_or_default();
     if existing.is_null() || existing.as_object().is_none_or(|obj| obj.is_empty()) {
-        data[fields::CREATED_AT] = serde_json::json!(now.timestamp());
-        data[fields::CREATED_AT_ISO] = serde_json::json!(now.to_rfc3339());
+        data[db_fields::CREATED_AT] = serde_json::json!(now.timestamp());
+        data[db_fields::CREATED_AT_ISO] = serde_json::json!(now.to_rfc3339());
     }
 
     state
@@ -751,7 +753,10 @@ async fn mark_order_refund_failure(
     }
 
     if let Some(order) = find_order_by_payment_intent(state, payment_intent_id).await? {
-        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let order_id = order
+            .get(db_fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if !order_id.is_empty() {
             state
                 .db
@@ -761,7 +766,7 @@ async fn mark_order_refund_failure(
                     serde_json::json!({
                         fields::REQUIRES_MANUAL_REVIEW: true,
                         fields::REFUND_FAILURE_REASON: failure_reason,
-                        fields::UPDATED_AT: now.to_rfc3339(),
+                        db_fields::UPDATED_AT: now.to_rfc3339(),
                     }),
                 )
                 .await?;
@@ -787,12 +792,12 @@ async fn sync_order_refund_state(
     };
 
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| ob_core::Error::Validation("Order missing id".into()))?;
 
     let total_amount_cents = order
-        .get(fields::TOTAL_AMOUNT_CENTS)
+        .get(db_fields::TOTAL_AMOUNT_CENTS)
         .and_then(|v| v.as_i64())
         .unwrap_or(0);
 
@@ -828,7 +833,7 @@ async fn sync_order_refund_state(
         fields::REFUNDED_AMOUNT_CENTS: refunded_amount_cents,
         fields::PAYMENT_STATUS: payment_status,
         fields::ORDER_STATUS: order_status,
-        fields::UPDATED_AT: now.to_rfc3339(),
+        db_fields::UPDATED_AT: now.to_rfc3339(),
     });
     if is_full_refund {
         update[fields::REFUNDED_AT] = serde_json::json!(now.to_rfc3339());
@@ -860,7 +865,7 @@ async fn sync_order_refund_state_from_records(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE {} = $payment_intent_id",
+                "SELECT * FROM {} WHERE data->>'{}' = $payment_intent_id",
                 collections::REFUNDS,
                 fields::PAYMENT_INTENT_ID
             ),
@@ -925,7 +930,7 @@ async fn handle_payment_intent_succeeded(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let pi_id = pi_obj
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payment intent ID".into()))?;
 
@@ -1023,7 +1028,7 @@ async fn handle_payment_intent_failed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let pi_id = pi_obj
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payment intent ID".into()))?;
 
@@ -1084,7 +1089,7 @@ async fn handle_payment_intent_canceled(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let pi_id = pi_obj
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payment intent ID".into()))?;
 
@@ -1141,7 +1146,7 @@ async fn handle_charge_succeeded(
 ) -> Result<(), ob_core::Error> {
     if let Some(charge_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(charge_id = %charge_id, "Charge succeeded");
@@ -1156,7 +1161,7 @@ async fn handle_charge_failed(
 ) -> Result<(), ob_core::Error> {
     if let Some(charge_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         if let Some(reason) = event_data
@@ -1182,7 +1187,7 @@ async fn handle_charge_refunded(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let charge_id = charge_obj
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No charge ID".into()))?;
 
@@ -1208,7 +1213,10 @@ async fn handle_charge_refunded(
                 payment_intent_id
             ))
         })?;
-    let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let order_id = order
+        .get(db_fields::ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     sync_order_refund_state(state, payment_intent_id, None, refunded_amount_cents, &now).await?;
 
@@ -1237,7 +1245,7 @@ async fn handle_checkout_session_completed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let session_id = session
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
 
@@ -1299,7 +1307,7 @@ async fn handle_checkout_session_completed(
     let now = chrono::Utc::now().to_rfc3339();
     let payment_intent_id_path = format!("'{{{}}}'", fields::PAYMENT_INTENT_ID);
     let checkout_session_id_path = format!("'{{{}}}'", fields::CHECKOUT_SESSION_ID);
-    let updated_at_path = format!("'{{{}}}'", fields::UPDATED_AT);
+    let updated_at_path = format!("'{{{}}}'", db_fields::UPDATED_AT);
     state
         .db
         .query_bind_value(
@@ -1338,14 +1346,17 @@ async fn handle_checkout_session_completed(
 
     // Clear the buyer's cart after successful payment
     let buyer_id = order
-        .get(fields::BUYER_ID)
+        .get(db_fields::BUYER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if !buyer_id.is_empty()
         && let Err(err) = state
             .db
             .query_bind_value(
-                &format!("DELETE FROM {} WHERE data->>'userId' = $buyer_id", collections::CART),
+                &format!(
+                    "DELETE FROM {} WHERE data->>'userId' = $buyer_id",
+                    collections::CART
+                ),
                 serde_json::json!({"buyer_id": buyer_id}),
             )
             .await
@@ -1377,7 +1388,7 @@ async fn handle_checkout_session_expired(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let session_id = session
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
 
@@ -1448,7 +1459,7 @@ async fn handle_checkout_session_async_payment_failed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let session_id = session
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No session ID".into()))?;
 
@@ -1510,7 +1521,7 @@ async fn handle_charge_captured(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let charge_id = charge
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No charge ID".into()))?;
 
@@ -1528,7 +1539,10 @@ async fn handle_charge_captured(
     if !payment_intent_id.is_empty()
         && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
     {
-        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let order_id = order
+            .get(db_fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if !order_id.is_empty() {
             let now = chrono::Utc::now().to_rfc3339();
             let _: Vec<Value> = state
@@ -1539,7 +1553,7 @@ async fn handle_charge_captured(
                         collections::ORDERS,
                         fields::PAYMENT_STATUS,
                         fields::AUTO_CAPTURED,
-                        fields::UPDATED_AT
+                        db_fields::UPDATED_AT
                     ),
                     serde_json::json!({
                         "order_id": order_id,
@@ -1575,7 +1589,7 @@ async fn handle_charge_dispute_created(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let dispute_id = dispute
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
@@ -1603,7 +1617,7 @@ async fn handle_charge_dispute_created(
 
     let order_id = order
         .as_ref()
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -1632,9 +1646,9 @@ async fn handle_charge_dispute_created(
                 fields::REASON: reason,
                 fields::AMOUNT_CENTS: amount,
                 fields::CURRENCY: currency,
-                fields::STATUS: "needs_response",
-                fields::CREATED_AT: now.timestamp(),
-                fields::CREATED_AT_ISO: now.to_rfc3339(),
+                db_fields::STATUS: "needs_response",
+                db_fields::CREATED_AT: now.timestamp(),
+                db_fields::CREATED_AT_ISO: now.to_rfc3339(),
             }),
         )
         .await?;
@@ -1661,7 +1675,7 @@ async fn handle_charge_dispute_closed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let dispute_id = dispute
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
@@ -1671,7 +1685,7 @@ async fn handle_charge_dispute_closed(
         .ok_or_else(|| ob_core::Error::Validation("No payment_intent in dispute".into()))?;
 
     let status = dispute
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
 
@@ -1706,7 +1720,10 @@ async fn handle_charge_dispute_closed(
     let order = find_order_by_payment_intent(state, payment_intent_id).await?;
 
     if let Some(ref order_val) = order {
-        let order_id = order_val.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let order_id = order_val
+            .get(db_fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
 
         if !order_id.is_empty() && dispute_resolution == "lost" {
             // Dispute lost: update payment status to reflect the chargeback
@@ -1757,12 +1774,12 @@ async fn handle_charge_dispute_updated(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let dispute_id = dispute
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
     let status = dispute
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
 
@@ -1783,7 +1800,7 @@ async fn handle_charge_dispute_updated(
                 "UPDATE {} SET {} = $status, {} = $now WHERE {} = $dispute_id",
                 collections::DISPUTES,
                 fields::STRIPE_STATUS,
-                fields::UPDATED_AT,
+                db_fields::UPDATED_AT,
                 fields::DISPUTE_ID
             ),
             serde_json::json!({
@@ -1817,7 +1834,7 @@ async fn handle_charge_dispute_funds_withdrawn(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let dispute_id = dispute
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
@@ -1832,7 +1849,7 @@ async fn handle_charge_dispute_funds_withdrawn(
         .get("balance_transactions")
         .and_then(|bt| bt.as_array())
         .and_then(|arr| arr.first())
-        .and_then(|bt| bt.get("id"))
+        .and_then(|bt| bt.get(db_fields::ID))
         .and_then(|id| id.as_str())
         .unwrap_or("");
 
@@ -1881,7 +1898,7 @@ async fn handle_charge_dispute_funds_reinstated(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let dispute_id = dispute
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No dispute ID".into()))?;
 
@@ -1923,7 +1940,10 @@ async fn handle_charge_dispute_funds_reinstated(
     if !payment_intent_id.is_empty()
         && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
     {
-        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let order_id = order
+            .get(db_fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if !order_id.is_empty() {
             let _: Vec<Value> = state
                 .db
@@ -1965,7 +1985,7 @@ async fn handle_payout_created(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let payout_id = payout
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
 
@@ -1992,7 +2012,7 @@ async fn handle_payout_created(
         .unwrap_or("");
 
     let status = payout
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("pending");
 
@@ -2010,9 +2030,9 @@ async fn handle_payout_created(
                 fields::ARRIVAL_DATE: arrival_date,
                 fields::PAYOUT_METHOD: method,
                 fields::STRIPE_PAYOUT_STATUS: status,
-                fields::STATUS: "initiated",
-                fields::CREATED_AT: now.timestamp(),
-                fields::CREATED_AT_ISO: now.to_rfc3339(),
+                db_fields::STATUS: "initiated",
+                db_fields::CREATED_AT: now.timestamp(),
+                db_fields::CREATED_AT_ISO: now.to_rfc3339(),
             }),
         )
         .await?;
@@ -2061,12 +2081,12 @@ async fn handle_payout_updated(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let payout_id = payout
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
 
     let status = payout
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
 
@@ -2086,7 +2106,7 @@ async fn handle_payout_updated(
                 collections::PAYOUTS,
                 fields::STRIPE_PAYOUT_STATUS,
                 fields::ARRIVAL_DATE,
-                fields::UPDATED_AT,
+                db_fields::UPDATED_AT,
                 fields::PAYOUT_ID
             ),
             serde_json::json!({
@@ -2146,7 +2166,7 @@ async fn handle_payout_paid(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let payout_id = payout
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
 
@@ -2173,7 +2193,7 @@ async fn handle_payout_paid(
                 collections::PAYOUTS,
                 fields::STRIPE_PAYOUT_STATUS,
                 fields::PAYOUT_COMPLETED_AT,
-                fields::UPDATED_AT,
+                db_fields::UPDATED_AT,
                 fields::PAYOUT_ID
             ),
             serde_json::json!({
@@ -2220,7 +2240,7 @@ async fn handle_payout_paid(
 
         let seller_id = sellers
             .first()
-            .and_then(|s| s.get(fields::SELLER_ID))
+            .and_then(|s| s.get(db_fields::SELLER_ID))
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
@@ -2230,7 +2250,7 @@ async fn handle_payout_paid(
                 .create_document(
                     collections::NOTIFICATIONS,
                     serde_json::json!({
-                        fields::USER_ID: seller_id,
+                        db_fields::USER_ID: seller_id,
                         fields::TYPE: "payout_paid",
                         fields::NOTIFICATION_TITLE: "Payout Complete",
                         fields::NOTIFICATION_BODY: format!(
@@ -2240,8 +2260,8 @@ async fn handle_payout_paid(
                             amount % 100
                         ),
                         fields::READ: false,
-                        fields::CREATED_AT: now.timestamp(),
-                        fields::CREATED_AT_ISO: now.to_rfc3339(),
+                        db_fields::CREATED_AT: now.timestamp(),
+                        db_fields::CREATED_AT_ISO: now.to_rfc3339(),
                     }),
                 )
                 .await;
@@ -2268,7 +2288,7 @@ async fn handle_payout_failed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let payout_id = payout
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No payout ID".into()))?;
 
@@ -2318,10 +2338,10 @@ async fn handle_payout_failed(
             &format!(
                 "UPDATE {} SET {} = 'failed', {} = $code, {} = $msg, {} = $now WHERE {} = $payout_id",
                 collections::PAYOUTS,
-                fields::STATUS,
+                db_fields::STATUS,
                 fields::FAILURE_CODE,
                 fields::FAILURE_MESSAGE,
-                fields::UPDATED_AT,
+                db_fields::UPDATED_AT,
                 fields::PAYOUT_ID
             ),
             serde_json::json!({
@@ -2351,7 +2371,7 @@ async fn handle_payout_failed(
 
         sellers
             .first()
-            .and_then(|s| s.get(fields::SELLER_ID))
+            .and_then(|s| s.get(db_fields::SELLER_ID))
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string()
@@ -2366,7 +2386,7 @@ async fn handle_payout_failed(
             .create_document(
                 collections::NOTIFICATIONS,
                 serde_json::json!({
-                    fields::USER_ID: seller_id,
+                    db_fields::USER_ID: seller_id,
                     fields::TYPE: "payout_failed",
                     fields::NOTIFICATION_TITLE: "Payout Failed",
                     fields::NOTIFICATION_BODY: format!(
@@ -2377,8 +2397,8 @@ async fn handle_payout_failed(
                         failure_message
                     ),
                     fields::READ: false,
-                    fields::CREATED_AT: now.timestamp(),
-                    fields::CREATED_AT_ISO: now.to_rfc3339(),
+                    db_fields::CREATED_AT: now.timestamp(),
+                    db_fields::CREATED_AT_ISO: now.to_rfc3339(),
                 }),
             )
             .await;
@@ -2412,7 +2432,7 @@ async fn handle_refund_created(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let refund_id = refund
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
 
@@ -2424,7 +2444,7 @@ async fn handle_refund_created(
         .unwrap_or("cad");
 
     let status = refund
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("pending");
 
@@ -2456,7 +2476,10 @@ async fn handle_refund_created(
     if !payment_intent_id.is_empty()
         && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
     {
-        let order_id = order.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let order_id = order
+            .get(db_fields::ID)
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         if !order_id.is_empty() {
             let _: Vec<Value> = state
                 .db
@@ -2503,7 +2526,7 @@ async fn handle_refund_updated(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let refund_id = refund
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
 
@@ -2513,7 +2536,7 @@ async fn handle_refund_updated(
         .and_then(|c| c.as_str())
         .unwrap_or("cad");
     let status = refund
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|s| s.as_str())
         .unwrap_or("unknown");
     let payment_intent_id = refund
@@ -2563,7 +2586,7 @@ async fn handle_refund_failed(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let refund_id = refund
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No refund ID".into()))?;
 
@@ -2607,7 +2630,7 @@ async fn handle_refund_failed(
         && let Ok(Some(order)) = find_order_by_payment_intent(state, payment_intent_id).await
     {
         let buyer_id = order
-            .get(fields::BUYER_ID)
+            .get(db_fields::BUYER_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
@@ -2617,7 +2640,7 @@ async fn handle_refund_failed(
                 .create_document(
                     collections::NOTIFICATIONS,
                     serde_json::json!({
-                        fields::USER_ID: buyer_id,
+                        db_fields::USER_ID: buyer_id,
                         fields::TYPE: "refund_failed",
                         fields::NOTIFICATION_TITLE: "Refund Failed",
                         fields::NOTIFICATION_BODY: format!(
@@ -2627,8 +2650,8 @@ async fn handle_refund_failed(
                             amount % 100
                         ),
                         fields::READ: false,
-                        fields::CREATED_AT: now.timestamp(),
-                        fields::CREATED_AT_ISO: now.to_rfc3339(),
+                        db_fields::CREATED_AT: now.timestamp(),
+                        db_fields::CREATED_AT_ISO: now.to_rfc3339(),
                     }),
                 )
                 .await;
@@ -2661,7 +2684,7 @@ async fn handle_account_updated(
         .ok_or_else(|| ob_core::Error::Validation("No object in event data".into()))?;
 
     let account_id = account
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|i| i.as_str())
         .ok_or_else(|| ob_core::Error::Validation("No account ID".into()))?;
 
@@ -2687,7 +2710,7 @@ async fn handle_account_updated(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE {} = $account_id LIMIT 1",
+                "SELECT * FROM {} WHERE data->>'{}' = $account_id LIMIT 1",
                 collections::SELLER_PROFILES,
                 fields::STRIPE_ACCOUNT_ID
             ),
@@ -2703,7 +2726,10 @@ async fn handle_account_updated(
         return Ok(());
     }
 
-    let seller_profile_id = rows[0].get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let seller_profile_id = rows[0]
+        .get(db_fields::ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     if seller_profile_id.is_empty() {
         return Ok(());
@@ -2720,7 +2746,7 @@ async fn handle_account_updated(
                 fields::CHARGES_ENABLED,
                 fields::PAYOUTS_ENABLED,
                 fields::ONBOARDING_COMPLETED,
-                fields::UPDATED_AT
+                db_fields::UPDATED_AT
             ),
             serde_json::json!({
                 "profile_id": seller_profile_id,
@@ -2761,7 +2787,7 @@ async fn handle_customer_created(
 ) -> Result<(), ob_core::Error> {
     if let Some(customer_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(customer_id = %customer_id, "Customer created");
@@ -2775,7 +2801,7 @@ async fn handle_customer_updated(
 ) -> Result<(), ob_core::Error> {
     if let Some(customer_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(customer_id = %customer_id, "Customer updated");
@@ -2789,7 +2815,7 @@ async fn handle_customer_deleted(
 ) -> Result<(), ob_core::Error> {
     if let Some(customer_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(customer_id = %customer_id, "Customer deleted");
@@ -2803,7 +2829,7 @@ async fn handle_payment_method_attached(
 ) -> Result<(), ob_core::Error> {
     if let Some(pm_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(payment_method_id = %pm_id, "Payment method attached");
@@ -2817,7 +2843,7 @@ async fn handle_payment_method_detached(
 ) -> Result<(), ob_core::Error> {
     if let Some(pm_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(payment_method_id = %pm_id, "Payment method detached");
@@ -2831,7 +2857,7 @@ async fn handle_invoice_paid(
 ) -> Result<(), ob_core::Error> {
     if let Some(invoice_id) = event_data
         .get("object")
-        .and_then(|o| o.get("id"))
+        .and_then(|o| o.get(db_fields::ID))
         .and_then(|i| i.as_str())
     {
         info!(invoice_id = %invoice_id, "Invoice paid");
@@ -2844,7 +2870,10 @@ async fn handle_invoice_payment_failed(
     event_data: &Value,
 ) -> Result<(), ob_core::Error> {
     let object = event_data.get("object").unwrap_or(event_data);
-    let invoice_id = object.get("id").and_then(|v| v.as_str()).unwrap_or("");
+    let invoice_id = object
+        .get(db_fields::ID)
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let subscription_id = object
         .get("subscription")
         .and_then(|v| v.as_str())
@@ -2880,7 +2909,10 @@ async fn handle_invoice_payment_failed(
             .await
             && let Some(user) = users.first()
         {
-            let user_id = user.get("id").and_then(|v| v.as_str()).unwrap_or_default();
+            let user_id = user
+                .get(db_fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or_default();
             if !user_id.is_empty() {
                 let _ = state
                     .db
@@ -2891,7 +2923,7 @@ async fn handle_invoice_payment_failed(
                             "subscriptionPaymentFailed": true,
                             "subscriptionPaymentFailedAt": now,
                             "subscriptionPaymentAttemptCount": attempt_count,
-                            fields::UPDATED_AT: now,
+                            db_fields::UPDATED_AT: now,
                         }),
                     )
                     .await;
@@ -3078,7 +3110,7 @@ mod tests {
         assert_eq!(event.r#type, "payment_intent.succeeded");
         assert_eq!(event.created, 1614556800);
         assert_eq!(
-            event.data["object"][fields::ID].as_str().unwrap(),
+            event.data["object"][db_fields::ID].as_str().unwrap(),
             "pi_1234"
         );
     }
@@ -3212,7 +3244,7 @@ mod tests {
         let state = setup_state_with_webhook_secret(secret).await;
         let unique_evt_id = format!("evt_dup_full_{}", uuid::Uuid::new_v4().simple());
         let body = serde_json::to_vec(&json!({
-            fields::ID: unique_evt_id,
+            db_fields::ID: unique_evt_id,
             "type": "charge.succeeded",
             "data": {"object": {"id": "ch_test_duplicate"}},
             "created": 1_714_567_800_i64,
@@ -3228,7 +3260,7 @@ mod tests {
         let Json(first) = handle_stripe_webhook(State(state.clone()), first_request)
             .await
             .unwrap();
-        assert_eq!(first[fields::STATUS], "ok");
+        assert_eq!(first[db_fields::STATUS], "ok");
 
         let second_request = axum::http::Request::builder()
             .uri("/api/webhooks/stripe")
@@ -3238,7 +3270,7 @@ mod tests {
         let Json(second) = handle_stripe_webhook(State(state), second_request)
             .await
             .unwrap();
-        assert_eq!(second[fields::STATUS], "duplicate");
+        assert_eq!(second[db_fields::STATUS], "duplicate");
     }
 
     // -----------------------------------------------------------------------
@@ -3278,7 +3310,7 @@ mod tests {
                 json!({
                     "id": "upd001",
                     fields::ORDER_STATUS: "pending",
-                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    db_fields::TOTAL_AMOUNT_CENTS: 3000,
                     fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]
                 }),
             )
@@ -3307,7 +3339,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: "upd_precondition",
                     fields::ORDER_STATUS: "confirmed",
-                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    db_fields::TOTAL_AMOUNT_CENTS: 3000,
                     fields::ITEMS: [{fields::PRODUCT_ID: "prod_001", fields::QUANTITY: 1}]
                 }),
             )
@@ -3825,7 +3857,7 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_charge_refund_full",
-                    fields::TOTAL_AMOUNT_CENTS: 2500,
+                    db_fields::TOTAL_AMOUNT_CENTS: 2500,
                     fields::STOCK_RESTORED: false,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "refund_product_full",
@@ -3895,7 +3927,7 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_charge_refund_partial",
-                    fields::TOTAL_AMOUNT_CENTS: 5000,
+                    db_fields::TOTAL_AMOUNT_CENTS: 5000,
                     fields::STOCK_RESTORED: false,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "refund_product_partial",
@@ -4100,8 +4132,8 @@ mod tests {
         let state = setup_state().await;
         let order = json!({
             "id": "orders:email_001",
-            fields::BUYER_ID: "buyer_001",
-            fields::SELLER_ID: "seller_001"
+            db_fields::BUYER_ID: "buyer_001",
+            db_fields::SELLER_ID: "seller_001"
         });
         let result = send_payment_authorized_emails(&state, &order).await;
         assert!(result.is_ok());
@@ -4189,7 +4221,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: "coupon_order",
                     fields::COUPON_CODE: "SAVE10",
-                    fields::USER_ID: "buyer_coupon",
+                    db_fields::USER_ID: "buyer_coupon",
                     fields::REFUNDED_AT: Value::Null,
                 }),
             )
@@ -4686,7 +4718,7 @@ mod tests {
                 collections::SELLER_PROFILES,
                 json!({
                     fields::STRIPE_ACCOUNT_ID: "acct_notify_seller",
-                    fields::SELLER_ID: "seller_notify_001",
+                    db_fields::SELLER_ID: "seller_notify_001",
                 }),
             )
             .await
@@ -4760,7 +4792,7 @@ mod tests {
             .db
             .query_bind_value(
                 &format!(
-                    "SELECT * FROM {} WHERE {} = $refund_id",
+                    "SELECT * FROM {} WHERE data->>'{}' = $refund_id",
                     collections::REFUNDS,
                     fields::STRIPE_REFUND_ID
                 ),
@@ -4827,7 +4859,7 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_refund_update_success",
-                    fields::TOTAL_AMOUNT_CENTS: 3000,
+                    db_fields::TOTAL_AMOUNT_CENTS: 3000,
                     fields::STOCK_RESTORED: false,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "refund_update_product",
@@ -4919,7 +4951,7 @@ mod tests {
                 "refund_failed_order",
                 json!({
                     fields::ORDER_ID: "refund_failed_order",
-                    fields::BUYER_ID: "buyer_refund_failed_state",
+                    db_fields::BUYER_ID: "buyer_refund_failed_state",
                     fields::PAYMENT_INTENT_ID: "pi_refund_failed_state",
                     fields::ORDER_STATUS: OrderStatus::Delivered.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
@@ -4976,7 +5008,7 @@ mod tests {
                 "refund_fail_order",
                 json!({
                     fields::ORDER_ID: "refund_fail_order",
-                    fields::BUYER_ID: "buyer_refund_fail",
+                    db_fields::BUYER_ID: "buyer_refund_fail",
                     fields::PAYMENT_INTENT_ID: "pi_refund_fail_notify",
                     fields::ITEMS: []
                 }),

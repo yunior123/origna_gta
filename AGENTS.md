@@ -140,7 +140,7 @@ cd origna_ventures && flutter analyze --no-fatal-infos
 ### Conventions
 - Languages: EN/FR/ES via inline `loc.tr(enString, frString, esString)` pattern
 - Money: integer cents, display with `$` prefix
-- No contract signing — 3 tappable service cards → Stripe checkout directly
+- No pre-checkout contract gate — 3 tappable service cards → Stripe checkout directly; DocuSeal contract bundles are post-payment metadata/follow-up
 - Seller onboarding disabled — OrignaVentures IS the seller (support@orignaventures.ca)
 - Never hardcode colors — use `ThemeConfig.*`
 - Never `print()` — use `debugPrint()` or proper logging
@@ -188,6 +188,7 @@ cd origna_ventures && flutter analyze --no-fatal-infos
 
 ## Agent Rules
 - Use subagents deliberately, but cap at 5 concurrent agents per session to respect the 8GB RAM constraint
+- Codex bootstrap is mandatory every session: read repo-root `CLAUDE.md`, `AGENTS.md`, `WORK_CLAIMS.md`, and relevant `.claude/rules/` before editing or running tests. Delegated `codex exec` prompts must include that instruction explicitly.
 - Before editing, check `WORK_CLAIMS.md` and claim exact paths
 - Use `CORE.md` for active tasks, `STATE.md` for verified outcomes, and `docs/AI_COORDINATION.md` for ownership rules
 - Treat `CLAUDE.md`, `AGENTS.md`, `CORE.md`, `STATE.md`, and `WORK_CLAIMS.md` as single-owner coordination files
@@ -272,7 +273,7 @@ cd origna_ventures && flutter analyze --no-fatal-infos
 | Project | Stack | Path | Test Command |
 |---------|-------|------|-------------|
 | **origna_gta** | Flutter/Dart, OrignaBase (Rust), Riverpod, Freezed | `~/Documents/GitHub/origna_gta` | `flutter analyze --no-fatal-infos && flutter test` |
-| **orignabase** | Rust (axum, SurrealDB, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
+| **orignabase** | Rust (axum, PostgreSQL, tower), Docker, Caddy | `~/Documents/GitHub/orignabase` | `cargo clippy -D warnings && cargo test` |
 | **fxcleaner** | Swift/SwiftUI, macOS | `~/Documents/GitHub/fxcleaner` | `cd fxcleaner_swiftui && swift test` |
 | **viral-video-pipeline** | Python 3.12+, Playwright, Google GenAI | `~/Documents/GitHub/viral-video-pipeline` | `pytest` |
 | **aguara** | Go, security scanner (fork, OSS) | `~/Documents/GitHub/aguara` | `go test ./...` |

@@ -12,6 +12,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
+use ob_database::fields as db_fields;
 
 const MIN_QUESTION_LENGTH: usize = 10;
 const MAX_QUESTION_LENGTH: usize = 500;
@@ -145,7 +146,7 @@ async fn ask_question(
 
     // Derive seller_id from product document (prevents spoofing)
     let seller_id = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
@@ -157,7 +158,7 @@ async fn ask_question(
     let question_doc = serde_json::json!({
         "questionId": question_id,
         fields::PRODUCT_ID: req.product_id,
-        fields::SELLER_ID: seller_id,
+        db_fields::SELLER_ID: seller_id,
         "askerId": user_id,
         "questionText": question,
         "answerText": null,
@@ -165,7 +166,7 @@ async fn ask_question(
         "answeredBy": null,
         "isAnswered": false,
         "upvotes": 0,
-        fields::CREATED_AT: now,
+        db_fields::CREATED_AT: now,
     });
 
     state
@@ -231,7 +232,7 @@ async fn answer_question(
     }
 
     let seller_id = question
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -308,7 +309,7 @@ async fn list_questions(
         "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCT_QUESTIONS,
         where_clause,
-        fields::CREATED_AT,
+        db_fields::CREATED_AT,
         limit,
     );
 
@@ -323,7 +324,7 @@ async fn list_questions(
         .map(|doc| QuestionItem {
             question_id: doc
                 .get("questionId")
-                .or_else(|| doc.get("id"))
+                .or_else(|| doc.get(db_fields::ID))
                 .and_then(|v| v.as_str())
                 .unwrap_or("")
                 .to_string(),
@@ -342,7 +343,7 @@ async fn list_questions(
                 .unwrap_or(false),
             upvotes: doc.get("upvotes").and_then(|v| v.as_i64()).unwrap_or(0),
             created_at: doc
-                .get(fields::CREATED_AT)
+                .get(db_fields::CREATED_AT)
                 .and_then(|v| v.as_str())
                 .map(String::from),
             answered_at: doc
@@ -576,7 +577,7 @@ mod tests {
                 "prod_1",
                 json!({
                     fields::PRODUCT_ID: "prod_1",
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                 }),
             )
             .await
@@ -600,13 +601,13 @@ mod tests {
         let rows = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM product_questions WHERE questionId = '{}'",
+                "SELECT * FROM product_questions WHERE data->>'questionId' = '{}'",
                 resp.question_id
             ))
             .await
             .unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0][fields::SELLER_ID], "seller_1");
+        assert_eq!(rows[0][db_fields::SELLER_ID], "seller_1");
         assert_eq!(rows[0]["askerId"], "buyer_1");
         assert_eq!(rows[0]["isAnswered"], false);
         assert_eq!(rows[0]["upvotes"], 0);
@@ -657,7 +658,7 @@ mod tests {
                 collections::PRODUCT_QUESTIONS,
                 "q_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     "questionId": "q_1",
                     "questionText": "Does it support Quebec shipping?",
                     "isAnswered": false,
@@ -694,7 +695,7 @@ mod tests {
                 collections::PRODUCT_QUESTIONS,
                 "q_2",
                 json!({
-                    fields::SELLER_ID: "seller_2",
+                    db_fields::SELLER_ID: "seller_2",
                     "questionId": "q_2",
                     "questionText": "Is there warranty coverage included?",
                     "isAnswered": false,
@@ -746,7 +747,7 @@ mod tests {
                 collections::PRODUCT_QUESTIONS,
                 "q_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     "questionId": "q_1",
                     "questionText": "Does it fit standard mounts?",
                 }),
@@ -812,7 +813,7 @@ mod tests {
                 "prod_trunc",
                 json!({
                     fields::PRODUCT_ID: "prod_trunc",
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                 }),
             )
             .await
@@ -837,7 +838,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM product_questions WHERE questionId = '{}'",
+                "SELECT * FROM product_questions WHERE data->>'questionId' = '{}'",
                 resp.question_id
             ))
             .await
@@ -856,7 +857,7 @@ mod tests {
                 collections::PRODUCT_QUESTIONS,
                 "q_trunc",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     "questionId": "q_trunc",
                     "questionText": "Does it support long answers?",
                     "isAnswered": false,
@@ -900,7 +901,10 @@ mod tests {
         state
             .db
             .query_bind(
-                &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::PRODUCT_QUESTIONS),
+                &format!(
+                    "INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *",
+                    collections::PRODUCT_QUESTIONS
+                ),
                 json!({
                     "id": q_id_1.clone(),
                     "data": {
@@ -909,7 +913,7 @@ mod tests {
                         "answerText": "Yes, blue is in stock.",
                         "isAnswered": true,
                         "upvotes": 4,
-                        fields::CREATED_AT: "2026-03-10T10:00:00Z",
+                        db_fields::CREATED_AT: "2026-03-10T10:00:00Z",
                         "answeredAt": "2026-03-10T11:00:00Z"
                     }
                 }),
@@ -927,7 +931,7 @@ mod tests {
                     "answerText": null,
                     "isAnswered": false,
                     "upvotes": 1,
-                    fields::CREATED_AT: "2026-03-10T12:00:00Z",
+                    db_fields::CREATED_AT: "2026-03-10T12:00:00Z",
                     "answeredAt": null,
                 }),
             )
@@ -943,7 +947,7 @@ mod tests {
                     "questionText": "Other product question",
                     "isAnswered": true,
                     "upvotes": 0,
-                    fields::CREATED_AT: "2026-03-10T09:00:00Z",
+                    db_fields::CREATED_AT: "2026-03-10T09:00:00Z",
                 }),
             )
             .await

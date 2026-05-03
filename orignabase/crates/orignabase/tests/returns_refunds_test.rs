@@ -2,6 +2,7 @@
 //!
 //! Run with: `cargo test --test returns_refunds_test -- --ignored`
 
+use ob_database::fields;
 use reqwest::Client;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -24,7 +25,7 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -63,7 +64,7 @@ async fn test_create_return_for_delivered_order() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -80,7 +81,7 @@ async fn test_create_return_for_delivered_order() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -117,7 +118,7 @@ async fn test_cannot_return_pending_order() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -134,7 +135,7 @@ async fn test_cannot_return_pending_order() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -170,7 +171,7 @@ async fn test_return_request_rejection() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -186,7 +187,7 @@ async fn test_return_request_rejection() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -203,7 +204,7 @@ async fn test_return_request_rejection() {
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
 
-    let return_id = body["data"]["create"]["id"] // ignore-magic
+    let return_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -235,7 +236,7 @@ async fn test_partial_refund() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -251,7 +252,7 @@ async fn test_partial_refund() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();

@@ -91,6 +91,12 @@ def test_create_checkout_session_one_time_payload_uses_stripe_tax_and_klarna(
     assert payload["line_items[0][price_data][unit_amount]"] == "300000"
     assert "line_items[1][price_data][unit_amount]" not in payload
     assert payload["metadata[service_code]"] == "origna_launch"
+    assert payload["metadata[contract_provider]"] == "docuseal"
+    assert payload["metadata[contract_flow]"] == "post_payment_signature"
+    assert payload["metadata[contract_slugs]"] == (
+        "ventures-master-services-v1,origna-code-source-license-v1,"
+        "origna-launch-statement-of-work-v1"
+    )
     assert payload["customer_email"] == "buyer@example.com"
     assert payload["metadata[client_email]"] == "buyer@example.com"
     assert captured["headers"]["Idempotency-Key"].startswith("checkout:origna_launch:")
@@ -130,7 +136,15 @@ def test_create_checkout_session_subscription_payload_is_monthly(monkeypatch):
     assert payload["line_items[0][quantity]"] == "4"
     assert payload["subscription_data[metadata][service_code]"] == "origna_team"
     assert payload["subscription_data[metadata][developer_count]"] == "4"
+    assert payload["subscription_data[metadata][contract_provider]"] == "docuseal"
+    assert payload["subscription_data[metadata][contract_flow]"] == (
+        "post_payment_signature"
+    )
+    assert payload["subscription_data[metadata][contract_slugs]"] == (
+        "ventures-master-services-v1,origna-team-retainer-v1"
+    )
     assert payload["metadata[developer_count]"] == "4"
+    assert payload["metadata[contract_provider]"] == "docuseal"
     assert "submit_type" not in payload
     assert "customer_creation" not in payload
     assert "payment_method_types[1]" not in payload
@@ -238,6 +252,26 @@ def test_payment_session_rejects_invalid_service_code(client):
     )
 
     assert response.status_code == 422
+
+
+def test_meta_exposes_docuseal_contract_templates(client):
+    test_client, _ = client
+
+    response = test_client.get("/api/meta")
+
+    assert response.status_code == 200
+    contracts = response.json()["contracts"]
+    assert contracts["provider"] == "docuseal"
+    assert contracts["flow"] == "post_payment_signature"
+    launch_templates = contracts["templatesByService"]["origna_launch"]
+    assert [item["slug"] for item in launch_templates] == [
+        "ventures-master-services-v1",
+        "origna-code-source-license-v1",
+        "origna-launch-statement-of-work-v1",
+    ]
+    assert launch_templates[0]["signingUrl"].endswith(
+        "/d/ventures-master-services-v1"
+    )
 
 
 def test_payment_session_persists_payment_row(client, monkeypatch):

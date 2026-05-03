@@ -12,6 +12,7 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::shared::schema::{COUNTRY_CANADA, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
+use ob_database::fields as db_fields;
 
 const MAX_LABEL_LENGTH: usize = 100;
 const VALID_TYPES: &[&str] = &["warehouse", "personal"];
@@ -178,7 +179,7 @@ async fn clear_other_defaults(
     let docs = state.db.query_raw(&query).await?;
     for doc in docs {
         let id = doc
-            .get("id")
+            .get(db_fields::ID)
             .and_then(|v| v.as_str())
             .ok_or_else(|| ob_core::Error::Database("Warehouse record missing id".into()))?;
         let raw_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
@@ -248,13 +249,13 @@ async fn create_warehouse(
                 fields::TYPE: warehouse_type,
                 fields::ADDRESS: address,
                 fields::IS_DEFAULT: req.is_default,
-                fields::CREATED_AT: now,
+                db_fields::CREATED_AT: now,
             }),
         )
         .await?;
 
     let raw_id = created
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .ok_or_else(|| ob_core::Error::Database("Warehouse create returned no id".into()))?;
     let id = raw_id
@@ -315,7 +316,7 @@ async fn update_warehouse(
     }
 
     patch.insert(
-        fields::UPDATED_AT.to_string(),
+        db_fields::UPDATED_AT.to_string(),
         json!(Utc::now().to_rfc3339()),
     );
     state
@@ -378,7 +379,7 @@ async fn delete_warehouse(
             ob_core::escape_sql_string(&req.warehouse_id),
         );
         if let Some(other) = state.db.query_raw(&promote_query).await?.into_iter().next()
-            && let Some(id) = other.get("id").and_then(|v| v.as_str())
+            && let Some(id) = other.get(db_fields::ID).and_then(|v| v.as_str())
         {
             let raw_id = id.strip_prefix(&format!("{collection}:")).unwrap_or(id);
             state
@@ -416,7 +417,7 @@ async fn list_warehouses(
     let warehouses = rows
         .into_iter()
         .map(|mut row| {
-            if let Some(id) = row.get("id").and_then(|v| v.as_str()) {
+            if let Some(id) = row.get(db_fields::ID).and_then(|v| v.as_str()) {
                 let raw_id = id
                     .strip_prefix(&format!("{collection}:"))
                     .unwrap_or(id)
@@ -538,7 +539,7 @@ mod tests {
                     "label": "Old Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -561,7 +562,7 @@ mod tests {
         let rows = state
             .db
             .query_raw(&format!(
-                "SELECT * FROM {} WHERE parent_id = '{}'",
+                "SELECT * FROM {} WHERE data->>'parent_id' = '{}'",
                 collection,
                 ob_core::escape_sql_string(&warehouse_parent(&seller_id))
             ))
@@ -591,12 +592,12 @@ mod tests {
                     "type": "warehouse",
                     fields::ADDRESS: sanitize_address(&sample_address()).unwrap(),
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid = created["id"].as_str().unwrap();
+        let raw_wid = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid)
@@ -633,7 +634,7 @@ mod tests {
                     "label": "Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -647,17 +648,17 @@ mod tests {
                     "label": "Backup",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-02T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-02T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_first = first["id"].as_str().unwrap();
+        let raw_first = first[db_fields::ID].as_str().unwrap();
         let first_id = raw_first
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_first)
             .to_string();
-        let raw_second = second["id"].as_str().unwrap();
+        let raw_second = second[db_fields::ID].as_str().unwrap();
         let second_id = raw_second
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_second)
@@ -697,12 +698,12 @@ mod tests {
                     "label": "Primary",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid = created["id"].as_str().unwrap();
+        let raw_wid = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid)
@@ -713,7 +714,7 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::SELLER_ID: seller_id,
+                    db_fields::SELLER_ID: seller_id,
                     "warehouseIds": [warehouse_id.clone()],
                 }),
             )
@@ -826,12 +827,12 @@ mod tests {
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid_ref = created["id"].as_str().unwrap();
+        let raw_wid_ref = created[db_fields::ID].as_str().unwrap();
         let wid = raw_wid_ref
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid_ref);
@@ -856,12 +857,12 @@ mod tests {
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid_ref = created["id"].as_str().unwrap();
+        let raw_wid_ref = created[db_fields::ID].as_str().unwrap();
         let wid = raw_wid_ref
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid_ref);
@@ -909,12 +910,12 @@ mod tests {
                     "type": "warehouse",
                     fields::ADDRESS: sanitize_address(&sample_address()).unwrap(),
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid = created["id"].as_str().unwrap();
+        let raw_wid = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid)
@@ -954,7 +955,7 @@ mod tests {
                     "label": "First",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -968,12 +969,12 @@ mod tests {
                     "label": "Second",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-02T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-02T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_sid = second["id"].as_str().unwrap();
+        let raw_sid = second[db_fields::ID].as_str().unwrap();
         let second_id = raw_sid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_sid)
@@ -997,7 +998,7 @@ mod tests {
         assert!(resp.success);
 
         // Check only second is default now
-        let raw_fid = first["id"].as_str().unwrap();
+        let raw_fid = first[db_fields::ID].as_str().unwrap();
         let first_id = raw_fid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_fid);
@@ -1023,12 +1024,12 @@ mod tests {
                     "label": "Old",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid = created["id"].as_str().unwrap();
+        let raw_wid = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid)
@@ -1068,12 +1069,12 @@ mod tests {
                     "label": "Only Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_wid = created["id"].as_str().unwrap();
+        let raw_wid = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_wid
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_wid)
@@ -1109,7 +1110,7 @@ mod tests {
                     "label": "Warehouse A",
                     "type": "warehouse",
                     fields::IS_DEFAULT: true,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -1123,7 +1124,7 @@ mod tests {
                     "label": "Warehouse B",
                     "type": "personal",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-02T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-02T00:00:00Z",
                 }),
             )
             .await
@@ -1182,7 +1183,7 @@ mod tests {
                     "label": "Test",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
@@ -1234,12 +1235,12 @@ mod tests {
                     "label": "Not Default",
                     "type": "warehouse",
                     fields::IS_DEFAULT: false,
-                    fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                    db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                 }),
             )
             .await
             .unwrap();
-        let raw_id = created["id"].as_str().unwrap();
+        let raw_id = created[db_fields::ID].as_str().unwrap();
         let warehouse_id = raw_id
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_id)

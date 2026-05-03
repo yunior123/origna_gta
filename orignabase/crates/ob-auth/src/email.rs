@@ -4,6 +4,7 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use ob_core::{Error, Result};
+use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -539,7 +540,7 @@ impl EmailService {
             && let Ok(results) = db.list_documents("_email_templates", None, None).await
             && let Some(doc) = results
                 .into_iter()
-                .find(|row| row.get("name").and_then(|value| value.as_str()) == Some(name))
+                .find(|row| row.get(fields::NAME).and_then(|value| value.as_str()) == Some(name))
             && let Ok(template) = serde_json::from_value::<EmailTemplate>(doc)
         {
             return template;
@@ -1040,7 +1041,7 @@ mod tests {
     fn test_email_template_serialization() {
         let template = default_verify_email();
         let json = serde_json::to_value(&template).unwrap();
-        assert_eq!(json["name"], TEMPLATE_VERIFY_EMAIL);
+        assert_eq!(json[fields::NAME], TEMPLATE_VERIFY_EMAIL);
         assert!(json["subject"].as_str().unwrap().contains("{{ .AppName }}"));
 
         let deserialized: EmailTemplate = serde_json::from_value(json).unwrap();

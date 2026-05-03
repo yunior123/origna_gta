@@ -17,6 +17,7 @@ use crate::shared::schema::{
     business_rules, collections, delivery_status, fields, notification_types, return_request_status,
 };
 use crate::shared::validation::{sanitize_html, validate_uid};
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -156,7 +157,7 @@ async fn admin_user_ids(state: &HandlersState) -> Vec<String> {
     results
         .iter()
         .filter_map(|row| {
-            row.get("id")
+            row.get(db_fields::ID)
                 .and_then(|v| v.as_str())
                 .map(|id| id.split(':').next_back().unwrap_or(id).to_string())
         })
@@ -238,7 +239,7 @@ async fn notify_admins_of_return_escalation(
                 collections::NOTIFICATIONS,
                 &notification_id,
                 json!({
-                    fields::USER_ID: at.admin_id,
+                    db_fields::USER_ID: at.admin_id,
                     fields::NOTIFICATION_TYPE: notification_types::RETURN_ESCALATED_ADMIN,
                     fields::NOTIFICATION_TITLE: notif_title,
                     fields::NOTIFICATION_BODY: notif_body,
@@ -248,8 +249,8 @@ async fn notify_admins_of_return_escalation(
                         fields::RETURN_STATUS: "escalated",
                     },
                     fields::READ: false,
-                    fields::CREATED_AT: &now,
-                    fields::UPDATED_AT: &now,
+                    db_fields::CREATED_AT: &now,
+                    db_fields::UPDATED_AT: &now,
                 }),
             )
             .await
@@ -271,7 +272,7 @@ async fn notify_admins_of_return_escalation(
                     collections::PENDING_NOTIFICATIONS,
                     &pending_id,
                     json!({
-                        fields::USER_ID: at.admin_id,
+                        db_fields::USER_ID: at.admin_id,
                         fields::TOKEN: token,
                         fields::PENDING_NOTIFICATION_TYPE: notification_types::RETURN_ESCALATED_ADMIN,
                         fields::NOTIFICATION_TITLE: title,
@@ -494,16 +495,16 @@ async fn create_return_request(
     let return_doc = json!({
         fields::RETURN_ID: return_id,
         fields::ORDER_ID: req.order_id,
-        fields::BUYER_ID: user_id,
-        fields::SELLER_ID: str_field(item, fields::SELLER_ID),
+        db_fields::BUYER_ID: user_id,
+        db_fields::SELLER_ID: str_field(item, db_fields::SELLER_ID),
         fields::PRODUCT_ID: req.product_id,
-        fields::TITLE: str_field(item, fields::NAME),
+        fields::TITLE: str_field(item, db_fields::NAME),
         fields::QUANTITY: item.get(fields::QUANTITY).and_then(|v| v.as_i64()).unwrap_or(1),
         fields::FULFILLMENT_WAREHOUSE_ID: str_field(item, fields::FULFILLMENT_WAREHOUSE_ID),
         fields::RETURN_STATUS: return_request_status::REQUESTED,
         fields::RETURN_REASON: return_reason,
         fields::REQUESTED_AT: now,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -557,7 +558,7 @@ async fn approve_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let seller_id = str_field(&return_doc, fields::SELLER_ID);
+    let seller_id = str_field(&return_doc, db_fields::SELLER_ID);
     let current_status = str_field(&return_doc, fields::RETURN_STATUS);
     let product_id = str_field(&return_doc, fields::PRODUCT_ID);
 
@@ -581,7 +582,7 @@ async fn approve_return_request(
 
             let mut patch = json!({
                 fields::RETURN_STATUS: "approved",
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             });
             if let Some(ref tn) = req.return_tracking_number {
                 patch["returnTrackingNumber"] = json!(tn);
@@ -608,7 +609,7 @@ async fn approve_return_request(
 
             let mut patch = json!({
                 fields::RETURN_STATUS: "label_issued",
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             });
             if let Some(ref tn) = req.return_tracking_number {
                 patch["returnTrackingNumber"] = json!(tn);
@@ -674,7 +675,7 @@ async fn approve_return_request(
             }
 
             let mut updated_items = items.clone();
-            updated_items[idx]["status"] = json!("refunded");
+            updated_items[idx][fields::STATUS] = json!("refunded");
             updated_items[idx]["refundedAt"] = json!(now);
             updated_items[idx]["refundReason"] = json!("Return approved");
             updated_items[idx]["refundAmountCents"] = json!(refund_amount_cents);
@@ -701,7 +702,7 @@ async fn approve_return_request(
                             product_id,
                             json!({
                                 fields::STOCK_QUANTITY: cur_stock + qty,
-                                fields::UPDATED_AT: now
+                                db_fields::UPDATED_AT: now
                             }),
                             fields::STOCK_QUANTITY,
                             &json!(cur_stock),
@@ -733,7 +734,7 @@ async fn approve_return_request(
                         fields::RETURN_STATUS: "refunded",
                         "resolvedAt": now,
                         "returnRefundAmountCents": refund_amount_cents,
-                        fields::UPDATED_AT: now,
+                        db_fields::UPDATED_AT: now,
                     }),
                 )
                 .await
@@ -750,7 +751,7 @@ async fn approve_return_request(
                     order_id,
                     json!({
                         fields::ITEMS: updated_items,
-                        fields::UPDATED_AT: now,
+                        db_fields::UPDATED_AT: now,
                     }),
                 )
                 .await
@@ -764,11 +765,11 @@ async fn approve_return_request(
                     collections::ORDER_EVENTS,
                     json!({
                         fields::ORDER_ID: order_id,
-                        fields::USER_ID: user_id,
+                        db_fields::USER_ID: user_id,
                         fields::EVENT_TYPE: "return_received_and_refunded",
                         fields::MESSAGE: format!("Return {} received and item {} refunded", req.return_id, product_id),
                         "metadata": { fields::PRODUCT_ID: product_id, fields::RETURN_ID: req.return_id, fields::REFUND_AMOUNT_CENTS: refund_amount_cents },
-                        fields::CREATED_AT: now,
+                        db_fields::CREATED_AT: now,
                     }),
                 )
                 .await
@@ -831,7 +832,7 @@ async fn reject_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let seller_id = str_field(&return_doc, fields::SELLER_ID);
+    let seller_id = str_field(&return_doc, db_fields::SELLER_ID);
     let current_status = str_field(&return_doc, fields::RETURN_STATUS);
 
     if !is_admin && user_id != seller_id {
@@ -857,7 +858,7 @@ async fn reject_return_request(
     let mut patch = json!({
         fields::RETURN_STATUS: "rejected",
         "resolvedAt": now,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
     if !rejection_reason.is_empty() {
         patch["rejectionReason"] = json!(rejection_reason);
@@ -915,7 +916,7 @@ async fn escalate_return_request(
         .await
         .map_err(|_| ob_core::Error::NotFound("Return request not found".into()))?;
 
-    let buyer_id = str_field(&return_doc, fields::BUYER_ID);
+    let buyer_id = str_field(&return_doc, db_fields::BUYER_ID);
     if buyer_id != user_id {
         return Err(ob_core::Error::Forbidden(
             "Only the buyer can escalate this return".into(),
@@ -939,7 +940,7 @@ async fn escalate_return_request(
                 fields::RETURN_STATUS: "escalated",
                 "escalatedAt": now,
                 "escalationReason": reason,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1069,7 +1070,7 @@ mod tests {
     #[test]
     fn test_helpers_extract_fields_and_items() {
         let order = json!({
-            fields::USER_ID: "u1",
+            db_fields::USER_ID: "u1",
             "flag": true,
             fields::ITEMS: [{ fields::PRODUCT_ID: "p1" }],
         });
@@ -1426,10 +1427,10 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                     }],
@@ -1444,7 +1445,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: &order_id,
                     fields::PRODUCT_ID: &product_id,
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -1478,7 +1479,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::IS_DIGITAL: true,
@@ -1520,10 +1521,10 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                         fields::TITLE: "Headphones",
@@ -1569,7 +1570,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -1599,7 +1600,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::BUYER_ID: "buyer_1",
+                    db_fields::BUYER_ID: "buyer_1",
                     fields::ORDER_ID: "ord_1",
                     fields::RETURN_STATUS: "requested",
                 }),
@@ -1641,7 +1642,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::SELLER_ID: &seller_id,
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -1748,12 +1749,12 @@ mod tests {
                 &order_id,
                 json!({
                     fields::PAYMENT_INTENT_ID: "pi_123",
-                    fields::SUBTOTAL_CENTS: 5000,
+                    db_fields::SUBTOTAL_CENTS: 5000,
                     fields::SHIPPING_COST_CENTS: 500,
                     fields::TAX_AMOUNT_CENTS: 650,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         "price": 50.0,
                         fields::QUANTITY: 1,
                         fields::STATUS: "delivered",
@@ -1768,7 +1769,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::SELLER_ID: &seller_id,
                     fields::ORDER_ID: &order_id,
                     fields::PRODUCT_ID: &product_id,
                     fields::QUANTITY: 1,
@@ -1834,7 +1835,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -1919,7 +1920,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::ORDER_ID: &order_id,
                     fields::RETURN_STATUS: "requested",
                 }),
@@ -1980,7 +1981,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    fields::USER_ID: "buyer_1",
+                    db_fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::STATUS: "delivered",
@@ -2014,7 +2015,7 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    fields::USER_ID: "buyer_1",
+                    db_fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
                         fields::STATUS: "delivered",
@@ -2051,7 +2052,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         fields::STATUS: "shipped",
@@ -2085,10 +2086,10 @@ mod tests {
                 collections::ORDERS,
                 "ord_1",
                 json!({
-                    fields::USER_ID: "buyer_1",
+                    db_fields::USER_ID: "buyer_1",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "prod_1",
-                        fields::SELLER_ID: "seller_1",
+                        db_fields::SELLER_ID: "seller_1",
                         fields::STATUS: "delivered",
                         fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                     }],
@@ -2103,7 +2104,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: "ord_1",
                     fields::PRODUCT_ID: "prod_1",
-                    fields::BUYER_ID: "buyer_1",
+                    db_fields::BUYER_ID: "buyer_1",
                     fields::RETURN_STATUS: "approved",
                 }),
             )
@@ -2147,7 +2148,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -2190,7 +2191,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::SELLER_ID: &seller_id,
                     fields::RETURN_STATUS: "received",
                 }),
             )
@@ -2231,7 +2232,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -2272,7 +2273,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -2313,7 +2314,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::RETURN_STATUS: "requested",
                 }),
             )
@@ -2372,12 +2373,12 @@ mod tests {
                 &order_id,
                 json!({
                     fields::PAYMENT_INTENT_ID: "",
-                    fields::SUBTOTAL_CENTS: 5000,
+                    db_fields::SUBTOTAL_CENTS: 5000,
                     fields::SHIPPING_COST_CENTS: 500,
                     fields::TAX_AMOUNT_CENTS: 650,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         "price": 50.0,
                         fields::QUANTITY: 2,
                         fields::STATUS: "delivered",
@@ -2392,7 +2393,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::SELLER_ID: &seller_id,
                     fields::ORDER_ID: &order_id,
                     fields::PRODUCT_ID: &product_id,
                     fields::QUANTITY: 2,
@@ -2475,7 +2476,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::SELLER_ID: &seller_id,
                     fields::RETURN_STATUS: "refunded",
                 }),
             )
@@ -2509,7 +2510,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_1",
                 json!({
-                    fields::BUYER_ID: "buyer_1",
+                    db_fields::BUYER_ID: "buyer_1",
                     fields::ORDER_ID: "ord_1",
                     fields::RETURN_STATUS: "requested",
                 }),
@@ -2542,7 +2543,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::ORDER_ID: uid(),
                     fields::RETURN_STATUS: "refunded",
                 }),
@@ -2604,7 +2605,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_e1",
                 json!({
-                    fields::BUYER_ID: "buyer_1",
+                    db_fields::BUYER_ID: "buyer_1",
                     fields::ORDER_ID: "ord_1",
                     fields::RETURN_STATUS: "approved",
                 }),
@@ -2661,10 +2662,10 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                         fields::TITLE: "Widget",
@@ -2682,7 +2683,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: &order_id,
                     fields::PRODUCT_ID: &product_id,
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::RETURN_STATUS: "rejected",
                 }),
             )
@@ -2720,10 +2721,10 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered",
                         fields::DELIVERED_AT: Utc::now().to_rfc3339(),
                         fields::TITLE: "Widget",
@@ -2741,7 +2742,7 @@ mod tests {
                 json!({
                     fields::ORDER_ID: &order_id,
                     fields::PRODUCT_ID: &product_id,
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::RETURN_STATUS: "refunded",
                 }),
             )
@@ -2805,7 +2806,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::ORDER_ID: &order_id_fcm,
                     fields::RETURN_STATUS: "requested",
                 }),
@@ -2917,7 +2918,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 &ret_id,
                 json!({
-                    fields::BUYER_ID: &buyer_id,
+                    db_fields::BUYER_ID: &buyer_id,
                     fields::ORDER_ID: &order_id_multi,
                     fields::RETURN_STATUS: "requested",
                 }),
@@ -3009,20 +3010,20 @@ mod tests {
                 "ord_mr",
                 json!({
                     fields::PAYMENT_INTENT_ID: "pi_mr",
-                    fields::SUBTOTAL_CENTS: 10000,
+                    db_fields::SUBTOTAL_CENTS: 10000,
                     fields::SHIPPING_COST_CENTS: 1000,
                     fields::TAX_AMOUNT_CENTS: 1300,
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "prod_mr",
-                            fields::SELLER_ID: "seller_mr",
+                            db_fields::SELLER_ID: "seller_mr",
                             "price": 100.0,
                             fields::QUANTITY: 3,
                             fields::STATUS: "delivered",
                         },
                         {
                             fields::PRODUCT_ID: "prod_other",
-                            fields::SELLER_ID: "seller_mr",
+                            db_fields::SELLER_ID: "seller_mr",
                             "price": 25.0,
                             fields::QUANTITY: 1,
                             fields::STATUS: "delivered",
@@ -3038,7 +3039,7 @@ mod tests {
                 collections::RETURN_REQUESTS,
                 "ret_mr",
                 json!({
-                    fields::SELLER_ID: "seller_mr",
+                    db_fields::SELLER_ID: "seller_mr",
                     fields::ORDER_ID: "ord_mr",
                     fields::PRODUCT_ID: "prod_mr",
                     fields::QUANTITY: 3,

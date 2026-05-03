@@ -16,6 +16,7 @@ use crate::shared::nutrition::{
 };
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
+use ob_database::fields as db_fields;
 
 const DEFAULT_PAGE_SIZE: u32 = 20;
 const MAX_PAGE_SIZE: u32 = 100;
@@ -486,7 +487,7 @@ async fn bulk_upload_products(
         }
 
         // Required: priceCents and stockQuantity
-        let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+        let price_cents = obj.get(db_fields::PRICE_CENTS).and_then(|v| v.as_i64());
         let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
 
         if let Err(e) = validate_price_and_stock(price_cents, stock_quantity) {
@@ -553,13 +554,13 @@ async fn bulk_upload_products(
 
     for (idx, mut product) in created_products {
         // Add seller ID and timestamps
-        product.insert(fields::SELLER_ID.to_string(), serde_json::json!(user_id));
+        product.insert(db_fields::SELLER_ID.to_string(), serde_json::json!(user_id));
         product.insert(
-            fields::CREATED_AT.to_string(),
+            db_fields::CREATED_AT.to_string(),
             serde_json::json!(now.clone()),
         );
         product.insert(
-            fields::UPDATED_AT.to_string(),
+            db_fields::UPDATED_AT.to_string(),
             serde_json::json!(now.clone()),
         );
 
@@ -575,11 +576,15 @@ async fn bulk_upload_products(
             .await
         {
             Ok(created) => {
-                if let Some(id) = created.get("id").and_then(|v| v.as_str()).map(|s| {
-                    s.strip_prefix(&format!("{}:", collections::PRODUCTS))
-                        .unwrap_or(s)
-                        .to_string()
-                }) {
+                if let Some(id) = created
+                    .get(db_fields::ID)
+                    .and_then(|v| v.as_str())
+                    .map(|s| {
+                        s.strip_prefix(&format!("{}:", collections::PRODUCTS))
+                            .unwrap_or(s)
+                            .to_string()
+                    })
+                {
                     product_ids.push(id);
                 }
             }
@@ -642,7 +647,7 @@ async fn upload_images(
     }
 
     let seller_id = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let is_admin = auth.has_role("admin");
@@ -656,7 +661,7 @@ async fn upload_images(
     let now = chrono::Utc::now().to_rfc3339();
     let update = serde_json::json!({
         fields::IMAGE_URLS: req.image_urls,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -799,7 +804,7 @@ async fn create_product_atomic(
         .ok_or_else(|| ob_core::Error::Validation("productData must be an object".into()))?;
 
     // Validate price and stock
-    let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+    let price_cents = obj.get(db_fields::PRICE_CENTS).and_then(|v| v.as_i64());
     let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
     validate_price_and_stock(price_cents, stock_quantity)?;
 
@@ -820,16 +825,16 @@ async fn create_product_atomic(
     }
 
     let now = chrono::Utc::now().to_rfc3339();
-    obj.insert(fields::SELLER_ID.to_string(), serde_json::json!(user_id));
+    obj.insert(db_fields::SELLER_ID.to_string(), serde_json::json!(user_id));
     obj.insert(
         fields::IMAGE_URLS.to_string(),
         serde_json::json!(req.test_image_urls),
     );
     obj.insert(
-        fields::CREATED_AT.to_string(),
+        db_fields::CREATED_AT.to_string(),
         serde_json::json!(now.clone()),
     );
-    obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
+    obj.insert(db_fields::UPDATED_AT.to_string(), serde_json::json!(now));
 
     let created = state
         .db
@@ -838,7 +843,7 @@ async fn create_product_atomic(
         .map_err(|e| ob_core::Error::Database(format!("Failed to create product: {e}")))?;
 
     let product_id = created
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(|s| {
             s.strip_prefix(&format!("{}:", collections::PRODUCTS))
@@ -876,7 +881,7 @@ async fn delete_product(
 
     // Permission check: seller or admin (using JWT-authenticated identity)
     let seller_id = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -894,8 +899,8 @@ async fn delete_product(
     let pending_query = format!(
         "SELECT * FROM {} WHERE data->>'{}' = $1 AND data->>'{}' IN ('pending', 'processing', 'shipped') LIMIT 5",
         collections::ORDERS,
-        fields::SELLER_ID,
-        fields::STATUS,
+        db_fields::SELLER_ID,
+        db_fields::STATUS,
     );
 
     let pending_orders: Vec<Value> = state
@@ -920,7 +925,7 @@ async fn delete_product(
     // Soft delete: set lifecycle_status = archived
     let now = chrono::Utc::now().to_rfc3339();
     let update = serde_json::json!({
-        fields::LIFECYCLE_STATUS: "archived",
+        db_fields::LIFECYCLE_STATUS: "archived",
         fields::DELETED_AT: now,
         fields::DELETED_BY: user_id,
     });
@@ -957,10 +962,10 @@ async fn list_products(
     let limit = req.limit.min(MAX_PAGE_SIZE);
 
     // Validate order_by
-    let order_by = req.order_by.as_deref().unwrap_or(fields::CREATED_AT);
+    let order_by = req.order_by.as_deref().unwrap_or(db_fields::CREATED_AT);
     let valid_order_fields = [
-        fields::CREATED_AT,
-        fields::PRICE_CENTS,
+        db_fields::CREATED_AT,
+        db_fields::PRICE_CENTS,
         fields::AVG_RATING,
         fields::TITLE,
     ];
@@ -979,7 +984,7 @@ async fn list_products(
     // order_by and order_direction are validated against whitelists above
     let mut conditions = vec![format!(
         "data->>'{}' = '{}'",
-        fields::LIFECYCLE_STATUS,
+        db_fields::LIFECYCLE_STATUS,
         "active"
     )];
 
@@ -1002,7 +1007,7 @@ async fn list_products(
     if let Some(ref seller_id) = req.seller_id {
         conditions.push(format!(
             "data->>'{}' = '{}'",
-            fields::SELLER_ID,
+            db_fields::SELLER_ID,
             ob_core::escape_sql_string(seller_id)
         ));
     }
@@ -1015,7 +1020,7 @@ async fn list_products(
         };
         let escaped_id = ob_core::escape_sql_string(start_after);
         let order_field_expr = match order_by {
-            fields::PRICE_CENTS | fields::AVG_RATING => {
+            db_fields::PRICE_CENTS | fields::AVG_RATING => {
                 format!("NULLIF(data->>'{}', '')::numeric", order_by)
             }
             _ => format!("data->>'{}'", order_by),
@@ -1032,7 +1037,7 @@ async fn list_products(
             .unwrap_or_default();
         let cursor_value = cursor_rows.first().and_then(|row| row.get("cursor_value"));
 
-        if matches!(order_by, fields::PRICE_CENTS | fields::AVG_RATING) {
+        if matches!(order_by, db_fields::PRICE_CENTS | fields::AVG_RATING) {
             if let Some(cursor_num) = cursor_value.and_then(|v| v.as_f64()) {
                 let order_cmp = if req.order_direction == "asc" {
                     ">"
@@ -1093,7 +1098,7 @@ async fn list_products(
     // Fetch limit+1 to detect hasMore
     let fetch_limit = limit + 1;
     let order_expr = match order_by {
-        fields::PRICE_CENTS | fields::AVG_RATING => {
+        db_fields::PRICE_CENTS | fields::AVG_RATING => {
             format!(
                 "NULLIF(data->>'{}', '')::numeric {} NULLS LAST",
                 order_by, order_dir
@@ -1122,7 +1127,7 @@ async fn list_products(
     let next_cursor = if has_more {
         products
             .last()
-            .and_then(|p| p.get("id"))
+            .and_then(|p| p.get(db_fields::ID))
             .and_then(|v| v.as_str())
             .map(String::from)
     } else {
@@ -1150,14 +1155,14 @@ async fn seller_list(
     // Build query — seller_id is escaped, lifecycle_status is a constant
     let mut conditions = vec![format!(
         "data->>'{}' = '{}'",
-        fields::SELLER_ID,
+        db_fields::SELLER_ID,
         ob_core::escape_sql_string(&req.seller_id)
     )];
 
     if !req.include_inactive {
         conditions.push(format!(
             "data->>'{}' = '{}'",
-            fields::LIFECYCLE_STATUS,
+            db_fields::LIFECYCLE_STATUS,
             "active"
         ));
     }
@@ -1169,7 +1174,7 @@ async fn seller_list(
         "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCTS,
         where_clause,
-        fields::CREATED_AT,
+        db_fields::CREATED_AT,
         fetch_limit,
     );
 
@@ -1184,7 +1189,7 @@ async fn seller_list(
     let next_cursor = if has_more {
         products
             .last()
-            .and_then(|p| p.get("id"))
+            .and_then(|p| p.get(db_fields::ID))
             .and_then(|v| v.as_str())
             .map(String::from)
     } else {
@@ -1244,7 +1249,7 @@ async fn bulk_update_products(
             )));
         }
         let seller_id = product
-            .get(fields::SELLER_ID)
+            .get(db_fields::SELLER_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if seller_id != actor_id && !is_admin {
@@ -1260,17 +1265,20 @@ async fn bulk_update_products(
         .as_object_mut()
         .ok_or_else(|| ob_core::Error::Validation("update must be an object".into()))?;
 
-    if let Some(new_status) = obj.get(fields::LIFECYCLE_STATUS).and_then(|v| v.as_str()) {
+    if let Some(new_status) = obj
+        .get(db_fields::LIFECYCLE_STATUS)
+        .and_then(|v| v.as_str())
+    {
         for product in products_map.values() {
             let current_status = product
-                .get(fields::LIFECYCLE_STATUS)
+                .get(db_fields::LIFECYCLE_STATUS)
                 .and_then(|v| v.as_str())
                 .unwrap_or("draft");
             validate_lifecycle_transition(current_status, new_status)?;
         }
     }
 
-    let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+    let price_cents = obj.get(db_fields::PRICE_CENTS).and_then(|v| v.as_i64());
     let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
     validate_price_and_stock(price_cents, stock_quantity)?;
 
@@ -1296,7 +1304,7 @@ async fn bulk_update_products(
 
     // Apply updates (validated above — all ownership checks passed)
     let now = chrono::Utc::now().to_rfc3339();
-    obj.insert(fields::UPDATED_AT.to_string(), serde_json::json!(now));
+    obj.insert(db_fields::UPDATED_AT.to_string(), serde_json::json!(now));
 
     let mut updated = 0u32;
     for pid in &req.product_ids {
@@ -1346,7 +1354,7 @@ async fn update_product(
         .get_document(collections::PRODUCTS, &req.product_id)
         .await?;
     let seller_id = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let is_admin = auth.roles.iter().any(|r| r == "admin");
@@ -1361,16 +1369,19 @@ async fn update_product(
         .ok_or_else(|| ob_core::Error::Validation("productData must be an object".into()))?;
 
     // Validate lifecycle state transition if status field is being updated
-    if let Some(new_status) = obj.get(fields::LIFECYCLE_STATUS).and_then(|v| v.as_str()) {
+    if let Some(new_status) = obj
+        .get(db_fields::LIFECYCLE_STATUS)
+        .and_then(|v| v.as_str())
+    {
         let current_status = product
-            .get(fields::LIFECYCLE_STATUS)
+            .get(db_fields::LIFECYCLE_STATUS)
             .and_then(|v| v.as_str())
             .unwrap_or("draft");
         validate_lifecycle_transition(current_status, new_status)?;
     }
 
     // Validate price and stock constraints
-    let price_cents = obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64());
+    let price_cents = obj.get(db_fields::PRICE_CENTS).and_then(|v| v.as_i64());
     let stock_quantity = obj.get(fields::STOCK_QUANTITY).and_then(|v| v.as_i64());
     validate_price_and_stock(price_cents, stock_quantity)?;
 
@@ -1400,7 +1411,7 @@ async fn update_product(
     }
 
     obj.insert(
-        fields::UPDATED_AT.to_string(),
+        db_fields::UPDATED_AT.to_string(),
         serde_json::json!(chrono::Utc::now().to_rfc3339()),
     );
 
@@ -1439,9 +1450,9 @@ async fn toggle_favorite(
         .unwrap_or(0);
 
     let query = format!(
-        "SELECT * FROM {} WHERE {} = '{}' AND {} = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = '{}' AND data->>'{}' = '{}' LIMIT 1",
         collections::FAVORITES,
-        fields::USER_ID,
+        db_fields::USER_ID,
         ob_core::escape_sql_string(&user_id),
         fields::PRODUCT_ID,
         ob_core::escape_sql_string(&req.product_id),
@@ -1450,7 +1461,7 @@ async fn toggle_favorite(
     let now = chrono::Utc::now().to_rfc3339();
 
     if let Some(favorite) = existing.first() {
-        if let Some(raw_id) = favorite.get("id").and_then(|v| v.as_str()) {
+        if let Some(raw_id) = favorite.get(db_fields::ID).and_then(|v| v.as_str()) {
             let fav_id = raw_id
                 .strip_prefix(&format!("{}:", collections::FAVORITES))
                 .unwrap_or(raw_id);
@@ -1466,7 +1477,7 @@ async fn toggle_favorite(
                 &req.product_id,
                 serde_json::json!({
                     "favoriteCount": (current_favorite_count - 1).max(0),
-                    fields::UPDATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }),
             )
             .await;
@@ -1482,9 +1493,9 @@ async fn toggle_favorite(
         .create_document(
             collections::FAVORITES,
             serde_json::json!({
-                fields::USER_ID: user_id,
+                db_fields::USER_ID: user_id,
                 fields::PRODUCT_ID: req.product_id,
-                fields::CREATED_AT: now,
+                db_fields::CREATED_AT: now,
             }),
         )
         .await?;
@@ -1496,7 +1507,7 @@ async fn toggle_favorite(
             &req.product_id,
             serde_json::json!({
                 "favoriteCount": current_favorite_count + 1,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await;
@@ -1659,8 +1670,8 @@ mod tests {
     #[test]
     fn test_list_products_valid_order_by_fields() {
         let valid_fields = [
-            fields::CREATED_AT,
-            fields::PRICE_CENTS,
+            db_fields::CREATED_AT,
+            db_fields::PRICE_CENTS,
             fields::AVG_RATING,
             fields::TITLE,
         ];
@@ -1799,7 +1810,7 @@ mod tests {
                 user_id: "seller_1".into(),
                 product_data: serde_json::json!({
                     fields::TITLE: "Fresh Apples",
-                    fields::PRICE_CENTS: 1299,
+                    db_fields::PRICE_CENTS: 1299,
                 }),
                 test_image_urls: vec!["https://cdn.orignagta.ca/images/test.jpg".into()],
             }),
@@ -1814,7 +1825,7 @@ mod tests {
             .get_document(collections::PRODUCTS, product_id)
             .await
             .unwrap();
-        assert_eq!(created[fields::SELLER_ID], "seller_1");
+        assert_eq!(created[db_fields::SELLER_ID], "seller_1");
     }
 
     #[tokio::test]
@@ -1881,7 +1892,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -1916,7 +1927,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -1935,8 +1946,8 @@ mod tests {
                 collections::ORDERS,
                 "order_1",
                 serde_json::json!({
-                    fields::SELLER_ID: "seller_1",
-                    fields::STATUS: "processing",
+                    db_fields::SELLER_ID: "seller_1",
+                    db_fields::STATUS: "processing",
                     fields::ITEMS: [{ fields::PRODUCT_ID: "prod_1" }],
                 }),
             )
@@ -1971,7 +1982,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 &prod,
-                serde_json::json!({ fields::SELLER_ID: seller }),
+                serde_json::json!({ db_fields::SELLER_ID: seller }),
             )
             .await
             .unwrap();
@@ -2001,7 +2012,7 @@ mod tests {
             .get_document(collections::PRODUCTS, &prod)
             .await
             .unwrap();
-        assert_eq!(product[fields::LIFECYCLE_STATUS], "archived");
+        assert_eq!(product[db_fields::LIFECYCLE_STATUS], "archived");
         assert_eq!(product[fields::DELETED_BY], seller.as_str());
         assert!(product.get(fields::DELETED_AT).is_some());
     }
@@ -2020,8 +2031,8 @@ mod tests {
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::LIFECYCLE_STATUS: status,
-                        fields::CREATED_AT: created_at,
+                        db_fields::LIFECYCLE_STATUS: status,
+                        db_fields::CREATED_AT: created_at,
                     }),
                 )
                 .await
@@ -2046,7 +2057,7 @@ mod tests {
 
         assert_eq!(resp.total_fetched, 1);
         assert!(resp.has_more);
-        assert_eq!(resp.products[0][fields::LIFECYCLE_STATUS], "active");
+        assert_eq!(resp.products[0][db_fields::LIFECYCLE_STATUS], "active");
     }
 
     #[tokio::test]
@@ -2099,9 +2110,9 @@ mod tests {
                     id,
                     serde_json::json!({
                         fields::CATEGORY: category,
-                        fields::SELLER_ID: seller_id,
-                        fields::LIFECYCLE_STATUS: status,
-                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                        db_fields::SELLER_ID: seller_id,
+                        db_fields::LIFECYCLE_STATUS: status,
+                        db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
                 )
                 .await
@@ -2116,7 +2127,7 @@ mod tests {
                 category: Some(cat.clone()),
                 subcategory: None,
                 seller_id: Some(s1.clone()),
-                order_by: Some(fields::CREATED_AT.into()),
+                order_by: Some(db_fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
                 start_after: None,
             }),
@@ -2125,7 +2136,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], id1.as_str());
+        assert_eq!(resp.products[0][db_fields::ID], id1.as_str());
     }
 
     #[tokio::test]
@@ -2144,8 +2155,8 @@ mod tests {
                     serde_json::json!({
                         fields::CATEGORY: "1",
                         ob_core::constants::fields::SUBCATEGORY: subcategory,
-                        fields::LIFECYCLE_STATUS: "active",
-                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                        db_fields::LIFECYCLE_STATUS: "active",
+                        db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
                 )
                 .await
@@ -2160,7 +2171,7 @@ mod tests {
                 category: Some("1".into()),
                 subcategory: Some("Audio".into()),
                 seller_id: None,
-                order_by: Some(fields::CREATED_AT.into()),
+                order_by: Some(db_fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
                 start_after: None,
             }),
@@ -2169,7 +2180,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], id1.as_str());
+        assert_eq!(resp.products[0][db_fields::ID], id1.as_str());
         assert_eq!(
             resp.products[0][ob_core::constants::fields::SUBCATEGORY],
             "Audio"
@@ -2196,9 +2207,9 @@ mod tests {
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::LIFECYCLE_STATUS: "active",
-                        fields::SELLER_ID: seller_id,
-                        fields::CREATED_AT: created_at,
+                        db_fields::LIFECYCLE_STATUS: "active",
+                        db_fields::SELLER_ID: seller_id,
+                        db_fields::CREATED_AT: created_at,
                     }),
                 )
                 .await
@@ -2213,7 +2224,7 @@ mod tests {
                 category: None,
                 subcategory: None,
                 seller_id: Some(seller_id.clone()),
-                order_by: Some(fields::CREATED_AT.into()),
+                order_by: Some(db_fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
                 start_after: None,
             }),
@@ -2232,7 +2243,7 @@ mod tests {
                 category: None,
                 subcategory: None,
                 seller_id: Some(seller_id),
-                order_by: Some(fields::CREATED_AT.into()),
+                order_by: Some(db_fields::CREATED_AT.into()),
                 order_direction: "desc".into(),
                 start_after: Some(next_cursor),
             }),
@@ -2241,7 +2252,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(page2.products.len(), 1);
-        assert_eq!(page2.products[0]["id"], id3.as_str());
+        assert_eq!(page2.products[0][db_fields::ID], id3.as_str());
     }
 
     #[tokio::test]
@@ -2259,8 +2270,8 @@ mod tests {
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::LIFECYCLE_STATUS: "active",
-                        fields::SELLER_ID: seller_id,
+                        db_fields::LIFECYCLE_STATUS: "active",
+                        db_fields::SELLER_ID: seller_id,
                     }),
                 )
                 .await
@@ -2284,7 +2295,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(page1.products.len(), 1);
-        let first_id = page1.products[0]["id"].as_str().unwrap().to_string();
+        let first_id = page1.products[0][db_fields::ID]
+            .as_str()
+            .unwrap()
+            .to_string();
         let next_cursor = page1.next_cursor.clone().expect("next cursor");
 
         let Json(page2) = list_products(
@@ -2304,7 +2318,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(page2.products.len(), 1);
-        assert_ne!(page2.products[0]["id"].as_str(), Some(first_id.as_str()));
+        assert_ne!(
+            page2.products[0][db_fields::ID].as_str(),
+            Some(first_id.as_str())
+        );
     }
 
     #[tokio::test]
@@ -2321,9 +2338,9 @@ mod tests {
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::SELLER_ID: seller,
-                        fields::LIFECYCLE_STATUS: status,
-                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                        db_fields::SELLER_ID: seller,
+                        db_fields::LIFECYCLE_STATUS: status,
+                        db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
                 )
                 .await
@@ -2344,7 +2361,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(resp.total_fetched, 1);
-        assert_eq!(resp.products[0]["id"], id1.as_str());
+        assert_eq!(resp.products[0][db_fields::ID], id1.as_str());
     }
 
     #[tokio::test]
@@ -2361,9 +2378,9 @@ mod tests {
                     collections::PRODUCTS,
                     id,
                     serde_json::json!({
-                        fields::SELLER_ID: seller,
-                        fields::LIFECYCLE_STATUS: status,
-                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                        db_fields::SELLER_ID: seller,
+                        db_fields::LIFECYCLE_STATUS: status,
+                        db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
                 )
                 .await
@@ -2395,7 +2412,7 @@ mod tests {
                 .upsert_document(
                     collections::PRODUCTS,
                     id,
-                    serde_json::json!({ fields::LIFECYCLE_STATUS: "active", fields::SELLER_ID: "seller_1" }),
+                    serde_json::json!({ db_fields::LIFECYCLE_STATUS: "active", db_fields::SELLER_ID: "seller_1" }),
                 )
                 .await
                 .unwrap();
@@ -2406,7 +2423,7 @@ mod tests {
             Extension(auth("seller_1", &["seller"])),
             Json(BulkUpdateRequest {
                 product_ids: vec!["prod_1".into(), "prod_2".into()],
-                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "inactive" }),
+                update: serde_json::json!({ db_fields::LIFECYCLE_STATUS: "inactive" }),
             }),
         )
         .await
@@ -2418,8 +2435,8 @@ mod tests {
             .get_document(collections::PRODUCTS, "prod_1")
             .await
             .unwrap();
-        assert_eq!(updated[fields::LIFECYCLE_STATUS], "inactive");
-        assert!(updated.get(fields::UPDATED_AT).is_some());
+        assert_eq!(updated[db_fields::LIFECYCLE_STATUS], "inactive");
+        assert!(updated.get(db_fields::UPDATED_AT).is_some());
     }
 
     #[tokio::test]
@@ -2430,7 +2447,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2450,7 +2467,7 @@ mod tests {
             Json(UpdateProductRequest {
                 product_id: "prod_1".into(),
                 user_id: "buyer_1".into(),
-                product_data: serde_json::json!({ fields::PRICE_CENTS: 999 }),
+                product_data: serde_json::json!({ db_fields::PRICE_CENTS: 999 }),
             }),
         )
         .await
@@ -2468,7 +2485,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 &product_id,
-                serde_json::json!({ fields::SELLER_ID: &seller_id, fields::TITLE: "Old" }),
+                serde_json::json!({ db_fields::SELLER_ID: &seller_id, fields::TITLE: "Old" }),
             )
             .await
             .unwrap();
@@ -2501,7 +2518,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(updated[fields::TITLE], "New Title");
-        assert!(updated.get(fields::UPDATED_AT).is_some());
+        assert!(updated.get(db_fields::UPDATED_AT).is_some());
     }
 
     #[tokio::test]
@@ -2591,7 +2608,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::TITLE: "Test", fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ fields::TITLE: "Test", db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2628,7 +2645,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2654,7 +2671,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2683,7 +2700,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2725,7 +2742,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2857,7 +2874,7 @@ mod tests {
         ] {
             state.db.upsert_document(
                 collections::PRODUCTS, id,
-                serde_json::json!({ fields::LIFECYCLE_STATUS: status, fields::CREATED_AT: created_at, fields::SELLER_ID: unique_seller }),
+                serde_json::json!({ db_fields::LIFECYCLE_STATUS: status, db_fields::CREATED_AT: created_at, db_fields::SELLER_ID: unique_seller }),
             ).await.unwrap();
         }
 
@@ -2898,9 +2915,9 @@ mod tests {
                     collections::PRODUCTS,
                     &id,
                     serde_json::json!({
-                        fields::SELLER_ID: seller,
-                        fields::LIFECYCLE_STATUS: "active",
-                        fields::CREATED_AT: created_at,
+                        db_fields::SELLER_ID: seller,
+                        db_fields::LIFECYCLE_STATUS: "active",
+                        db_fields::CREATED_AT: created_at,
                     }),
                 )
                 .await
@@ -2967,7 +2984,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -2977,7 +2994,7 @@ mod tests {
             Extension(auth("seller_2", &["seller"])),
             Json(BulkUpdateRequest {
                 product_ids: vec!["prod_1".into()],
-                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "paused" }),
+                update: serde_json::json!({ db_fields::LIFECYCLE_STATUS: "paused" }),
             }),
         )
         .await
@@ -2994,7 +3011,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1", db_fields::LIFECYCLE_STATUS: "active" }),
             )
             .await
             .unwrap();
@@ -3021,7 +3038,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1", db_fields::LIFECYCLE_STATUS: "active" }),
             )
             .await
             .unwrap();
@@ -3031,7 +3048,7 @@ mod tests {
             Extension(auth("seller_1", &["seller"])),
             Json(BulkUpdateRequest {
                 product_ids: vec!["prod_1".into()],
-                update: serde_json::json!({ fields::LIFECYCLE_STATUS: "paused" }),
+                update: serde_json::json!({ db_fields::LIFECYCLE_STATUS: "paused" }),
             }),
         )
         .await
@@ -3048,7 +3065,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1", fields::LIFECYCLE_STATUS: "active" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1", db_fields::LIFECYCLE_STATUS: "active" }),
             )
             .await
             .unwrap();
@@ -3080,7 +3097,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();

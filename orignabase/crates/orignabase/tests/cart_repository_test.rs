@@ -9,6 +9,7 @@
 //!
 //! Run with: cargo test --test cart_repository_test -- --ignored
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -31,7 +32,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -194,7 +195,7 @@ async fn test_cart_clear() {
         let ids: Vec<String> = items
             .iter()
             .filter_map(|item| {
-                item["id"] // ignore-magic
+                item[fields::ID] // ignore-magic
                     .as_str()
                     .map(|s| s.split(':').next_back().unwrap_or(s).to_string())
             })

@@ -5,6 +5,7 @@
 //! Requirements:
 //!   OB_TEST_URL=http://localhost:8080 (or remote OrignaBase instance with OB_TEST_MODE=1)
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -27,7 +28,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -347,7 +348,10 @@ async fn test_storage_resumable_upload_init() {
     let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Resumable init should succeed: {body:?}");
-    assert!(body["id"].as_str().is_some(), "Should return session ID"); // ignore-magic
+    assert!(
+        body[fields::ID].as_str().is_some(),
+        "Should return session ID"
+    ); // ignore-magic
 }
 
 #[tokio::test]

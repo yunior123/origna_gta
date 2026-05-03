@@ -17,6 +17,7 @@ use crate::HandlersState;
 use crate::email::{self, record_key, resolve_seller_contact, send_shipping_notification};
 use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields};
 use crate::shared::validation::{sanitize_html, validate_string, validate_uid};
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Delivery-item status (per-item within an order)
@@ -198,7 +199,7 @@ fn find_item_index(items: &[Value], product_id: &str) -> Option<usize> {
 fn all_items_delivered(items: &[Value]) -> bool {
     items
         .iter()
-        .all(|it| str_field(it, fields::STATUS) == DeliveryStatus::Delivered.as_str())
+        .all(|it| str_field(it, db_fields::STATUS) == DeliveryStatus::Delivered.as_str())
 }
 
 fn should_promote_order_to_delivered(payment_status: &str, all_delivered: bool) -> bool {
@@ -217,7 +218,7 @@ fn postal_api_key(state: &HandlersState, order_id: &str) -> Option<String> {
 
 async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Value) {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
@@ -227,7 +228,7 @@ async fn send_payout_scheduled_notifications(state: &HandlersState, order: &Valu
 
     let mut seller_ids = HashSet::new();
     for item in items_array(order) {
-        let seller_id = str_field(&item, fields::SELLER_ID);
+        let seller_id = str_field(&item, db_fields::SELLER_ID);
         if !seller_id.is_empty() {
             seller_ids.insert(seller_id.to_string());
         }
@@ -294,11 +295,11 @@ async fn log_order_event(
             collections::ORDER_EVENTS,
             json!({
                 fields::ORDER_ID: order_id,
-                fields::USER_ID: user_id,
+                db_fields::USER_ID: user_id,
                 fields::EVENT_TYPE: event_type,
                 "message": message,
                 "metadata": metadata,
-                fields::CREATED_AT: Utc::now().to_rfc3339(),
+                db_fields::CREATED_AT: Utc::now().to_rfc3339(),
             }),
         )
         .await;
@@ -318,7 +319,7 @@ async fn confirm_item_receipt(
     let user_id = &auth.user_id;
     validate_uid(fields::ORDER_ID, &req.order_id)?;
     validate_uid(fields::PRODUCT_ID, &req.product_id)?;
-    validate_uid(fields::USER_ID, user_id)?;
+    validate_uid(db_fields::USER_ID, user_id)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
         &state.db,
@@ -336,7 +337,7 @@ async fn confirm_item_receipt(
         .map_err(|_| ob_core::Error::NotFound("Order not found".into()))?;
 
     // Ownership check
-    let order_owner = str_field(&order, fields::USER_ID);
+    let order_owner = str_field(&order, db_fields::USER_ID);
     if order_owner != user_id.as_str() {
         return Err(ob_core::Error::Forbidden(
             "Only the order owner can confirm receipt".into(),
@@ -352,14 +353,14 @@ async fn confirm_item_receipt(
     };
 
     // Self-purchase check: sellers cannot confirm their own items
-    let item_seller = str_field(&items[idx], fields::SELLER_ID);
+    let item_seller = str_field(&items[idx], db_fields::SELLER_ID);
     if item_seller == user_id.as_str() {
         return Err(ob_core::Error::Forbidden(
             "Sellers cannot confirm receipt of their own items".into(),
         ));
     }
 
-    let current_status_str = str_field(&items[idx], fields::STATUS);
+    let current_status_str = str_field(&items[idx], db_fields::STATUS);
     let current_status = DeliveryStatus::from_str(current_status_str);
 
     // Already delivered — idempotent success
@@ -381,7 +382,7 @@ async fn confirm_item_receipt(
 
     // Update item
     let now = Utc::now().to_rfc3339();
-    items[idx][fields::STATUS] = json!("delivered");
+    items[idx][db_fields::STATUS] = json!("delivered");
     items[idx][fields::DELIVERED_AT] = json!(now);
     items[idx]["confirmedByBuyer"] = json!(true);
 
@@ -389,7 +390,7 @@ async fn confirm_item_receipt(
 
     let mut update_data = json!({
         fields::ITEMS: items,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     if all_delivered {
@@ -480,7 +481,7 @@ async fn update_order_status(
 ) -> Result<Json<UpdateOrderStatusResponse>, ob_core::Error> {
     let user_id = &auth.user_id;
     validate_uid(fields::ORDER_ID, &req.order_id)?;
-    validate_uid(fields::USER_ID, user_id)?;
+    validate_uid(db_fields::USER_ID, user_id)?;
     validate_string("newStatus", &req.new_status, 50)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
@@ -533,7 +534,7 @@ async fn update_order_status(
     let items = items_array(&order);
     let seller_items: Vec<&Value> = items
         .iter()
-        .filter(|it| str_field(it, fields::SELLER_ID) == user_id.as_str())
+        .filter(|it| str_field(it, db_fields::SELLER_ID) == user_id.as_str())
         .collect();
     let is_seller = !seller_items.is_empty();
 
@@ -554,7 +555,7 @@ async fn update_order_status(
         // Multi-seller order: must use per-item updates
         let all_seller_ids: std::collections::HashSet<&str> = items
             .iter()
-            .filter_map(|it| it.get(fields::SELLER_ID).and_then(|v| v.as_str()))
+            .filter_map(|it| it.get(db_fields::SELLER_ID).and_then(|v| v.as_str()))
             .collect();
         if all_seller_ids.len() > 1 {
             return Err(ob_core::Error::Validation(
@@ -577,7 +578,7 @@ async fn update_order_status(
         // Shipping approval gate
         if let Some(approval) = order.get("shippingApproval").and_then(|v| v.as_object()) {
             let approval_status = approval
-                .get(fields::STATUS)
+                .get(db_fields::STATUS)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if approval_status == "pending" {
@@ -609,8 +610,8 @@ async fn update_order_status(
         let mut any_updated = false;
 
         for item in updated_items.iter_mut() {
-            if str_field(item, fields::SELLER_ID) == user_id.as_str() {
-                item[fields::STATUS] = json!("shipped");
+            if str_field(item, db_fields::SELLER_ID) == user_id.as_str() {
+                item[db_fields::STATUS] = json!("shipped");
                 item[fields::SHIPPED_AT] = json!(now);
                 if let Some(ref tn) = tracking_number {
                     item[fields::TRACKING_NUMBER] = json!(tn);
@@ -627,13 +628,13 @@ async fn update_order_status(
         }
 
         let all_shipped = updated_items.iter().all(|it| {
-            let s = str_field(it, fields::STATUS);
+            let s = str_field(it, db_fields::STATUS);
             s == DeliveryStatus::Shipped.as_str() || s == DeliveryStatus::Delivered.as_str()
         });
 
         let mut update_data = json!({
             fields::ITEMS: updated_items.clone(),
-            fields::UPDATED_AT: now.clone(),
+            db_fields::UPDATED_AT: now.clone(),
             fields::LAST_ACTOR_ID: user_id.as_str(),
         });
 
@@ -684,16 +685,16 @@ async fn update_order_status(
     let now = Utc::now().to_rfc3339();
     let mut update_data = json!({
         fields::ORDER_STATUS: new_status.as_str(),
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     // SHIPPED cascade: update all non-delivered/refunded items
     if new_status == OrderStatus::Shipped {
         let mut updated_items = items.clone();
         for item in updated_items.iter_mut() {
-            let s = str_field(item, fields::STATUS);
+            let s = str_field(item, db_fields::STATUS);
             if s != DeliveryStatus::Delivered.as_str() && s != DeliveryStatus::Refunded.as_str() {
-                item[fields::STATUS] = json!("shipped");
+                item[db_fields::STATUS] = json!("shipped");
                 item[fields::SHIPPED_AT] = json!(now);
                 if let Some(ref tn) = tracking_number {
                     item[fields::TRACKING_NUMBER] = json!(tn);
@@ -713,7 +714,7 @@ async fn update_order_status(
     if is_admin && new_status == OrderStatus::Delivered {
         let mut updated_items = items.clone();
         for item in updated_items.iter_mut() {
-            item[fields::STATUS] = json!("delivered");
+            item[db_fields::STATUS] = json!("delivered");
             item[fields::DELIVERED_AT] = json!(now);
         }
         update_data[fields::ITEMS] = json!(updated_items);
@@ -823,7 +824,7 @@ async fn update_item_status(
     let user_id = &auth.user_id;
     validate_uid(fields::ORDER_ID, &req.order_id)?;
     validate_uid(fields::PRODUCT_ID, &req.product_id)?;
-    validate_uid(fields::USER_ID, user_id)?;
+    validate_uid(db_fields::USER_ID, user_id)?;
     validate_string("newStatus", &req.new_status, 20)?;
 
     crate::shared::rate_limiter::check_user_rate_limit(
@@ -882,7 +883,7 @@ async fn update_item_status(
         }
     };
 
-    let item_seller = str_field(&items[idx], fields::SELLER_ID).to_string();
+    let item_seller = str_field(&items[idx], db_fields::SELLER_ID).to_string();
     let is_item_seller = item_seller == user_id.as_str();
 
     if !is_admin && !is_item_seller {
@@ -899,7 +900,7 @@ async fn update_item_status(
     }
 
     // State machine validation for non-admins
-    let current_str = str_field(&items[idx], fields::STATUS);
+    let current_str = str_field(&items[idx], db_fields::STATUS);
     let current_delivery = DeliveryStatus::from_str(current_str).unwrap_or(DeliveryStatus::Pending);
 
     if !is_admin && !is_valid_item_transition(current_delivery, new_delivery) {
@@ -921,7 +922,7 @@ async fn update_item_status(
 
     // Apply update
     let now = Utc::now().to_rfc3339();
-    items[idx][fields::STATUS] = json!(new_delivery.as_str());
+    items[idx][db_fields::STATUS] = json!(new_delivery.as_str());
 
     match new_delivery {
         DeliveryStatus::Shipped => {
@@ -941,15 +942,15 @@ async fn update_item_status(
 
     let all_delivered = items
         .iter()
-        .all(|it| str_field(it, fields::STATUS) == DeliveryStatus::Delivered.as_str());
+        .all(|it| str_field(it, db_fields::STATUS) == DeliveryStatus::Delivered.as_str());
     let all_shipped = items.iter().all(|it| {
-        let s = str_field(it, fields::STATUS);
+        let s = str_field(it, db_fields::STATUS);
         s == DeliveryStatus::Shipped.as_str() || s == DeliveryStatus::Delivered.as_str()
     });
 
     let mut update_data = json!({
         fields::ITEMS: items,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     // Promote order-level status
@@ -1231,14 +1232,14 @@ mod tests {
     fn test_confirm_receipt_item_lookup_and_self_purchase_edge_cases() {
         let items = vec![json!({
             fields::PRODUCT_ID: "prod_1",
-            fields::SELLER_ID: "seller_1",
-            fields::STATUS: DeliveryStatus::Shipped.as_str(),
+            db_fields::SELLER_ID: "seller_1",
+            db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
         })];
 
         assert_eq!(find_item_index(&items, "missing"), None);
         let idx = find_item_index(&items, "prod_1").unwrap();
-        assert_eq!(str_field(&items[idx], fields::SELLER_ID), "seller_1");
-        assert_eq!(str_field(&items[idx], fields::SELLER_ID), "seller_1");
+        assert_eq!(str_field(&items[idx], db_fields::SELLER_ID), "seller_1");
+        assert_eq!(str_field(&items[idx], db_fields::SELLER_ID), "seller_1");
     }
 
     #[test]
@@ -1246,16 +1247,16 @@ mod tests {
         let mut items = vec![
             json!({
                 fields::PRODUCT_ID: "prod_1",
-                fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
             }),
             json!({
                 fields::PRODUCT_ID: "prod_2",
-                fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
             }),
         ];
 
         assert!(!all_items_delivered(&items));
-        items[1][fields::STATUS] = json!(DeliveryStatus::Delivered.as_str());
+        items[1][db_fields::STATUS] = json!(DeliveryStatus::Delivered.as_str());
         assert!(all_items_delivered(&items));
         assert!(should_promote_order_to_delivered(
             PaymentStatus::Captured.as_str(),
@@ -1549,7 +1550,7 @@ mod tests {
         assert!(items_array(&json!({fields::ITEMS: "not_array"})).is_empty());
         assert_eq!(items_array(&json!({fields::ITEMS: []})).len(), 0);
         assert_eq!(
-            items_array(&json!({fields::ITEMS: [{fields::ID: 1}]})).len(),
+            items_array(&json!({fields::ITEMS: [{db_fields::ID: 1}]})).len(),
             1
         );
     }
@@ -1580,8 +1581,8 @@ mod tests {
     #[test]
     fn test_all_items_delivered_mixed() {
         let items = vec![
-            json!({fields::STATUS: "delivered"}),
-            json!({fields::STATUS: "shipped"}),
+            json!({db_fields::STATUS: "delivered"}),
+            json!({db_fields::STATUS: "shipped"}),
         ];
         assert!(!all_items_delivered(&items));
     }
@@ -1682,11 +1683,11 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: buyer,
+                    db_fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
                 }),
             )
@@ -1721,8 +1722,8 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -1771,7 +1772,7 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     "archived": true,
-                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: sid }],
                 }),
             )
             .await
@@ -1806,10 +1807,10 @@ mod tests {
                 &oid,
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    "shippingApproval": { fields::STATUS: "pending" },
+                    "shippingApproval": { db_fields::STATUS: "pending" },
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid,
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: sid,
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -1846,8 +1847,8 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [
-                        { fields::SELLER_ID: sid, fields::STATUS: DeliveryStatus::Pending.as_str() },
-                        { fields::SELLER_ID: "seller_2", fields::STATUS: DeliveryStatus::Pending.as_str() }
+                        { db_fields::SELLER_ID: sid, db_fields::STATUS: DeliveryStatus::Pending.as_str() },
+                        { db_fields::SELLER_ID: "seller_2", db_fields::STATUS: DeliveryStatus::Pending.as_str() }
                     ],
                 }),
             )
@@ -1884,8 +1885,8 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid,
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: sid,
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -1930,19 +1931,19 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: buyer,
+                    db_fields::USER_ID: buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: prod1,
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
                         },
                         {
                             fields::PRODUCT_ID: prod2,
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                         }
                     ],
                 }),
@@ -1972,7 +1973,7 @@ mod tests {
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Delivered.as_str());
         assert_eq!(order["confirmedByClient"], true);
         assert_eq!(
-            order[fields::ITEMS][1][fields::STATUS],
+            order[fields::ITEMS][1][db_fields::STATUS],
             DeliveryStatus::Delivered.as_str()
         );
     }
@@ -1990,13 +1991,13 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: buyer,
+                    db_fields::USER_ID: buyer,
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
                 }),
             )
@@ -2023,7 +2024,7 @@ mod tests {
         assert_eq!(order[fields::ORDER_STATUS], OrderStatus::Shipped.as_str());
         assert!(order.get("confirmedByClient").is_none());
         assert_eq!(
-            order[fields::ITEMS][0][fields::STATUS],
+            order[fields::ITEMS][0][db_fields::STATUS],
             DeliveryStatus::Delivered.as_str()
         );
     }
@@ -2041,11 +2042,11 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: buyer,
+                    db_fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -2094,13 +2095,13 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "prod_1",
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                         },
                         {
                             fields::PRODUCT_ID: "prod_2",
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: DeliveryStatus::Pending.as_str(),
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                         }
                     ],
                 }),
@@ -2133,7 +2134,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .iter()
-                .all(|item| item[fields::STATUS] == DeliveryStatus::Delivered.as_str())
+                .all(|item| item[db_fields::STATUS] == DeliveryStatus::Delivered.as_str())
         );
     }
 
@@ -2155,8 +2156,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: sid,
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: sid,
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -2237,13 +2238,13 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: prod1,
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
                         },
                         {
                             fields::PRODUCT_ID: prod2,
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                         }
                     ],
                 }),
@@ -2291,11 +2292,11 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: seller,
+                    db_fields::USER_ID: seller,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: seller,
-                        fields::STATUS: DeliveryStatus::Shipped.as_str(),
+                        db_fields::SELLER_ID: seller,
+                        db_fields::STATUS: DeliveryStatus::Shipped.as_str(),
                     }],
                 }),
             )
@@ -2332,11 +2333,11 @@ mod tests {
                 collections::ORDERS,
                 &oid,
                 json!({
-                    fields::USER_ID: buyer,
+                    db_fields::USER_ID: buyer,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
                     }],
                 }),
             )
@@ -2376,7 +2377,7 @@ mod tests {
                 "ord_inv",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: "seller_1" }],
                 }),
             )
             .await
@@ -2448,7 +2449,7 @@ mod tests {
                 "ord_perm",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1" }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: "seller_1" }],
                 }),
             )
             .await
@@ -2484,7 +2485,7 @@ mod tests {
                 "ord_del",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Shipped.as_str(),
-                    fields::ITEMS: [{ fields::SELLER_ID: "seller_1", fields::STATUS: "shipped" }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: "seller_1", db_fields::STATUS: "shipped" }],
                 }),
             )
             .await
@@ -2524,8 +2525,8 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                         fields::IS_DIGITAL: true,
                     }],
                 }),
@@ -2566,10 +2567,10 @@ mod tests {
                 "ord_rej",
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
-                    "shippingApproval": { fields::STATUS: "rejected" },
+                    "shippingApproval": { db_fields::STATUS: "rejected" },
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -2678,13 +2679,13 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [
                         {
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Pending.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                             fields::PRODUCT_ID: "p1",
                         },
                         {
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: DeliveryStatus::Pending.as_str(),
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                             fields::PRODUCT_ID: "p2",
                         }
                     ],
@@ -2730,13 +2731,13 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [
                         {
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Pending.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                             fields::PRODUCT_ID: "p1",
                         },
                         {
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
                             fields::PRODUCT_ID: "p2",
                         }
                     ],
@@ -2812,18 +2813,18 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "p1",
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: DeliveryStatus::Pending.as_str(),
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                         },
                         {
                             fields::PRODUCT_ID: "p2",
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: DeliveryStatus::Delivered.as_str(),
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: DeliveryStatus::Delivered.as_str(),
                         },
                         {
                             fields::PRODUCT_ID: "p3",
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: "refunded",
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: "refunded",
                         }
                     ],
                 }),
@@ -2854,13 +2855,13 @@ mod tests {
             .unwrap();
         let items = order[fields::ITEMS].as_array().unwrap();
         // p1 was pending → should be shipped with tracking
-        assert_eq!(items[0][fields::STATUS], "shipped");
+        assert_eq!(items[0][db_fields::STATUS], "shipped");
         assert_eq!(items[0][fields::TRACKING_NUMBER], "TRACK_ADM");
         assert_eq!(items[0][fields::SHIPPING_CARRIER], "DHL");
         // p2 was delivered → stays delivered (no tracking added)
-        assert_eq!(items[1][fields::STATUS], "delivered");
+        assert_eq!(items[1][db_fields::STATUS], "delivered");
         // p3 was refunded → stays refunded
-        assert_eq!(items[2][fields::STATUS], "refunded");
+        assert_eq!(items[2][db_fields::STATUS], "refunded");
         // Order-level tracking
         assert_eq!(order[fields::TRACKING_NUMBER], "TRACK_ADM");
         assert_eq!(order[fields::SHIPPING_CARRIER], "DHL");
@@ -2880,8 +2881,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                     }],
                 }),
             )
@@ -2907,7 +2908,7 @@ mod tests {
             .get_document(collections::ORDERS, "ord_adm_notrack")
             .await
             .unwrap();
-        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "shipped");
+        assert_eq!(order[fields::ITEMS][0][db_fields::STATUS], "shipped");
     }
 
     // -----------------------------------------------------------------------
@@ -2927,8 +2928,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -2969,8 +2970,8 @@ mod tests {
                     "archived": true,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3010,8 +3011,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3051,8 +3052,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3094,8 +3095,8 @@ mod tests {
                     fields::DELIVERY_SPEED: "pickup",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3135,8 +3136,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3186,13 +3187,13 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::PRODUCT_ID: "p1",
-                            fields::SELLER_ID: "seller_1",
-                            fields::STATUS: "shipped",
+                            db_fields::SELLER_ID: "seller_1",
+                            db_fields::STATUS: "shipped",
                         },
                         {
                             fields::PRODUCT_ID: "p2",
-                            fields::SELLER_ID: "seller_2",
-                            fields::STATUS: "pending",
+                            db_fields::SELLER_ID: "seller_2",
+                            db_fields::STATUS: "pending",
                         }
                     ],
                 }),
@@ -3239,8 +3240,8 @@ mod tests {
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3289,8 +3290,8 @@ mod tests {
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "delivered",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "delivered",
                     }],
                 }),
             )
@@ -3317,7 +3318,7 @@ mod tests {
             .get_document(collections::ORDERS, "ord_refund_arm")
             .await
             .unwrap();
-        assert_eq!(order[fields::ITEMS][0][fields::STATUS], "refunded");
+        assert_eq!(order[fields::ITEMS][0][db_fields::STATUS], "refunded");
     }
 
     // -----------------------------------------------------------------------
@@ -3338,8 +3339,8 @@ mod tests {
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: "p1",
-                        fields::SELLER_ID: "seller_1",
-                        fields::STATUS: "pending",
+                        db_fields::SELLER_ID: "seller_1",
+                        db_fields::STATUS: "pending",
                     }],
                 }),
             )
@@ -3389,8 +3390,8 @@ mod tests {
                 json!({
                     fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "seller_other",
-                        fields::STATUS: DeliveryStatus::Pending.as_str(),
+                        db_fields::SELLER_ID: "seller_other",
+                        db_fields::STATUS: DeliveryStatus::Pending.as_str(),
                         fields::PRODUCT_ID: "p1",
                     }],
                 }),

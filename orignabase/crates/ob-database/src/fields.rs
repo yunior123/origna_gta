@@ -15,3 +15,6 @@ pub const PLATFORM_FEE_TOTAL_CENTS: &str = "platformFeeTotalCents";
 pub const LIFECYCLE_STATUS: &str = "lifecycleStatus";
 pub const NAME: &str = "name";
 pub const EMAIL: &str = "email";
+pub const EMAIL_CONSENT: &str = "emailConsent";
+pub const IDEMPOTENCY_KEY: &str = "idempotencyKey";
+pub const CREATED_AT_ISO: &str = "createdAtIso";

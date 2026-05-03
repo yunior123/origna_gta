@@ -13,6 +13,7 @@
 //!   docker compose -f docker/docker-compose.yml up -d postgres meilisearch
 //!   cargo run -- serve
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -37,7 +38,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .expect("missing access_token")
         .to_string();
 
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -2057,7 +2058,7 @@ async fn test_209_subscriptions_status() {
 
     assert!(status == 200 || status >= 400);
     if status == 200 {
-        assert!(body.get("status").is_some() || body.is_object()); // ignore-magic
+        assert!(body.get(fields::STATUS).is_some() || body.is_object()); // ignore-magic
     }
 }
 

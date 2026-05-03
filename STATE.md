@@ -11,6 +11,48 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+57. **DocuSeal, Ventures contracts, legacy-provider cleanup, and cents test recovery**: Advanced and verified on 2026-05-03.
+   - wired self-hosted DocuSeal infrastructure into OrignaBase Docker/Caddy:
+     - `orignabase/docker/docker-compose.yml` now includes `docuseal` plus a dedicated `docuseal-db` PostgreSQL service and persistent volume.
+     - root `Caddyfile` and `orignabase/docker/Caddyfile` now proxy `signatures.orignagta.ca`, `signatures.dev.orignagta.ca`, and `signatures.staging.orignagta.ca` to DocuSeal and allow the required signatures hosts in CSP.
+     - `scripts/add-cloudflare-dns.sh` now provisions the three `signatures*` DNS records for the OrignaGTA Cloudflare zone.
+   - coordinated the OrignaVentures three-plan flow:
+     - `origna_code` → master services + source license.
+     - `origna_launch` → master services + source license + launch statement of work.
+     - `origna_team` → master services + monthly retainer.
+     - backend `/api/meta` exposes the DocuSeal mapping and Stripe Checkout metadata now carries `contract_provider=docuseal`, `contract_flow=post_payment_signature`, and the service-specific `contract_slugs`.
+   - removed stale legacy database and legacy email-provider references from active repo docs/config/lock state; the remaining backend language is PostgreSQL/OrignaBase/Postal.
+   - fixed Flutter tests that still asserted legacy `price`/double platform-fee behavior after the app moved to `priceCents` and integer cents.
+   - verification:
+     - `cd origna_ventures/backend && .venv/bin/python -m py_compile app.py`: passed.
+     - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py`: passed, 37 tests.
+     - `cd origna_ventures && flutter analyze --no-fatal-infos`: passed.
+     - `cd origna_ventures && flutter test`: passed, 13 tests.
+     - `cd origna_gta && flutter analyze --no-fatal-infos`: passed.
+     - `cd origna_gta && flutter test test/models/models_test.dart --reporter=expanded`: passed.
+     - `cd origna_gta && flutter test test/unit/orders_provider_coverage_test.dart test/unit/models_test.dart --reporter=expanded`: passed, 111 tests.
+     - `cd origna_gta && flutter test test/unit --reporter=compact`: passed, 3234 tests.
+     - `cd origna_gta && flutter test --exclude-tags golden --reporter=compact`: passed, 4793 tests.
+     - `bash -n scripts/add-cloudflare-dns.sh`: passed.
+     - `cd orignabase/docker && ruby -e "require 'yaml'; YAML.load_file('docker-compose.yml')"`: passed.
+     - repo-wide legacy database/email-provider literal scan excluding build outputs: clean.
+     - `git diff --check`: passed.
+   - note:
+     - live Cloudflare DNS was not applied from this shell because `CLOUDFLARE_API_TOKEN` is not set; the script is ready to apply the records once the token is available.
+
+56. **Dead Flutter foundation import cleanup around removed `kIsWeb` branching**: Advanced and verified on 2026-05-02.
+   - rechecked `origna_gta/lib/screens/product_card_screen.dart` and `origna_gta/lib/screens/parts/product_card_image_section.dart`; neither file still imports `package:flutter/foundation.dart`, so no product-card import removal was needed.
+   - removed the now-dead `package:flutter/foundation.dart` import from `origna_gta/lib/utils/env_config.dart` after confirming the old `kIsWeb`-related localhost branch had already been deleted.
+   - removed the stale two-line `kIsWeb` comment from `EnvConfig.shouldUseEmulators`.
+   - tightened other nearby `foundation.dart` imports uncovered in the same scan so they only expose the symbols still in use:
+     - `origna_gta/lib/core/repositories/orignabase_product_repository.dart` → `show Uint8List`
+     - `origna_gta/lib/core/repositories/product_repository.dart` → `show Uint8List`
+     - `origna_gta/lib/features/orders/orders_provider.dart` → `show immutable`
+     - `origna_gta/lib/features/products/add_product_viewmodel.dart` → `show Uint8List`
+     - `origna_gta/lib/utils/env_config.dart` → `show kReleaseMode`
+   - verification:
+     - `cd origna_gta && /Users/yuniorrodriguezosorio/flutter/bin/flutter analyze --no-fatal-infos`: passed, `No issues found!`
+
 55. **Self-hosted GlitchTip web transport + live payment/cart verification**: Advanced and verified on 2026-04-29/2026-04-30.
    - deployed OrignaGTA dev web release `20260429220700` to `/var/www/orignagta/dev/current`.
    - fixed the live payment E2E cart seed to write OrignaBase subcollection ownership fields (`userId: users:<id>`, `parent_id: users:<id>`) so the Flutter cart/detail providers read the same shape as production `addToCart`.
@@ -236,7 +278,7 @@ All active blockers and known infrastructure issues from previous sessions have 
          - `cargo clippy -p ob-handlers -- -D warnings` → passed
        - live impact is not verified yet because `api.dev.orignagta.ca` still reflects the pre-deploy handler behavior; targeted rerun remains red: `/tmp/handlers_interval_rerun.log`
      - `orignabase/crates/ob-database/src/query.rs`
-       - fixed GraphQL pagination SQL generation to use PostgreSQL `OFFSET` instead of invalid SurrealQL-style `START`.
+       - fixed GraphQL pagination SQL generation to use PostgreSQL `OFFSET` instead of invalid legacy query `START`.
        - local regression proof:
          - `cargo test -p ob-database test_build_select_with_offset -- --nocapture` → passed (`/tmp/query_builder_fix_tests.log`)
          - `cargo clippy -p ob-database -- -D warnings` → passed (`/tmp/query_builder_fix_clippy.log`)
@@ -2558,3 +2600,28 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun test specs/phase4-product-flows/search-filters-sort.spec.ts -t "Mobile Canada"` -> passed, 1 test / 14 expect calls.
   - `cd e2e && bun test specs/phase4-product-flows/search-filters-sort.spec.ts` -> passed, 15 tests / 54 expect calls.
   - `cd e2e && bun test specs/phase1-api/selfhosted-integrations.spec.ts` -> passed after a transient Postal retry, 3 tests.
+
+119. **DocuSeal signatures infrastructure and Ventures plan flow finished on 2026-05-03**:
+- Deployed DocuSeal on the OrignaBase VPS with a dedicated PostgreSQL container, persistent `/opt/orignabase/data/docuseal-postgres` storage, and Postal SMTP settings sourced from the existing OrignaGTA SMTP environment.
+- Recreated Caddy with `signatures.orignagta.ca`, `signatures.dev.orignagta.ca`, and `signatures.staging.orignagta.ca` routes to DocuSeal, plus CSP allowances for DocuSeal CDN/signatures hosts.
+- Added Cloudflare DNS records via Safari `osascript` dashboard session. `signatures.orignagta.ca` stays proxied through Cloudflare; nested `signatures.dev.orignagta.ca` and `signatures.staging.orignagta.ca` are DNS-only because Cloudflare Universal SSL does not cover nested subdomains.
+- Completed DocuSeal first-run admin setup for `support@orignagta.ca`, reset/verified the generated admin password, generated the DocuSeal API token, and stored the secrets in macOS Keychain as `docuseal-admin-email`, `docuseal-admin-password`, `docuseal-api-key`, and `docuseal-base-url`.
+- Added persistent Codex bootstrap memory: every Codex session/delegation must read repo-root `CLAUDE.md`, `AGENTS.md`, `WORK_CLAIMS.md`, and relevant `.claude/rules/` before touching files.
+- Added OrignaVentures widget coverage proving the three visible service cards post `origna_code`, `origna_launch`, and `origna_team` checkout payloads with expected developer counts before Stripe launch.
+- Verification:
+  - VPS `docker compose ps docuseal-db docuseal caddy` -> DocuSeal DB healthy, DocuSeal healthy, Caddy running.
+  - `curl -I https://signatures.orignagta.ca` via Cloudflare -> HTTP 302 to `/setup`.
+  - Origin HTTPS checks for `signatures.dev.orignagta.ca` and `signatures.staging.orignagta.ca` -> HTTP 302 to `/setup`.
+  - DocuSeal API verification with `X-Auth-Token` from Keychain against `/api/templates` -> HTTP 200 JSON.
+  - DocuSeal admin password verification through the Rails user model -> passed.
+  - `bash -n scripts/add-cloudflare-dns.sh` -> passed.
+  - `ruby -e "require 'yaml'; YAML.load_file('orignabase/docker/docker-compose.yml')"` -> passed.
+  - `cd origna_ventures && flutter analyze --no-fatal-infos` -> passed.
+  - `cd origna_ventures && flutter test` -> passed, 14 tests.
+  - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py` -> passed, 37 tests.
+  - `cd origna_gta && flutter analyze --no-fatal-infos && flutter test --exclude-tags golden --reporter=compact` -> passed, 4,793 tests.
+  - `cd orignabase && cargo fmt --all -- --check && cargo clippy -p ob-handlers -- -D warnings && cargo test -p ob-handlers` -> passed, including 1,808 unit tests, 36 proptests, and 66 snapshot tests.
+  - `git ls-files -o --exclude-standard` -> clean after ignoring generated `orignabase/target_*/` work directories.
+  - `git diff --check` -> passed.
+  - Legacy database/email-provider grep excluding build artifacts -> clean.
+  - `git diff --check` -> passed.

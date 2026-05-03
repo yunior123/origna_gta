@@ -8,6 +8,7 @@
 //! - `OB_TEST_EXPECT_MEILI_DOWN=1`
 
 use futures_util::SinkExt;
+use ob_database::fields;
 use reqwest::StatusCode;
 use serde_json::{Value, json};
 use tokio_tungstenite::connect_async;
@@ -81,7 +82,7 @@ async fn create_doc(
     let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
     let resp = graphql(client, token, &query).await;
     let body: Value = resp.json().await.expect("create json");
-    body["data"]["create"]["id"] // ignore-magic
+    body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .or_else(|| body["data"]["create"]["_id"].as_str()) // ignore-magic
         .or_else(|| body["data"]["create"].as_str()) // ignore-magic
@@ -113,7 +114,7 @@ async fn test_02_admin_health_returns_structured_json() {
         .expect("admin health failed");
     assert_eq!(resp.status(), StatusCode::OK);
     let body: Value = resp.json().await.expect("admin health json");
-    assert_eq!(body["status"], "ok"); // ignore-magic
+    assert_eq!(body[fields::STATUS], "ok"); // ignore-magic
 }
 
 #[tokio::test]

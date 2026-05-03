@@ -146,7 +146,7 @@ ob-mcp reuses all existing OrignaBase schemas:
 
 All monetary values remain **integer cents** — no conversion layer.
 
-SurrealDB IDs preserved in format `collection:record_id`.
+OrignaBase document IDs remain plain UUID strings.
 
 ### Error Handling
 

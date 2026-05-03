@@ -10,6 +10,7 @@ use tracing::{info, warn};
 use crate::HandlersState;
 use crate::shared::schema::{collections, documents, fields};
 use crate::shared::validation::validate_uid;
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -193,7 +194,7 @@ async fn save_providers(
     let now = chrono::Utc::now().to_rfc3339();
     let data = serde_json::json!({
         "providers": providers,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     // Try update first, create if not found
@@ -316,7 +317,7 @@ async fn update_payment_provider(
             "enabled": req.enabled,
             "mode": req.mode,
         },
-        fields::CREATED_AT: now,
+        db_fields::CREATED_AT: now,
     });
     let _ = state.db.create_document(collections::ADMIN_LOGS, log).await;
 
@@ -445,7 +446,7 @@ mod tests {
     fn test_provider_info_ser() {
         let p = default_stripe_provider();
         let json = serde_json::to_value(&p).unwrap();
-        assert_eq!(json["name"], "stripe");
+        assert_eq!(json[db_fields::NAME], "stripe");
         assert_eq!(json["enabled"], true);
         assert_eq!(json["mode"], "test");
         assert_eq!(json["supportedCurrencies"][0], "cad");
@@ -618,7 +619,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
-        assert_eq!(json["provider"]["name"], "stripe");
+        assert_eq!(json["provider"][db_fields::NAME], "stripe");
     }
 
     #[test]

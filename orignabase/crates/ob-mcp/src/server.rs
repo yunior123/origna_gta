@@ -5,6 +5,7 @@ use crate::auth::McpContext;
 use crate::errors::{JsonRpcError, McpError, McpResult};
 use crate::safeguards::{IdempotencyTracker, SpendLimit};
 use crate::tools;
+use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::{error, info};
@@ -325,7 +326,7 @@ mod tests {
 
         let names: Vec<&str> = tool_list
             .iter()
-            .map(|t| t["name"].as_str().unwrap())
+            .map(|t| t[fields::NAME].as_str().unwrap())
             .collect();
         assert!(names.contains(&"search_products"));
         assert!(names.contains(&"get_product"));
@@ -343,7 +344,7 @@ mod tests {
         let server = make_server().await;
         let tools = server.list_tools();
         for tool in tools["tools"].as_array().unwrap() {
-            assert!(tool["name"].is_string(), "tool missing name");
+            assert!(tool[fields::NAME].is_string(), "tool missing name");
             assert!(tool["description"].is_string(), "tool missing description");
             assert!(tool["inputSchema"].is_object(), "tool missing inputSchema");
         }
@@ -552,7 +553,7 @@ mod tests {
         let serialized = serde_json::to_value(&resp).unwrap();
         assert_eq!(serialized["jsonrpc"], "2.0");
         assert!(serialized["error"].is_null());
-        assert_eq!(serialized["id"], 1);
+        assert_eq!(serialized[fields::ID], 1);
     }
 
     #[test]

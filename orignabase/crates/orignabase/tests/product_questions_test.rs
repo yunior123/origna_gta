@@ -2,6 +2,7 @@
 //!
 //! Run with: `cargo test --test product_questions_test -- --ignored`
 
+use ob_database::fields;
 use reqwest::Client;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -24,7 +25,7 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -63,7 +64,7 @@ async fn test_ask_product_question() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -99,7 +100,7 @@ async fn test_get_product_questions() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -143,7 +144,7 @@ async fn test_seller_answers_question() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -158,7 +159,7 @@ async fn test_seller_answers_question() {
     let query = create_doc_query("product_questions", &question_data);
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let question_id = body["data"]["create"]["id"] // ignore-magic
+    let question_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -196,7 +197,7 @@ async fn test_get_questions_pagination() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();

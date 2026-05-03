@@ -11,8 +11,7 @@ use ob_admin::routes::AdminState;
 use ob_analytics::{AnalyticsState, analytics_router};
 use ob_auth::routes::{AuthState, auth_router};
 use ob_core::{Config, Environment};
-use ob_database::DatabaseClient;
-use sqlx::Row;
+use ob_database::{DatabaseClient, fields};
 use ob_functions::routes::FunctionsState;
 use ob_functions::{
     CronScheduler, DbTriggerExecutor, FunctionLimits, FunctionRegistry, WasmRuntime,
@@ -28,6 +27,7 @@ use ob_search::{SearchClient, SearchConfig};
 use ob_security::{RuleEngine, parse_rules};
 use ob_storage::routes::{StorageState, storage_router};
 use ob_storage::{LocalStorage, ResumableUploadManager, SignedUrlGenerator};
+use sqlx::Row;
 use std::backtrace::Backtrace;
 use std::collections::HashMap;
 use std::future::pending;
@@ -60,7 +60,10 @@ const TRUSTED_PROXY_IP: &str = "127.0.0.1";
 impl KeyExtractor for XForwardedForKeyExtractor {
     type Key = std::net::IpAddr;
 
-    fn extract<T>(&self, req: &axum::http::Request<T>) -> Result<Self::Key, tower_governor::errors::GovernorError> {
+    fn extract<T>(
+        &self,
+        req: &axum::http::Request<T>,
+    ) -> Result<Self::Key, tower_governor::errors::GovernorError> {
         let peer_ip = req
             .extensions()
             .get::<std::net::SocketAddr>()
@@ -503,7 +506,7 @@ match /users/{userId} {
 
 # [[indexes]]
 # collection = "users"
-# fields = ["email"]
+# fields = [fields::EMAIL]
 # unique = true
 
 # [[indexes]]
@@ -588,7 +591,7 @@ match /users/{userId} {
                 AuthAction::Get { id } => {
                     let users = db
                         .query_bind(
-                            "SELECT id, email, display_name, roles, email_verified, mfa_enabled, created_at, custom_claims FROM type::thing($uid)",
+                            "SELECT id, email, display_name, roles, email_verified, mfa_enabled, created_at, custom_claims FROM users WHERE id = $uid LIMIT 1",
                             serde_json::json!({ "uid": id }),
                         )
                         .await?;
@@ -806,24 +809,24 @@ async fn serve(config: Config) -> Result<()> {
                 IndexConfig {
                     searchable: vec![
                         "title".to_string(),
-                        "name".to_string(),
+                        fields::NAME.to_string(),
                         "description".to_string(),
                         "subcategory".to_string(),
                     ],
                     filterable: vec![
                         "lifecycleStatus".to_string(),
                         "categoryId".to_string(),
-                        "sellerId".to_string(),
-                        "priceCents".to_string(),
+                        fields::SELLER_ID.to_string(),
+                        fields::PRICE_CENTS.to_string(),
                         "isDigital".to_string(),
                         "isPerishable".to_string(),
                     ],
                     sortable: vec![
-                        "createdAt".to_string(),
-                        "dateCreated".to_string(),
-                        "priceCents".to_string(),
+                        fields::CREATED_AT.to_string(),
+                        fields::DATE_CREATED.to_string(),
+                        fields::PRICE_CENTS.to_string(),
                     ],
-                    primary_key: "id".to_string(),
+                    primary_key: fields::ID.to_string(),
                 },
             )]),
         })
@@ -1650,7 +1653,7 @@ async fn migrate_from_firebase(
             // Show first 3 doc IDs as preview
             for (i, doc) in docs.iter().take(3).enumerate() {
                 let id = doc
-                    .get("id")
+                    .get(fields::ID)
                     .or_else(|| doc.get("_id"))
                     .or_else(|| doc.get("__name__"))
                     .map(|v| v.to_string())
@@ -1796,12 +1799,15 @@ fn translate_firestore_doc(doc: &serde_json::Value) -> serde_json::Value {
                     }
                 }
                 // Preserve document name/ID if present
-                if let Some(name) = map.get("name")
+                if let Some(name) = map.get(fields::NAME)
                     && let Some(name_str) = name.as_str()
                 {
                     // Extract doc ID from path like "projects/x/databases/y/documents/collection/DOC_ID"
                     if let Some(id) = name_str.rsplit('/').next() {
-                        result.insert("id".to_string(), serde_json::Value::String(id.to_string()));
+                        result.insert(
+                            fields::ID.to_string(),
+                            serde_json::Value::String(id.to_string()),
+                        );
                     }
                 }
                 return serde_json::Value::Object(result);
@@ -1887,7 +1893,7 @@ async fn codegen_dart(url: &str, output_dir: &str) -> Result<()> {
 
     let mut count = 0;
     for typ in types {
-        let name = typ["name"].as_str().unwrap_or("");
+        let name = typ[fields::NAME].as_str().unwrap_or("");
         let kind = typ["kind"].as_str().unwrap_or("");
 
         // Skip built-in GraphQL types
@@ -1914,7 +1920,7 @@ async fn codegen_dart(url: &str, output_dir: &str) -> Result<()> {
             models.push_str(&format!("  const factory {name}({{\n"));
 
             for field in fields {
-                let field_name = field["name"].as_str().unwrap_or("unknown");
+                let field_name = field[fields::NAME].as_str().unwrap_or("unknown");
                 let dart_type = graphql_type_to_dart(&field["type"]);
                 models.push_str(&format!("    {dart_type}? {field_name},\n"));
             }
@@ -1939,7 +1945,7 @@ async fn codegen_dart(url: &str, output_dir: &str) -> Result<()> {
 
 fn graphql_type_to_dart(typ: &serde_json::Value) -> String {
     let kind = typ["kind"].as_str().unwrap_or("");
-    let name = typ["name"].as_str().unwrap_or("");
+    let name = typ[fields::NAME].as_str().unwrap_or("");
 
     match kind {
         "SCALAR" => match name {
@@ -2003,7 +2009,11 @@ unique = false"#
         }
 
         let name = format!("idx_{}_{}", idx.collection, idx.fields.join("_"));
-        let unique = if idx.unique.unwrap_or(false) { "UNIQUE " } else { "" };
+        let unique = if idx.unique.unwrap_or(false) {
+            "UNIQUE "
+        } else {
+            ""
+        };
         let query = format!(
             "CREATE {unique}INDEX IF NOT EXISTS {name} ON {} ({})",
             idx.collection,

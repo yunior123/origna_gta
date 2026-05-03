@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:origna_ventures/main.dart';
 import 'package:origna_ventures/tiers_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> _pumpApp(
   WidgetTester tester, {
@@ -14,6 +19,11 @@ Future<void> _pumpApp(
 }
 
 void main() {
+  tearDown(() {
+    venturesHttpClient = null;
+    venturesUrlLauncher = null;
+  });
+
   test('Ventures API base points to the live OrignaVentures backend', () {
     expect(venturesApiBase, 'https://api.orignaventures.ca/api');
   });
@@ -156,6 +166,90 @@ void main() {
 
     expect(find.textContaining('2 developers'), findsOneWidget);
     expect(find.text('\$2,000'), findsOneWidget);
+  });
+
+  testWidgets('tier buy buttons post the expected checkout service codes', (
+    tester,
+  ) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    final capturedBodies = <Map<String, dynamic>>[];
+    final launchedUris = <Uri>[];
+
+    venturesHttpClient = MockClient((request) async {
+      expect(
+        request.url.toString(),
+        'https://api.orignaventures.ca/api/payments/create-checkout-session',
+      );
+      capturedBodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+      return http.Response(
+        jsonEncode({
+          'checkoutUrl':
+              'https://checkout.stripe.test/session-${capturedBodies.length}',
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    venturesUrlLauncher = (
+      uri, {
+      mode = LaunchMode.platformDefault,
+      webOnlyWindowName,
+    }) async {
+      launchedUris.add(uri);
+      return true;
+    };
+
+    await _pumpApp(tester, size: const Size(1440, 2600));
+
+    await tester
+        .ensureVisible(find.bySemanticsLabel('btn-tier-buy-origna_code'));
+    await tester.tap(find.bySemanticsLabel('btn-tier-buy-origna_code'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.ensureVisible(
+      find.bySemanticsLabel('btn-tier-buy-origna_launch'),
+    );
+    await tester.tap(find.bySemanticsLabel('btn-tier-buy-origna_launch'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.ensureVisible(find.byTooltip('Increase team size').first);
+    await tester.tap(find.byTooltip('Increase team size').first);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byTooltip('Increase team size').first);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester
+        .ensureVisible(find.bySemanticsLabel('btn-tier-buy-origna_team'));
+    await tester.tap(find.bySemanticsLabel('btn-tier-buy-origna_team'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(capturedBodies, hasLength(3));
+    expect(launchedUris, hasLength(3));
+    expect(
+      launchedUris.map((uri) => uri.toString()).toList(),
+      [
+        'https://checkout.stripe.test/session-1',
+        'https://checkout.stripe.test/session-2',
+        'https://checkout.stripe.test/session-3',
+      ],
+    );
+
+    expect(capturedBodies[0]['service_code'], 'origna_code');
+    expect(capturedBodies[0]['developer_count'], 1);
+    expect(capturedBodies[0]['payment_provider'], 'stripe');
+    expect(capturedBodies[0]['locale'], 'en');
+
+    expect(capturedBodies[1]['service_code'], 'origna_launch');
+    expect(capturedBodies[1]['developer_count'], 1);
+    expect(capturedBodies[1]['payment_provider'], 'stripe');
+    expect(capturedBodies[1]['locale'], 'en');
+
+    expect(capturedBodies[2]['service_code'], 'origna_team');
+    expect(capturedBodies[2]['developer_count'], 3);
+    expect(capturedBodies[2]['payment_provider'], 'stripe');
+    expect(capturedBodies[2]['locale'], 'en');
   });
 
   testWidgets('mobile renders WhatsApp floating button', (tester) async {

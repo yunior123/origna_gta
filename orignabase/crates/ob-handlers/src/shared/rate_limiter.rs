@@ -70,8 +70,11 @@ pub async fn check_user_rate_limit(
     max_requests: u64,
     window_minutes: i64,
 ) -> Result<(), ob_core::Error> {
-    // In test mode, skip rate limiting to allow E2E/integration tests to run freely
-    if std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
+    // Keep the OB_TEST_MODE bypass out of unit tests so parallel test cases that
+    // mutate process-wide environment variables do not make these checks flaky.
+    // Integration tests still build this crate without `cfg(test)`, so they retain
+    // the bypass behavior when explicitly requested.
+    if !cfg!(test) && std::env::var("OB_TEST_MODE").unwrap_or_default() == "1" {
         return Ok(());
     }
 
@@ -83,7 +86,7 @@ pub async fn check_user_rate_limit(
     let window_start = now_secs - (window_minutes * 60);
 
     let query = format!(
-        "SELECT COUNT(*) FROM {} WHERE data->>'userId' = $user_id AND data->>'action' = $action AND (data->>'createdAt')::bigint >= $window_start",
+        "SELECT COUNT(*) FROM {} WHERE data->>'userId' = $user_id AND data->>'action' = $action AND (data->>'createdAt')::bigint >= ($window_start)::bigint",
         collections::RATE_LIMITS
     );
 

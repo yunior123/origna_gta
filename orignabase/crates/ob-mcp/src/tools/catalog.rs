@@ -3,6 +3,7 @@
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
 use ob_core::constants::mcp_params as p;
+use ob_database::fields;
 use serde_json::{Value, json};
 
 /// Search products by query, category, price range
@@ -320,8 +321,8 @@ mod tests {
         let result = get_product(state, &json!({"product_id": "products:test1"}))
             .await
             .unwrap();
-        assert_eq!(result["name"], "Test Product");
-        assert_eq!(result["priceCents"], 1500);
+        assert_eq!(result[fields::NAME], "Test Product");
+        assert_eq!(result[fields::PRICE_CENTS], 1500);
         assert_eq!(result["stockQuantity"], 10);
     }
 

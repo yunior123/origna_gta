@@ -2,6 +2,7 @@
 //!
 //! Run with: `cargo test --test shipping_test -- --ignored`
 
+use ob_database::fields;
 use reqwest::Client;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -24,7 +25,7 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -63,7 +64,7 @@ async fn test_shipping_create_product_and_order() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -105,7 +106,7 @@ async fn test_shipping_free_threshold() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -161,7 +162,7 @@ async fn test_shipping_cost_in_integer_cents() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();

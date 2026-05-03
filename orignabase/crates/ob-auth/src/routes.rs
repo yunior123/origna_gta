@@ -9,6 +9,7 @@ use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, deco
 use ob_core::constants::collections as c;
 use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
+use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
@@ -352,10 +353,10 @@ pub async fn register(
     });
 
     let user = state.db.create_document(c::USERS, user_data).await?;
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
 
     // Send verification email if email service is configured
     let verification_token = jwt::issue_verification_token(&user_id, &state.jwt_keys)?;
@@ -465,10 +466,10 @@ pub async fn login(
 
     ensure_user_not_disabled(user)?;
 
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
 
     if !password::verify_password(&body.password, hash)? {
         // Record failed login attempt for lockout tracking (best-effort)
@@ -1020,10 +1021,10 @@ async fn oauth_find_or_create_user(
 
         if let Some(mut user) = email_user {
             // Link OAuth to existing email account
-            let user_id = user["id"]
+            let user_id = user[fields::ID]
                 .as_str()
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| user["id"].to_string());
+                .unwrap_or_else(|| user[fields::ID].to_string());
 
             state
                 .db
@@ -1055,10 +1056,10 @@ async fn oauth_find_or_create_user(
         }
     };
 
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
     ensure_user_not_disabled(&user)?;
 
     let roles: Vec<String> = user["roles"]
@@ -1132,10 +1133,10 @@ pub async fn forgot_password(
         ));
     };
 
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
 
     // Generate a short-lived reset token (1 hour)
     let reset_token = jwt::issue_reset_token(&user_id, &state.jwt_keys)?;
@@ -1159,7 +1160,7 @@ pub async fn forgot_password(
 
     // Send reset email if service is configured
     if let Some(ref email_service) = state.email_service {
-        let email = user["email"].as_str().unwrap_or_default();
+        let email = user[fields::EMAIL].as_str().unwrap_or_default();
         let lang = user["preferredLanguage"].as_str().unwrap_or("en");
         if let Err(error) = email_service
             .send_reset_email(email, &reset_token, &state.base_url, lang)
@@ -1380,10 +1381,10 @@ pub async fn send_verification(
         return Ok(Json(json!({ "message": "Email is already verified" })));
     }
 
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
 
     let verification_token = jwt::issue_verification_token(&user_id, &state.jwt_keys)?;
 
@@ -1440,7 +1441,7 @@ pub async fn mfa_setup(
         return Err(Error::Validation("MFA is already enabled".into()));
     }
 
-    let account = user["email"].as_str().unwrap_or(&auth.user_id);
+    let account = user[fields::EMAIL].as_str().unwrap_or(&auth.user_id);
 
     // Generate TOTP secret
     let secret = totp::generate_secret();
@@ -1579,7 +1580,7 @@ pub async fn mfa_verify_setup(
 
     // Send MFA alert email
     if let Some(ref email_service) = state.email_service {
-        let email = user["email"].as_str().unwrap_or_default();
+        let email = user[fields::EMAIL].as_str().unwrap_or_default();
         let lang = user["preferredLanguage"].as_str().unwrap_or("en");
         let _ = email_service.send_mfa_alert(email, "enabled", lang).await;
     }
@@ -1972,7 +1973,7 @@ pub async fn mfa_disable(
 
     // Send MFA alert email
     if let Some(ref email_service) = state.email_service {
-        let email = user["email"].as_str().unwrap_or_default();
+        let email = user[fields::EMAIL].as_str().unwrap_or_default();
         let lang = user["preferredLanguage"].as_str().unwrap_or("en");
         let _ = email_service.send_mfa_alert(email, "disabled", lang).await;
     }
@@ -2128,7 +2129,7 @@ pub async fn admin_update_user(
 
     let mut updates = serde_json::Map::new();
     if let Some(email) = body.email {
-        updates.insert("email".into(), json!(email));
+        updates.insert(fields::EMAIL.into(), json!(email));
     }
     if let Some(name) = body.display_name {
         updates.insert("display_name".into(), json!(name));
@@ -2449,10 +2450,10 @@ pub async fn anonymous_sign_in(State(state): State<AuthState>) -> Result<Json<Au
     });
 
     let user = state.db.create_document(c::USERS, user_data).await?;
-    let user_id = user["id"]
+    let user_id = user[fields::ID]
         .as_str()
         .map(|s| s.to_string())
-        .unwrap_or_else(|| user["id"].to_string());
+        .unwrap_or_else(|| user[fields::ID].to_string());
 
     let roles = vec!["anonymous".to_string()];
     let access_token =
@@ -2546,7 +2547,7 @@ pub async fn anonymous_upgrade(
     let user = state
         .db
         .query_bind(
-            "SELECT * FROM type::thing('users', $uid) LIMIT 1",
+            "SELECT * FROM users WHERE id = $uid LIMIT 1",
             json!({ "uid": auth.user_id }),
         )
         .await?;
@@ -2656,17 +2657,14 @@ pub async fn verify_magic_link(
     }
 
     // Mark token as used (single-use)
-    let token_db_id = token_doc["id"].as_str().unwrap_or("");
+    let token_db_id = token_doc[fields::ID].as_str().unwrap_or("");
     state
         .db
-        .query_bind(
-            "UPDATE type::thing('_magic_links', $tid) SET used = true",
-            json!({ "tid": token_db_id }),
-        )
+        .update_document("_magic_links", token_db_id, json!({ "used": true }))
         .await?;
 
     // Find or create user by email
-    let email = token_doc["email"]
+    let email = token_doc[fields::EMAIL]
         .as_str()
         .ok_or_else(|| Error::Auth("Invalid token".into()))?;
 
@@ -2679,10 +2677,10 @@ pub async fn verify_magic_link(
         .await?;
 
     let (user_id, user, roles) = if let Some(existing_user) = existing.first() {
-        let uid = existing_user["id"]
+        let uid = existing_user[fields::ID]
             .as_str()
             .map(|s| s.to_string())
-            .unwrap_or_else(|| existing_user["id"].to_string());
+            .unwrap_or_else(|| existing_user[fields::ID].to_string());
         let roles: Vec<String> = existing_user["roles"]
             .as_array()
             .map(|arr| {
@@ -2695,10 +2693,7 @@ pub async fn verify_magic_link(
         // Mark email as verified (they proved ownership via magic link)
         state
             .db
-            .query_bind(
-                "UPDATE type::thing('users', $uid) SET email_verified = true",
-                json!({ "uid": uid }),
-            )
+            .update_document(c::USERS, &uid, json!({ f::EMAIL_VERIFIED: true }))
             .await?;
 
         (uid, existing_user.clone(), roles)
@@ -2717,10 +2712,10 @@ pub async fn verify_magic_link(
         });
 
         let user = state.db.create_document(c::USERS, user_data).await?;
-        let uid = user["id"]
+        let uid = user[fields::ID]
             .as_str()
             .map(|s| s.to_string())
-            .unwrap_or_else(|| user["id"].to_string());
+            .unwrap_or_else(|| user[fields::ID].to_string());
 
         // Send welcome email (new user via magic link — default "en")
         if let Some(ref email_service) = state.email_service {
@@ -2966,7 +2961,7 @@ mod tests {
         let val = serde_json::to_value(&resp).unwrap();
         assert_eq!(val["access_token"], "at_123");
         assert_eq!(val["refresh_token"], "rt_456");
-        assert_eq!(val["user"]["id"], "u1");
+        assert_eq!(val["user"][fields::ID], "u1");
     }
 
     #[test]

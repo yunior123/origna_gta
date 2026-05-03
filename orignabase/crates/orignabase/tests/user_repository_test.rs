@@ -6,6 +6,7 @@
 //!
 //! Run with: cargo test --test user_repository_test -- --ignored
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -28,7 +29,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -141,7 +142,7 @@ async fn test_user_add_address() {
     let (token, user_id, _email) = register_test_user(&client).await;
 
     let mut addr = address_data("Home");
-    addr["userId"] = json!(user_id); // ignore-magic
+    addr[fields::USER_ID] = json!(user_id); // ignore-magic
     let data = serde_json::to_string(&addr).unwrap();
     let escaped = serde_json::to_string(&data).unwrap();
     let query = format!(r#"mutation {{ create(collection: "addresses", data: {escaped}) }}"#); // ignore-magic

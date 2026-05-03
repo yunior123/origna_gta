@@ -2,6 +2,7 @@
 //!
 //! Run with: `cd orignabase && cargo test --test return_integration_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -161,11 +162,11 @@ async fn test_return_request_lifecycle() {
 
             // Take first delivered order
             let order = &orders[0];
-            let order_id = order["id"] // ignore-magic
+            let order_id = order[fields::ID] // ignore-magic
                 .as_str()
                 .map(|s| s.to_string())
                 .unwrap_or_default();
-            let status = order["status"].as_str().unwrap_or(""); // ignore-magic
+            let status = order[fields::STATUS].as_str().unwrap_or(""); // ignore-magic
 
             if order_id.is_empty() || status != "delivered" {
                 // ignore-magic
@@ -182,7 +183,7 @@ async fn test_return_request_lifecycle() {
             }
 
             let item = &items[0];
-            let item_id = item["id"] // ignore-magic
+            let item_id = item[fields::ID] // ignore-magic
                 .as_str()
                 .map(|s| s.to_string())
                 .unwrap_or_default();
@@ -203,11 +204,11 @@ async fn test_return_request_lifecycle() {
             .await
             {
                 Ok(return_req) => {
-                    let return_id = return_req["id"] // ignore-magic
+                    let return_id = return_req[fields::ID] // ignore-magic
                         .as_str()
                         .map(|s| s.to_string())
                         .unwrap_or_default();
-                    let return_status = return_req["status"].as_str().unwrap_or(""); // ignore-magic
+                    let return_status = return_req[fields::STATUS].as_str().unwrap_or(""); // ignore-magic
 
                     // Verify initial status is "pending"
                     assert_eq!(
@@ -221,7 +222,7 @@ async fn test_return_request_lifecycle() {
 
                     match approve_return_request(&client, &admin_token, &return_id).await {
                         Ok(approved) => {
-                            let new_status = approved["status"].as_str().unwrap_or(""); // ignore-magic
+                            let new_status = approved[fields::STATUS].as_str().unwrap_or(""); // ignore-magic
                             assert_eq!(
                                 new_status, "approved",
                                 "Return should transition to approved state"
@@ -259,13 +260,13 @@ async fn test_return_request_expired_window() {
 
             // Find an order that's too old (> 30 days old)
             let old_order = orders.iter().find(|order| {
-                let created_at = order["createdAt"].as_str().unwrap_or(""); // ignore-magic
+                let created_at = order[fields::CREATED_AT].as_str().unwrap_or(""); // ignore-magic
                 // Very basic check: if order exists and we can parse it, try to return
                 !created_at.is_empty()
             });
 
             if let Some(order) = old_order {
-                let order_id = order["id"] // ignore-magic
+                let order_id = order[fields::ID] // ignore-magic
                     .as_str()
                     .map(|s| s.to_string())
                     .unwrap_or_default();
@@ -273,7 +274,7 @@ async fn test_return_request_expired_window() {
                 let empty_items = vec![];
                 let items = order["items"].as_array().unwrap_or(&empty_items); // ignore-magic
                 if !items.is_empty() {
-                    let item_id = items[0]["id"] // ignore-magic
+                    let item_id = items[0][fields::ID] // ignore-magic
                         .as_str()
                         .map(|s| s.to_string())
                         .unwrap_or_default();

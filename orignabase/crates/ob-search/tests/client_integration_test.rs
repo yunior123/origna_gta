@@ -10,6 +10,7 @@ use axum::{
     response::IntoResponse,
     routing::{delete, post, put},
 };
+use ob_core::constants::fields as f;
 use ob_search::{SearchClient, SearchConfig, config::IndexConfig};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
@@ -196,7 +197,7 @@ async fn search_hits_real_local_server_and_restores_record_id() {
         .await
         .unwrap();
 
-    assert_eq!(result.hits[0]["id"], "products:widget-1");
+    assert_eq!(result.hits[0][f::ID], "products:widget-1");
     assert_eq!(result.query, "widget");
     assert_eq!(result.processing_time_ms, 7);
 

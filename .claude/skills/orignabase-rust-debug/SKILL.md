@@ -73,7 +73,7 @@ Open `references/current-audit.md` when you need the repo-specific 2026-04-23 au
 
 - Check `crates/ob-database/src/query.rs`, `pg_store.rs`, and handler raw SQL.
 - Red flags:
-  - Surreal-style syntax leaking into PostgreSQL (`START` vs `OFFSET`)
+  - stale SQL patterns (`START` vs `OFFSET`, wrong JSONB access)
   - top-level fields used where data lives in `data->>'field'`
   - casts on nullable/missing values
   - query succeeds in `psql` but fails in row mapping

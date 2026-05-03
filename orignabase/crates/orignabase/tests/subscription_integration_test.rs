@@ -2,6 +2,7 @@
 //!
 //! Run with: `cd orignabase && cargo test --test subscription_integration_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 
 fn base_url() -> String {
@@ -26,7 +27,7 @@ async fn login_buyer(client: &reqwest::Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .map(|s| s.to_string())
         .unwrap_or_default();
@@ -140,7 +141,7 @@ async fn test_subscription_early_cancel_tracking() {
 
     // Create subscription
     if let Ok(sub) = create_subscription(&client, &buyer_token, "premium").await {
-        let subscription_id = sub["id"] // ignore-magic
+        let subscription_id = sub[fields::ID] // ignore-magic
             .as_str()
             .map(|s| s.to_string())
             .unwrap_or_default();

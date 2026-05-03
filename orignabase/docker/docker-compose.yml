@@ -59,6 +59,67 @@ services:
         limits:
           memory: 256M
 
+  docuseal-db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${DOCUSEAL_POSTGRES_USER:-docuseal}
+      POSTGRES_PASSWORD: ${DOCUSEAL_POSTGRES_PASSWORD:-docuseal_dev}
+      POSTGRES_DB: ${DOCUSEAL_POSTGRES_DB:-docuseal}
+    volumes:
+      - docuseal_postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DOCUSEAL_POSTGRES_USER:-docuseal} -d ${DOCUSEAL_POSTGRES_DB:-docuseal}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  docuseal:
+    image: docuseal/docuseal:latest
+    environment:
+      DATABASE_URL: ${DOCUSEAL_DATABASE_URL:-REDACTED_SECRET/docuseal}
+      SECRET_KEY_BASE: ${DOCUSEAL_SECRET_KEY_BASE}
+      FORCE_SSL: ${DOCUSEAL_FORCE_SSL:-true}
+      HOST: ${DOCUSEAL_HOST:-https://signatures.orignagta.ca}
+      SMTP_ADDRESS: ${DOCUSEAL_SMTP_ADDRESS:-}
+      SMTP_PORT: ${DOCUSEAL_SMTP_PORT:-587}
+      SMTP_DOMAIN: ${DOCUSEAL_SMTP_DOMAIN:-orignagta.ca}
+      SMTP_USERNAME: ${DOCUSEAL_SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${DOCUSEAL_SMTP_PASSWORD:-}
+      SMTP_AUTHENTICATION: ${DOCUSEAL_SMTP_AUTHENTICATION:-plain}
+      SMTP_FROM: ${DOCUSEAL_SMTP_FROM:-signatures@orignagta.ca}
+      SMTP_ENABLE_STARTTLS: ${DOCUSEAL_SMTP_ENABLE_STARTTLS:-true}
+      SMTP_SSL_VERIFY: ${DOCUSEAL_SMTP_SSL_VERIFY:-true}
+    depends_on:
+      docuseal-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ruby -rnet/http -e 'res = Net::HTTP.get_response(URI(\"http://127.0.0.1:3000/\")); exit(res.code.to_i < 500 ? 0 : 1)'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
   orignabase:
     build:
       context: ..
@@ -120,6 +181,8 @@ services:
     depends_on:
       orignabase:
         condition: service_healthy
+      docuseal:
+        condition: service_healthy
     networks:
       - default
       - ventures_net
@@ -164,6 +227,7 @@ services:
 volumes:
   postgres_data:
   meili_data:
+  docuseal_postgres_data:
   caddy_data:
   caddy_config:
 

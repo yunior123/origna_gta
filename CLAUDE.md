@@ -132,6 +132,14 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - No migration or backward compatibility — wipe dev DB and reseed if needed
 - Both OrignaBase backend and Flutter frontend can be modified to fix issues
 - Cloudflare MCP exists — search for it, you always forget
+- Cloudflare DNS record adding: use Safari, not Chrome. Memory source:
+  `~/.claude/projects/-Users-yuniorrodriguezosorio-Documents-GitHub-origna-gta/memory/feedback_cloudflare_via_safari.md`.
+  If `CLOUDFLARE_API_TOKEN`/Keychain token is missing or invalid, open
+  `https://dash.cloudflare.com/9b027cd3919483d27f0abeb2090ac626/orignagta.ca/dns/records`
+  in Safari with `osascript`, then run JavaScript `fetch('/api/v4/zones/04030354608f8d8969d43a4c10ab3789/dns_records', ...)`
+  inside the current Safari tab. Use relative `/api/v4/...` URLs so Safari sends Cloudflare session cookies. Write async results to
+  `document.title`, then read the tab title with `osascript`. For OrignaGTA DNS, zone id is
+  `04030354608f8d8969d43a4c10ab3789`; VPS A record content is `204.168.137.16`; 81058 means the DNS record already exists and is safe to treat as success after verifying content.
 - Prefer Rust over TypeScript for server code
 - Read `docs/REPO_MAP.md` for context before starting work
 - no skipping tests, implement and run instead
@@ -148,6 +156,7 @@ cd e2e && ORIGNABASE_URL=http://127.0.0.1:8080 bun run lib/seed-dev.ts
 - autolearn:if u find an issue while solving other then solve it or added to state.md
 - avoid simple unprofessional fixes. if u encounter an issue make sure to solve like pro.
 - codex delegation: ONLY gpt-5.4 (full). NEVER gpt-5.4-mini, o4-mini, o3, or any model < 5.3. Lower models destroy the codebase.
+- codex session bootstrap: every Codex CLI/session must read repo-root `CLAUDE.md`, `AGENTS.md`, `WORK_CLAIMS.md`, and relevant `.claude/rules/` before editing or running tests. If launched from `orignabase/`, `origna_gta/`, `origna_ventures/`, or another subdir, first `cd /Users/yuniorrodriguezosorio/Documents/GitHub/origna_gta` or explicitly open the repo-root files. Every `codex exec` delegation prompt must include: `Read repo-root CLAUDE.md, AGENTS.md, WORK_CLAIMS.md, and relevant .claude/rules before touching files.`
 - codex flag (v0.117.0+): `codex exec -m gpt-5.4 -s danger-full-access "prompt"` — OLD syntax `--dangerously-bypass-approvals-and-sandbox -c 'model="gpt-5.4"'` is deprecated
 - codex batches: launch 3+ parallel codex for non-conflicting tasks (different directories), divide and conquer
 - codex temp files: pipe output to `/tmp/codex-batch{N}-output.log` — never lose results
@@ -173,7 +182,7 @@ Make them audit full codebase in depth. Use all agents and skills for it.
 - use get by label and get by role for testing e2e with either agent-browser cli or playwright
 - use at least this:use real yr62813@gmail.com for testing e2e ui interactions live.
 - we are a mixture of amazon + instacart
-- surreal is gone, mailjet is gone. make sure there are no references to those in whole repo
+- Removed legacy database and email-provider references must stay out of the repo.
 - always prefer AgentBrowser, update if needed, playwright is secondary
 
 ## Current Hot Path

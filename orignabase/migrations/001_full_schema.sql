@@ -1,5 +1,5 @@
 -- =============================================================================
--- OrignaBase — Full PostgreSQL Schema (migrated from SurrealDB)
+-- OrignaBase — Full PostgreSQL Schema
 -- Generated: 2026-03-28
 -- =============================================================================
 

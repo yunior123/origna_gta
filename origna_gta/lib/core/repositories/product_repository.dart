@@ -1,5 +1,5 @@
+import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
-import 'package:flutter/foundation.dart';
 import 'package:orignabase/orignabase.dart' show FieldValue;
 import 'package:origna_gta/core/compat/timestamp.dart' show truncateNanoseconds;
 import 'package:origna_gta/core/schema/schema_constants.dart';

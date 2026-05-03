@@ -63,7 +63,7 @@ void main() {
           }
         } on OrignaBaseException catch (e) {
           // 403: no doc → isOwner fails on null resource.
-          // null status (Internal server error): SurrealDB query on nonexistent record.
+          // null status (Internal server error): database lookup on nonexistent record.
           // Both mean "no subscription" — not an error from the caller's view.
           if (e.statusCode == 403 ||
               e.statusCode == 404 ||

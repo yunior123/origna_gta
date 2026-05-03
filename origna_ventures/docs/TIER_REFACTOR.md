@@ -24,6 +24,11 @@ This file reflects the current public tier model.
 - Legacy `Essential / Professional / Enterprise` wording is obsolete and should not be used for current product, payment, or deck work.
 - Checkout is created through Stripe Checkout Sessions, not static tier-specific Payment Links.
 - Tax calculation is Stripe-hosted via `automatic_tax` and `tax_id_collection`, not a hardcoded HST line item.
+- Contracts are coordinated through DocuSeal after payment. The backend owns the service-to-template mapping and writes the selected bundle into Stripe metadata.
+- Contract bundles:
+  - `origna_code`: `ventures-master-services-v1`, `origna-code-source-license-v1`
+  - `origna_launch`: `ventures-master-services-v1`, `origna-code-source-license-v1`, `origna-launch-statement-of-work-v1`
+  - `origna_team`: `ventures-master-services-v1`, `origna-team-retainer-v1`
 
 ## Source of truth
 

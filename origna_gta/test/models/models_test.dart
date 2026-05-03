@@ -97,7 +97,7 @@ void main() {
 
       final toMap = item.toMap();
       expect(toMap[Fields.productId], 'prod_1');
-      expect(toMap[Fields.price], 15.0);
+      expect(toMap[Fields.priceCents], 1500);
     });
   });
 
@@ -265,7 +265,7 @@ void main() {
 
       final toMapMap = product.toMap();
       expect(toMapMap[Fields.name], 'Product 1');
-      expect(toMapMap[Fields.price], 49.99);
+      expect(toMapMap[Fields.priceCents], 4999);
     });
   });
 

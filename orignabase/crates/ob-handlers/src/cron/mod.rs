@@ -10,6 +10,7 @@
 //! - N+1 prevention via bulk fetches
 
 use chrono::{Duration, Utc};
+use ob_database::fields as db_fields;
 use serde_json::{Value, json};
 use tracing::{error, info, warn};
 
@@ -110,7 +111,7 @@ async fn stripe_provider_enabled(state: &HandlersState) -> bool {
         .and_then(|v| v.as_array())
         .and_then(|providers| {
             providers.iter().find(|provider| {
-                provider.get(fields::NAME).and_then(|v| v.as_str()) == Some("stripe")
+                provider.get(db_fields::NAME).and_then(|v| v.as_str()) == Some("stripe")
             })
         })
         .and_then(|provider| provider.get("enabled").and_then(|v| v.as_bool()))
@@ -167,8 +168,12 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
     let mut failed_count = 0u32;
 
     for order in &orders {
-        let order_id =
-            normalize_record_id(order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
+        let order_id = normalize_record_id(
+            order
+                .get(db_fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or(""),
+        );
         let payment_intent_id = order
             .get(fields::PAYMENT_INTENT_ID)
             .and_then(|v| v.as_str())
@@ -243,11 +248,11 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     continue;
                 }
                 let seller_id = item
-                    .get(fields::SELLER_ID)
+                    .get(db_fields::SELLER_ID)
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
                 let price = item
-                    .get(fields::PRICE_CENTS)
+                    .get(db_fields::PRICE_CENTS)
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0);
                 let qty = item
@@ -264,7 +269,7 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
 
         let expected = sellers_total_cents.len();
         let mut success_count = 0usize;
-        let order_subtotal = i64_field(order, fields::SUBTOTAL_CENTS).max(1);
+        let order_subtotal = i64_field(order, db_fields::SUBTOTAL_CENTS).max(1);
 
         for (seller_id, amount_cents) in &sellers_total_cents {
             // Proportional fee per seller: (seller_amount / order_subtotal) * total_platform_fee
@@ -281,9 +286,9 @@ async fn run_auto_capture(state: &HandlersState) -> std::result::Result<(), Stri
                     collections::PAYOUTS,
                     &payout_id,
                     json!({
-                        fields::ID: payout_id,
+                        db_fields::ID: payout_id,
                         fields::ORDER_ID: order_id,
-                        fields::SELLER_ID: seller_id,
+                        db_fields::SELLER_ID: seller_id,
                         fields::AMOUNT_CENTS: amount_cents,
                         fields::PLATFORM_FEE_CENTS: fee_cents,
                         fields::NET_AMOUNT_CENTS: net_cents,
@@ -369,9 +374,12 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
             let now_str = Utc::now().to_rfc3339();
 
             for order in &orders {
-                let id = order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+                let id = order
+                    .get(db_fields::ID)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
                 let buyer_id = order
-                    .get(fields::USER_ID)
+                    .get(db_fields::USER_ID)
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
                 let payment_intent_id = order
@@ -456,7 +464,7 @@ pub async fn check_expired_authorizations(state: &HandlersState) {
                         collections::ORDER_EVENTS,
                         json!({
                             fields::ORDER_ID: id,
-                            fields::USER_ID: buyer_id,
+                            db_fields::USER_ID: buyer_id,
                             fields::EVENT_TYPE: "authorization_expired",
                             fields::MESSAGE: "Payment authorization expired after 7 days. Order cancelled and stock restored.",
                             fields::CREATED_AT: now_str,
@@ -506,7 +514,7 @@ pub async fn auto_archive_old_orders(state: &HandlersState) {
         let mut archived = 0u32;
 
         for order in &orders {
-            let id = order.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let id = order.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let _ = state
                 .db
                 .update_document(
@@ -605,7 +613,10 @@ pub async fn cleanup_stale_rate_limits(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc
+                .get(db_fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             if !id.is_empty() {
                 let _ = state.db.delete_document(collections::RATE_LIMITS, id).await;
                 deleted += 1;
@@ -715,7 +726,10 @@ pub async fn cleanup_stale_webhook_events(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc
+                .get(db_fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             if !id.is_empty() {
                 let _ = state
                     .db
@@ -768,7 +782,7 @@ pub async fn cleanup_stale_security_alerts(state: &HandlersState) {
         let mut deleted = 0u32;
 
         for doc in &docs {
-            let id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let id = doc.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             if !id.is_empty() {
                 let _ = state
                     .db
@@ -822,7 +836,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
 
         for failure in &failures {
             let failure_id = failure
-                .get(fields::ID)
+                .get(db_fields::ID)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let product_id = failure
@@ -873,7 +887,7 @@ pub async fn retry_failed_meilisearch_syncs(state: &HandlersState) {
             {
                 Ok(product) => {
                     let lifecycle = product
-                        .get(fields::LIFECYCLE_STATUS)
+                        .get(db_fields::LIFECYCLE_STATUS)
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
 
@@ -1009,7 +1023,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             }
 
             let seller_id = product
-                .get(fields::SELLER_ID)
+                .get(db_fields::SELLER_ID)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             if seller_id.is_empty() {
@@ -1026,12 +1040,12 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
         for sid in &seller_ids {
             if let Ok(seller) = state.db.get_document(collections::USERS, sid).await {
                 let email = seller
-                    .get(fields::EMAIL)
+                    .get(db_fields::EMAIL)
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
                 let consent = seller
-                    .get(fields::EMAIL_CONSENT)
+                    .get(db_fields::EMAIL_CONSENT)
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
                 let lang = seller
@@ -1048,7 +1062,7 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
         // Send alerts
         for (product, stock, _threshold) in &products_needing_alert {
             let seller_id = product
-                .get(fields::SELLER_ID)
+                .get(db_fields::SELLER_ID)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let (email, consent, lang) = match seller_emails.get(seller_id) {
@@ -1062,11 +1076,11 @@ pub async fn check_low_stock_alerts(state: &HandlersState) {
             }
 
             let product_name = product
-                .get(fields::NAME)
+                .get(db_fields::NAME)
                 .and_then(|v| v.as_str())
                 .unwrap_or("Your product");
             let product_id = product
-                .get(fields::ID)
+                .get(db_fields::ID)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
 
@@ -1141,13 +1155,16 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
         let mut sent = 0u32;
 
         for user in &users {
-            let user_id = user.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let user_id = user
+                .get(db_fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let email = user
-                .get(fields::EMAIL)
+                .get(db_fields::EMAIL)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
             let consent = user
-                .get(fields::EMAIL_CONSENT)
+                .get(db_fields::EMAIL_CONSENT)
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
 
@@ -1191,7 +1208,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
                 let items: Vec<crate::email::CartItem> = cart_items
                     .iter()
                     .filter_map(|ci| {
-                        ci.get(fields::NAME).and_then(|v| v.as_str()).map(|n| {
+                        ci.get(db_fields::NAME).and_then(|v| v.as_str()).map(|n| {
                             crate::email::CartItem {
                                 name: n.to_string(),
                             }
@@ -1205,7 +1222,7 @@ pub async fn send_abandoned_cart_emails(state: &HandlersState) {
                 }
 
                 let buyer_name = user
-                    .get(fields::NAME)
+                    .get(db_fields::NAME)
                     .and_then(|v| v.as_str())
                     .unwrap_or("there");
                 let lang = user
@@ -1307,7 +1324,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
             if let Some(items) = order.get(fields::ITEMS).and_then(|v| v.as_array()) {
                 for item in items {
                     let sid = item
-                        .get(fields::SELLER_ID)
+                        .get(db_fields::SELLER_ID)
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     if sid.is_empty() {
@@ -1362,7 +1379,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                     collections::SELLER_METRICS,
                     seller_id,
                     json!({
-                        fields::SELLER_ID: seller_id,
+                        db_fields::SELLER_ID: seller_id,
                         fields::DISPUTE_RATE: (dispute_rate * 10000.0).round() / 10000.0,
                         fields::REFUND_RATE: (refund_rate * 10000.0).round() / 10000.0,
                         fields::CANCELLATION_RATE: (cancel_rate * 10000.0).round() / 10000.0,
@@ -1392,7 +1409,7 @@ pub async fn compute_seller_metrics(state: &HandlersState) {
                         collections::SECURITY_ALERTS,
                         json!({
                             fields::TYPE: "seller_metrics_breach",
-                            fields::SELLER_ID: seller_id,
+                            db_fields::SELLER_ID: seller_id,
                             fields::BREACHES: breaches,
                             fields::SEVERITY: "high",
                             fields::CREATED_AT: now.to_rfc3339(),
@@ -1458,9 +1475,9 @@ pub async fn compute_trending_products(state: &HandlersState) {
         let mut old_trending: std::collections::HashSet<String> = std::collections::HashSet::new();
 
         for prod in &products {
-            let prod_id = prod.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let prod_id = prod.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let name = prod
-                .get(fields::NAME)
+                .get(db_fields::NAME)
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
 
@@ -1576,7 +1593,7 @@ pub async fn sync_expired_subscriptions(state: &HandlersState) {
         let mut synced = 0u32;
 
         for sub in &subs {
-            let uid = normalize_record_id(sub.get(fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
+            let uid = normalize_record_id(sub.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or(""));
             if uid.is_empty() {
                 continue;
             }
@@ -1657,7 +1674,7 @@ pub async fn escalate_stale_return_requests(state: &HandlersState) {
         let mut escalated = 0u32;
 
         for ret in &returns {
-            let return_id = ret.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+            let return_id = ret.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or("");
             let _ = state
                 .db
                 .update_document(
@@ -1723,7 +1740,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
             let mut sent = 0u32;
 
             for sub in &subs {
-                let raw_id = sub.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("");
+                let raw_id = sub.get(db_fields::ID).and_then(|v| v.as_str()).unwrap_or("");
                 let uid = normalize_record_id(raw_id);
 
                 // Skip if cancelled at period end
@@ -1746,7 +1763,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
 
                 // Fetch user for email
                 if let Ok(user) = state.db.get_document(collections::USERS, uid).await {
-                    let email = user.get(fields::EMAIL).and_then(|v| v.as_str()).unwrap_or("");
+                    let email = user.get(db_fields::EMAIL).and_then(|v| v.as_str()).unwrap_or("");
                     let lang = user
                         .get(fields::LANGUAGE)
                         .and_then(|v| v.as_str())
@@ -1774,7 +1791,7 @@ pub async fn send_premium_renewal_reminders(state: &HandlersState) {
                     if let Some(api_key) = state.config.secret("postal_api_key") {
                         let price = business_rules::PREMIUM_SUBSCRIPTION_PRICE_CAD;
                         let buyer_name = user
-                            .get(fields::NAME)
+                            .get(db_fields::NAME)
                             .and_then(|v| v.as_str())
                             .unwrap_or("there");
                         let html = crate::email::subscription_renewal_html(
@@ -1872,7 +1889,7 @@ pub async fn drain_pending_notifications(state: &HandlersState) {
 
         for record in &pending {
             let Some(record_id) = record
-                .get(fields::ID)
+                .get(db_fields::ID)
                 .and_then(|v| v.as_str())
                 .map(|id| id.split(':').next_back().unwrap_or(id).to_string())
             else {
@@ -2232,7 +2249,7 @@ mod tests {
             .await
         {
             for lock in &locks {
-                if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
+                if let Some(id) = lock.get(db_fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,
@@ -2350,7 +2367,7 @@ mod tests {
             .await
         {
             for lock in &locks {
-                if let Some(id) = lock.get(fields::ID).and_then(|v| v.as_str()) {
+                if let Some(id) = lock.get(db_fields::ID).and_then(|v| v.as_str()) {
                     let _ = state.db.update_document(
                         collections::CRON_LOCKS,
                         id,
@@ -2483,13 +2500,13 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
-                    fields::SUBTOTAL_CENTS: 1000,
+                    db_fields::SUBTOTAL_CENTS: 1000,
                     fields::PLATFORM_FEE_CENTS: 25,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: &seller_id,
-                            fields::PRICE_CENTS: 1000,
+                            db_fields::SELLER_ID: &seller_id,
+                            db_fields::PRICE_CENTS: 1000,
                             fields::QUANTITY: 1
                         }
                     ]
@@ -2525,7 +2542,7 @@ mod tests {
             "Payout orderId should match"
         );
         assert_eq!(
-            payout.get(fields::SELLER_ID).and_then(|v| v.as_str()),
+            payout.get(db_fields::SELLER_ID).and_then(|v| v.as_str()),
             Some(seller_id.as_str()),
             "Payout sellerId should match"
         );
@@ -2591,8 +2608,8 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: &seller_id,
-                        fields::PRICE_CENTS: 1000,
+                        db_fields::SELLER_ID: &seller_id,
+                        db_fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
                 }),
@@ -2644,8 +2661,8 @@ mod tests {
                     fields::DELIVERED_AT: delivered_at,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: &seller_id,
-                        fields::PRICE_CENTS: 1000,
+                        db_fields::SELLER_ID: &seller_id,
+                        db_fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
                 }),
@@ -2693,8 +2710,8 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: &seller_id,
-                        fields::PRICE_CENTS: 1000,
+                        db_fields::SELLER_ID: &seller_id,
+                        db_fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
                 }),
@@ -2755,8 +2772,8 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "delivered",
-                        fields::SELLER_ID: &seller_id,
-                        fields::PRICE_CENTS: 1000,
+                        db_fields::SELLER_ID: &seller_id,
+                        db_fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
                 }),
@@ -2815,8 +2832,8 @@ mod tests {
                     fields::PAYMENT_INTENT_ID: &pi_id,
                     fields::ITEMS: [{
                         fields::STATUS: "processing",
-                        fields::SELLER_ID: &seller_id,
-                        fields::PRICE_CENTS: 1000,
+                        db_fields::SELLER_ID: &seller_id,
+                        db_fields::PRICE_CENTS: 1000,
                         fields::QUANTITY: 1
                     }]
                 }),
@@ -3129,7 +3146,7 @@ mod tests {
                     fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [
                         {
-                            fields::SELLER_ID: &seller_id,
+                            db_fields::SELLER_ID: &seller_id,
                             fields::STATUS: "delivered"
                         }
                     ]
@@ -3164,7 +3181,7 @@ mod tests {
                 collections::PRODUCTS,
                 product_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     fields::VIEW_COUNT: 999999,
                     fields::PURCHASE_COUNT: 999999
@@ -3205,10 +3222,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "Low Stock Product",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "Low Stock Product",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 2,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 3,
                         fields::TRACK_QUANTITY: true
@@ -3223,8 +3240,8 @@ mod tests {
                 collections::USERS,
                 &seller_id,
                 json!({
-                    fields::EMAIL: "seller@example.com",
-                    fields::EMAIL_CONSENT: false,
+                    db_fields::EMAIL: "seller@example.com",
+                    db_fields::EMAIL_CONSENT: false,
                 }),
             )
             .await
@@ -3252,10 +3269,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "Cooldown Product",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "Cooldown Product",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::LAST_LOW_STOCK_ALERT_AT: Utc::now().to_rfc3339(),
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 3,
@@ -3271,8 +3288,8 @@ mod tests {
                 collections::USERS,
                 &seller_id,
                 json!({
-                    fields::EMAIL: "seller@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "seller@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                 }),
             )
             .await
@@ -3300,8 +3317,8 @@ mod tests {
                 collections::USERS,
                 &user_recent_id,
                 json!({
-                    fields::EMAIL: "recent@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "recent@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                     fields::LAST_CHECKOUT_TIMESTAMP: Utc::now().to_rfc3339(),
                 }),
@@ -3314,8 +3331,8 @@ mod tests {
                 collections::USERS,
                 &user_empty_id,
                 json!({
-                    fields::EMAIL: "empty@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "empty@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                 }),
             )
@@ -3450,7 +3467,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path(format!("/payment_intents/{pi_id}/cancel")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                fields::ID: &pi_id,
+                db_fields::ID: &pi_id,
                 fields::STATUS: "canceled"
             })))
             .mount(&server)
@@ -3494,7 +3511,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "authorized",
                     fields::ORDER_STATUS: "pending",
@@ -3549,7 +3566,7 @@ mod tests {
         Mock::given(method("POST"))
             .and(path(format!("/payment_intents/{pi_id}/cancel")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                fields::ID: &pi_id,
+                db_fields::ID: &pi_id,
                 fields::STATUS: "canceled"
             })))
             .mount(&server)
@@ -3676,7 +3693,7 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active"
+                    db_fields::LIFECYCLE_STATUS: "active"
                 }),
             )
             .await
@@ -3803,19 +3820,19 @@ mod tests {
                     fields::PAYMENT_STATUS: "captured",
                     fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
-                    fields::SUBTOTAL_CENTS: 2500,
+                    db_fields::SUBTOTAL_CENTS: 2500,
                     fields::PLATFORM_FEE_CENTS: 63,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: &seller_a_id,
-                            fields::PRICE_CENTS: 1000,
+                            db_fields::SELLER_ID: &seller_a_id,
+                            db_fields::PRICE_CENTS: 1000,
                             fields::QUANTITY: 2
                         },
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: &seller_b_id,
-                            fields::PRICE_CENTS: 500,
+                            db_fields::SELLER_ID: &seller_b_id,
+                            db_fields::PRICE_CENTS: 500,
                             fields::QUANTITY: 1
                         }
                     ]
@@ -3913,8 +3930,8 @@ mod tests {
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: &seller_id,
-                            fields::PRICE_CENTS: 2000,
+                            db_fields::SELLER_ID: &seller_id,
+                            db_fields::PRICE_CENTS: 2000,
                             fields::QUANTITY: 3
                         }
                     ]
@@ -3975,7 +3992,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "authorized",
                     fields::ORDER_STATUS: "pending",
@@ -4042,7 +4059,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ORDER_STATUS: "pending",
@@ -4095,7 +4112,7 @@ mod tests {
                 collections::ORDERS,
                 &order_id,
                 json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "authorized",
                     fields::ORDER_STATUS: "confirmed",
@@ -4158,7 +4175,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id1,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active"
+                    db_fields::LIFECYCLE_STATUS: "active"
                 }),
             )
             .await
@@ -4169,7 +4186,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod_id2,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active"
+                    db_fields::LIFECYCLE_STATUS: "active"
                 }),
             )
             .await
@@ -4564,7 +4581,7 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "archived"
+                    db_fields::LIFECYCLE_STATUS: "archived"
                 }),
             )
             .await
@@ -4636,10 +4653,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "No Threshold",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "No Threshold",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 0,
                         fields::TRACK_QUANTITY: true
@@ -4667,10 +4684,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "High Stock",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "High Stock",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 100,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -4697,9 +4714,9 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "No Seller",
+                    db_fields::NAME: "No Seller",
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -4727,10 +4744,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "Missing Seller Prod",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "Missing Seller Prod",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -4778,10 +4795,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "Low Stock Email Prod",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "Low Stock Email Prod",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -4797,8 +4814,8 @@ mod tests {
                 collections::USERS,
                 &seller_id,
                 json!({
-                    fields::EMAIL: "seller@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "seller@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                 }),
             )
             .await
@@ -4829,10 +4846,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "No Consent Prod",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "No Consent Prod",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -4847,8 +4864,8 @@ mod tests {
                 collections::USERS,
                 &seller_id,
                 json!({
-                    fields::EMAIL: "nc@example.com",
-                    fields::EMAIL_CONSENT: false,
+                    db_fields::EMAIL: "nc@example.com",
+                    db_fields::EMAIL_CONSENT: false,
                 }),
             )
             .await
@@ -4902,7 +4919,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                 }),
             )
@@ -4930,8 +4947,8 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "cool@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "cool@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                     fields::LAST_CART_ABANDON_EMAIL_AT: Utc::now().to_rfc3339(),
                 }),
@@ -4960,8 +4977,8 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "empty@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "empty@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                 }),
             )
@@ -4990,8 +5007,8 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "noname@example.com",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "noname@example.com",
+                    db_fields::EMAIL_CONSENT: true,
                     fields::MARKETING_OPT_IN: true,
                 }),
             )
@@ -5004,7 +5021,7 @@ mod tests {
                 collections::CART,
                 &cart_id,
                 json!({
-                    fields::USER_ID: &user_id,
+                    db_fields::USER_ID: &user_id,
                     fields::PRODUCT_ID: "some_prod",
                 }),
             )
@@ -5059,9 +5076,9 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "cart_en@example.com",
-                    fields::EMAIL_CONSENT: true,
-                    fields::NAME: "Alice",
+                    db_fields::EMAIL: "cart_en@example.com",
+                    db_fields::EMAIL_CONSENT: true,
+                    db_fields::NAME: "Alice",
                     fields::LANGUAGE: "en",
                     fields::MARKETING_OPT_IN: true,
                 }),
@@ -5074,8 +5091,8 @@ mod tests {
                 collections::CART,
                 &cart_id,
                 json!({
-                    fields::USER_ID: &user_id,
-                    fields::NAME: "Cool Sneakers",
+                    db_fields::USER_ID: &user_id,
+                    db_fields::NAME: "Cool Sneakers",
                 }),
             )
             .await
@@ -5136,9 +5153,9 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "cart_fr@example.com",
-                    fields::EMAIL_CONSENT: true,
-                    fields::NAME: "Jean",
+                    db_fields::EMAIL: "cart_fr@example.com",
+                    db_fields::EMAIL_CONSENT: true,
+                    db_fields::NAME: "Jean",
                     fields::LANGUAGE: "fr",
                     fields::MARKETING_OPT_IN: true,
                 }),
@@ -5151,8 +5168,8 @@ mod tests {
                 collections::CART,
                 &cart_id,
                 json!({
-                    fields::USER_ID: &user_id,
-                    fields::NAME: "Belles Chaussures",
+                    db_fields::USER_ID: &user_id,
+                    db_fields::NAME: "Belles Chaussures",
                 }),
             )
             .await
@@ -5217,7 +5234,7 @@ mod tests {
                     fields::HAS_DISPUTE: false,
                     fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: "",
+                        db_fields::SELLER_ID: "",
                         fields::STATUS: "delivered"
                     }]
                 }),
@@ -5260,11 +5277,11 @@ mod tests {
                     fields::ORDER_STATUS: "cancelled",
                     fields::ITEMS: [
                         {
-                            fields::SELLER_ID: &seller_id,
+                            db_fields::SELLER_ID: &seller_id,
                             fields::STATUS: "refunded"
                         },
                         {
-                            fields::SELLER_ID: &seller_id,
+                            db_fields::SELLER_ID: &seller_id,
                             fields::STATUS: "delivered"
                         }
                     ]
@@ -5317,7 +5334,7 @@ mod tests {
                         fields::HAS_DISPUTE: true,
                         fields::ORDER_STATUS: "cancelled",
                         fields::ITEMS: [{
-                            fields::SELLER_ID: &seller_id,
+                            db_fields::SELLER_ID: &seller_id,
                             fields::STATUS: "refunded"
                         }]
                     }),
@@ -5339,7 +5356,9 @@ mod tests {
 
         let alerts = state
             .db
-            .query_raw("SELECT * FROM security_alerts WHERE type = 'seller_metrics_breach'")
+            .query_raw(
+                "SELECT * FROM security_alerts WHERE data->>'type' = 'seller_metrics_breach'",
+            )
             .await
             .unwrap();
         assert!(!alerts.is_empty());
@@ -5386,7 +5405,7 @@ mod tests {
                 collections::PRODUCTS,
                 &old_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     fields::IS_TRENDING: true,
                     fields::VIEW_COUNT: 0,
@@ -5404,7 +5423,7 @@ mod tests {
                 collections::PRODUCTS,
                 &new_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     fields::VIEW_COUNT: 999999,
                     fields::PURCHASE_COUNT: 999999,
@@ -5449,7 +5468,7 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: Utc::now().to_rfc3339(),
                     fields::VIEW_COUNT: 0,
                     fields::PURCHASE_COUNT: 0,
@@ -5701,7 +5720,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "renew7@example.com",
+                    db_fields::EMAIL: "renew7@example.com",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -5714,7 +5733,7 @@ mod tests {
             send_premium_renewal_reminders
         );
 
-        // NOTE: The production code at line 1574 uses raw sub.get("id") without
+        // NOTE: The production code at line 1574 uses raw sub.get(db_fields::ID) without
         // normalize_record_id, so get_document("users", "subscriptions:uid") fails
         // validation. Lines 1595-1671 are unreachable without fixing production code.
         // This test still covers lines 1574-1592 (cancel check, dedup check).
@@ -5771,7 +5790,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "renew_fr@example.com",
+                    db_fields::EMAIL: "renew_fr@example.com",
                     fields::LANGUAGE: "fr",
                 }),
             )
@@ -5889,7 +5908,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "",
+                    db_fields::EMAIL: "",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -6149,7 +6168,7 @@ mod tests {
                 collections::ORDERS,
                 &ord_id_1,
                 json!({
-                    fields::USER_ID: &buyer_id_1,
+                    db_fields::USER_ID: &buyer_id_1,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "authorized",
                     fields::ORDER_STATUS: "confirmed",
@@ -6180,7 +6199,7 @@ mod tests {
                 collections::ORDERS,
                 &ord_id_2,
                 json!({
-                    fields::USER_ID: &buyer_id_2,
+                    db_fields::USER_ID: &buyer_id_2,
                     fields::CREATED_AT: created_at,
                     fields::PAYMENT_STATUS: "awaiting_payment",
                     fields::ORDER_STATUS: "pending",
@@ -6254,10 +6273,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "No Track",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "No Track",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 10,
                         fields::TRACK_QUANTITY: false
@@ -6285,10 +6304,10 @@ mod tests {
                 collections::PRODUCTS,
                 &product_id,
                 json!({
-                    fields::NAME: "Empty Email Prod",
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::NAME: "Empty Email Prod",
+                    db_fields::SELLER_ID: &seller_id,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     "inventory": {
                         fields::LOW_STOCK_THRESHOLD: 5,
                         fields::TRACK_QUANTITY: true
@@ -6303,8 +6322,8 @@ mod tests {
                 collections::USERS,
                 &seller_id,
                 json!({
-                    fields::EMAIL: "",
-                    fields::EMAIL_CONSENT: true,
+                    db_fields::EMAIL: "",
+                    db_fields::EMAIL_CONSENT: true,
                 }),
             )
             .await
@@ -6333,7 +6352,7 @@ mod tests {
                     fields::HAS_DISPUTE: false,
                     fields::ORDER_STATUS: "delivered",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "refunded"
                     }]
                 }),
@@ -6370,7 +6389,7 @@ mod tests {
                     fields::HAS_DISPUTE: false,
                     fields::ORDER_STATUS: "cancelled",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::STATUS: "delivered"
                     }]
                 }),
@@ -6424,7 +6443,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "nokeys@example.com",
+                    db_fields::EMAIL: "nokeys@example.com",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -6491,7 +6510,7 @@ mod tests {
                 collections::USERS,
                 &user_id,
                 json!({
-                    fields::EMAIL: "1day@example.com",
+                    db_fields::EMAIL: "1day@example.com",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -6529,19 +6548,19 @@ mod tests {
                     fields::PAYMENT_STATUS: "authorized",
                     fields::DELIVERED_AT: delivered_at,
                     fields::PAYMENT_INTENT_ID: &pi_id,
-                    fields::SUBTOTAL_CENTS: 1500,
+                    db_fields::SUBTOTAL_CENTS: 1500,
                     fields::PLATFORM_FEE_CENTS: 38,
                     fields::ITEMS: [
                         {
                             fields::STATUS: "delivered",
-                            fields::SELLER_ID: &seller_id,
-                            fields::PRICE_CENTS: 1000,
+                            db_fields::SELLER_ID: &seller_id,
+                            db_fields::PRICE_CENTS: 1000,
                             fields::QUANTITY: 1
                         },
                         {
                             fields::STATUS: "processing",
-                            fields::SELLER_ID: &seller_id,
-                            fields::PRICE_CENTS: 500,
+                            db_fields::SELLER_ID: &seller_id,
+                            db_fields::PRICE_CENTS: 500,
                             fields::QUANTITY: 1
                         }
                     ]
@@ -6969,7 +6988,7 @@ mod tests {
     // -----------------------------------------------------------------------
     // Coverage: send_premium_renewal_reminders — full flow that reaches email
     // send (lines 1621-1672)
-    // The existing tests note a "production code bug" where sub.get("id")
+    // The existing tests note a "production code bug" where sub.get(db_fields::ID)
     // returns "subscriptions:uid" but normalize_record_id strips it.
     // We test a sub where the user exists for the normalized ID.
     // -----------------------------------------------------------------------
@@ -7021,7 +7040,7 @@ mod tests {
                 collections::USERS,
                 "renew_valid",
                 json!({
-                    fields::EMAIL: "valid_renew@example.com",
+                    db_fields::EMAIL: "valid_renew@example.com",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -7085,7 +7104,7 @@ mod tests {
                 collections::USERS,
                 "renew_fr1d",
                 json!({
-                    fields::EMAIL: "renew_fr1d@example.com",
+                    db_fields::EMAIL: "renew_fr1d@example.com",
                     fields::LANGUAGE: "fr",
                 }),
             )
@@ -7153,7 +7172,7 @@ mod tests {
                 collections::PRODUCTS,
                 &low_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: now_str,
                     fields::VIEW_COUNT: 100000,
                     fields::PURCHASE_COUNT: 0,
@@ -7169,7 +7188,7 @@ mod tests {
                 collections::PRODUCTS,
                 &high_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: now_str,
                     fields::VIEW_COUNT: 900000,
                     fields::PURCHASE_COUNT: 500000,
@@ -7185,7 +7204,7 @@ mod tests {
                 collections::PRODUCTS,
                 &mid_id,
                 json!({
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::UPDATED_AT: now_str,
                     fields::VIEW_COUNT: 500000,
                     fields::PURCHASE_COUNT: 100000,
@@ -7266,7 +7285,7 @@ mod tests {
                         fields::CREATED_AT: &now,
                         fields::ITEMS: order_items,
                         fields::BUYER_ID: &buyer_id,
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                     }),
                 )
                 .await

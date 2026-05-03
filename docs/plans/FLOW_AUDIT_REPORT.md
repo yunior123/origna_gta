@@ -327,9 +327,8 @@ REAL-WORLD REFERENCE:
   WooCommerce Stripe #3300 — duplicate webhook events processing
 
 FIX:
-  Use a single atomic operation: `INSERT ... ON CONFLICT DO NOTHING`
-  or SurrealDB's equivalent. Check the affected_rows to determine
-  if the event was new.
+  Use a single atomic operation: `INSERT ... ON CONFLICT DO NOTHING`.
+  Check the affected row count to determine if the event was new.
 
 VERIFICATION:
   Send duplicate webhook events concurrently. Verify only one

@@ -61,8 +61,8 @@ impl Transaction {
         for (query, binds) in &self.queries {
             if let Some(binds) = binds {
                 // Convert named params ($param_name) to positional ($1, $2, ...)
-                let (pg_query, bind_values) = named_to_positional(query, binds.clone())
-                    .map_err(|e| {
+                let (pg_query, bind_values) =
+                    named_to_positional(query, binds.clone()).map_err(|e| {
                         Error::Database(format!("Transaction query translation failed: {e}"))
                     })?;
 

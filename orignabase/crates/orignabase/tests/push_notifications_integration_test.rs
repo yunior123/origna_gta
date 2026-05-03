@@ -8,6 +8,7 @@
 //! Requirements:
 //!   OB_TEST_URL=http://localhost:8080 (or remote OrignaBase instance)
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -31,7 +32,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();

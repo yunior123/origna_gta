@@ -14,6 +14,11 @@ Date: 2026-04-22
   - homepage pricing cards are the primary payment entry point
   - cards post directly to `/api/payments/create-checkout-session`
   - public users are not routed through legacy `/pay`, `/contract`, `/deck`, or donation pages
+- Contract/signature model:
+  - no pre-checkout contract gate
+  - each tier has a server-owned DocuSeal template bundle
+  - Stripe Checkout metadata carries `contract_provider=docuseal`, `contract_flow=post_payment_signature`, and the service-specific `contract_slugs`
+  - `/api/meta` exposes the same DocuSeal mapping for the Flutter app/admin surface
 
 ## What is verified
 
@@ -40,7 +45,12 @@ Date: 2026-04-22
   - `OrignaTeam`
 - No public `service 0/1/2` naming should remain in active user-facing flows.
 
-### PDFs
+### Contracts and PDFs
+
+- DocuSeal post-payment bundles:
+  - `OrignaCode`: `ventures-master-services-v1`, `origna-code-source-license-v1`
+  - `OrignaLaunch`: `ventures-master-services-v1`, `origna-code-source-license-v1`, `origna-launch-statement-of-work-v1`
+  - `OrignaTeam`: `ventures-master-services-v1`, `origna-team-retainer-v1`
 
 - Public one-pager:
   - `https://orignaventures.ca/docs/origna_ventures_onepager.pdf`
@@ -54,8 +64,8 @@ Date: 2026-04-22
 
 ## Historical / legacy notes
 
-- Contract signing still exists in backend/history terms, but it is not the intended public purchase flow anymore.
-- Public payment routing should be treated as pricing-card -> Stripe Checkout.
+- Legacy `/pay` and public `/contract` routes are not the intended public purchase flow anymore.
+- Public payment routing should be treated as pricing-card -> Stripe Checkout -> DocuSeal post-payment follow-up.
 - Manual repository access remains policy:
   - no automated GitHub collaborator invite flow
   - no automatic source-code unlock by email
@@ -142,7 +152,7 @@ Repo-wide audit notes:
 ### Medium priority
 
 1. Keep public PDFs and homepage pricing copy regenerated together after any tier change.
-2. Keep legacy contract/admin flows documented as internal/backoffice only.
+2. Keep legacy contract/admin flows documented as internal/backoffice only; customer-facing signatures should use the DocuSeal bundle mapping.
 3. Add explicit evidence links/logs when live Stripe, Postal, Meilisearch, or GlitchTip passes are re-run.
 
 ## Files involved

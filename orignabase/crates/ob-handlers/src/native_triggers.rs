@@ -7,6 +7,7 @@ use tracing::{error, info};
 use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields, notification_types};
 use crate::{HandlersState, products};
 use crate::{email, push};
+use ob_database::fields as db_fields;
 
 pub struct NativeTriggerExecutor {
     state: HandlersState,
@@ -126,11 +127,11 @@ impl NativeTriggerExecutor {
         let return_id = record_id(&event.document_id);
         let order_id = str_field(after, fields::ORDER_ID);
         let buyer_id = after
-            .get(fields::BUYER_ID)
-            .or_else(|| after.get(fields::USER_ID))
+            .get(db_fields::BUYER_ID)
+            .or_else(|| after.get(db_fields::USER_ID))
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let seller_id = str_field(after, fields::SELLER_ID);
+        let seller_id = str_field(after, db_fields::SELLER_ID);
 
         let normalized_status = normalize_status(new_status);
         let notif_type = match normalized_status.as_str() {
@@ -268,7 +269,7 @@ impl NativeTriggerExecutor {
                         urgent_perishable_message(order_id, &perishable_items, &lang);
                     let payload = json!({
                         fields::ORDER_ID: order_record_id,
-                        fields::SELLER_ID: seller_id,
+                        db_fields::SELLER_ID: seller_id,
                         fields::ITEM_IDS: item_batch_ids(&perishable_items),
                     });
                     self.create_notification_once(
@@ -375,9 +376,9 @@ impl NativeTriggerExecutor {
             };
             let before_item = before_map.get(&key);
             let old_status = before_item
-                .map(|it| str_field(it, fields::STATUS))
+                .map(|it| str_field(it, db_fields::STATUS))
                 .unwrap_or("");
-            let new_status = str_field(&item, fields::STATUS);
+            let new_status = str_field(&item, db_fields::STATUS);
             if old_status == new_status {
                 continue;
             }
@@ -423,7 +424,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     fields::ITEM_IDS: item_batch_ids(&shipped_items),
-                    fields::STATUS: OrderStatus::Shipped.as_str(),
+                    db_fields::STATUS: OrderStatus::Shipped.as_str(),
                 }),
             )
             .await?;
@@ -455,7 +456,7 @@ impl NativeTriggerExecutor {
                 json!({
                     fields::ORDER_ID: record_id(order_id),
                     fields::ITEM_IDS: item_batch_ids(&delivered_items),
-                    fields::STATUS: OrderStatus::Delivered.as_str(),
+                    db_fields::STATUS: OrderStatus::Delivered.as_str(),
                 }),
             )
             .await?;
@@ -471,7 +472,10 @@ impl NativeTriggerExecutor {
         payload: Value,
     ) -> bool {
         let created_at = chrono::Utc::now().to_rfc3339();
-        let query = format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::NOTIFICATIONS);
+        let query = format!(
+            "INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *",
+            collections::NOTIFICATIONS
+        );
         self.state
             .db
             .query_bind(
@@ -484,7 +488,7 @@ impl NativeTriggerExecutor {
                         fields::PROCESSED: true,
                         "payload": payload,
                         fields::TIMESTAMP: created_at,
-                        fields::CREATED_AT: created_at,
+                        db_fields::CREATED_AT: created_at,
                         "processedAt": created_at,
                     }
                 }),
@@ -539,7 +543,7 @@ impl NativeTriggerExecutor {
                     continue;
                 }
 
-                let Some(id) = row.get("id").and_then(|v| v.as_str()) else {
+                let Some(id) = row.get(db_fields::ID).and_then(|v| v.as_str()) else {
                     continue;
                 };
                 let _ = self
@@ -561,7 +565,10 @@ impl NativeTriggerExecutor {
         data: &Value,
     ) -> Result<(), ob_core::Error> {
         let now = chrono::Utc::now().to_rfc3339();
-        let query = format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::NOTIFICATIONS);
+        let query = format!(
+            "INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *",
+            collections::NOTIFICATIONS
+        );
         let create_result = self
             .state
             .db
@@ -571,14 +578,14 @@ impl NativeTriggerExecutor {
                     "table": collections::NOTIFICATIONS,
                     "id": notification_id,
                     fields::DATA: {
-                        fields::USER_ID: user_id,
+                        db_fields::USER_ID: user_id,
                         fields::NOTIFICATION_TYPE: notification_type,
                         fields::NOTIFICATION_TITLE: title,
                         fields::NOTIFICATION_BODY: body,
                         fields::DATA: data,
                         fields::READ: false,
-                        fields::CREATED_AT: now,
-                        fields::UPDATED_AT: now,
+                        db_fields::CREATED_AT: now,
+                        db_fields::UPDATED_AT: now,
                     }
                 }),
             )
@@ -675,7 +682,7 @@ impl NativeTriggerExecutor {
         else {
             return;
         };
-        let Some(to_email) = user.get(fields::EMAIL).and_then(|v| v.as_str()) else {
+        let Some(to_email) = user.get(db_fields::EMAIL).and_then(|v| v.as_str()) else {
             return;
         };
         let lang = user
@@ -702,8 +709,8 @@ impl NativeTriggerExecutor {
                         fields::NOTIFICATION_TYPE: notification_type,
                         fields::DATA: data,
                         fields::ERROR: Value::Null,
-                        fields::CREATED_AT: now,
-                        fields::UPDATED_AT: now,
+                        db_fields::CREATED_AT: now,
+                        db_fields::UPDATED_AT: now,
                     }
                 }),
             )
@@ -729,9 +736,9 @@ impl NativeTriggerExecutor {
                 json!({
                     "id": mail_log_id,
                     "data": {
-                        fields::STATUS: status,
+                        db_fields::STATUS: status,
                         fields::ERROR: error_message,
-                        fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
+                        db_fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
                         fields::SENT_AT: if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
                     }
                 }),
@@ -770,7 +777,7 @@ impl NativeTriggerExecutor {
             .db
             .count_where(
                 collections::PENDING_NOTIFICATIONS,
-                fields::USER_ID,
+                db_fields::USER_ID,
                 "=",
                 &json!(user_id),
             )
@@ -805,7 +812,7 @@ impl NativeTriggerExecutor {
                             fields::NOTIFICATION_TITLE: title,
                             fields::NOTIFICATION_BODY: body,
                             fields::DATA: data,
-                            fields::STATUS: "pending",
+                            db_fields::STATUS: "pending",
                             fields::PENDING_SENT_AT: Value::Null,
                             fields::PENDING_UPDATED_AT: now,
                         }
@@ -839,7 +846,7 @@ impl NativeTriggerExecutor {
                     json!({
                         "id": pending_id,
                         "data": {
-                            fields::STATUS: if sent { "sent" } else { "pending" },
+                            db_fields::STATUS: if sent { "sent" } else { "pending" },
                             fields::PENDING_UPDATED_AT: chrono::Utc::now().to_rfc3339(),
                             fields::PENDING_SENT_AT: if sent { json!(chrono::Utc::now().to_rfc3339()) } else { Value::Null },
                         }
@@ -871,15 +878,15 @@ fn str_field<'a>(value: &'a Value, field: &str) -> &'a str {
 fn order_status(value: &Value) -> &str {
     value
         .get(fields::ORDER_STATUS)
-        .or_else(|| value.get(fields::STATUS))
+        .or_else(|| value.get(db_fields::STATUS))
         .and_then(|v| v.as_str())
         .unwrap_or("")
 }
 
 fn order_buyer_id(value: &Value) -> &str {
     value
-        .get(fields::USER_ID)
-        .or_else(|| value.get(fields::BUYER_ID))
+        .get(db_fields::USER_ID)
+        .or_else(|| value.get(db_fields::BUYER_ID))
         .or_else(|| value.get(fields::UID))
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -923,7 +930,7 @@ fn seller_ids(value: &Value) -> Vec<String> {
         .map(|items| {
             let mut ids = std::collections::BTreeSet::new();
             for item in items {
-                if let Some(seller_id) = item.get(fields::SELLER_ID).and_then(|v| v.as_str()) {
+                if let Some(seller_id) = item.get(db_fields::SELLER_ID).and_then(|v| v.as_str()) {
                     ids.insert(seller_id.to_string());
                 }
             }
@@ -940,7 +947,7 @@ fn perishable_items_for_seller(order: &Value, seller_id: &str) -> Vec<Value> {
             items
                 .iter()
                 .filter(|item| {
-                    item.get(fields::SELLER_ID).and_then(|v| v.as_str()) == Some(seller_id)
+                    item.get(db_fields::SELLER_ID).and_then(|v| v.as_str()) == Some(seller_id)
                         && item
                             .get(fields::IS_PERISHABLE)
                             .and_then(|v| v.as_bool())
@@ -963,8 +970,8 @@ fn notification_item_key(item: &Value) -> String {
         let fallback = format!(
             "{}:{}:{}",
             str_field(item, fields::PRODUCT_ID),
-            str_field(item, fields::NAME),
-            str_field(item, fields::STATUS)
+            str_field(item, db_fields::NAME),
+            str_field(item, db_fields::STATUS)
         );
         stable_hash(&fallback)
     })
@@ -1467,7 +1474,7 @@ fn aggregate_item_status_message(
 ) -> (String, String) {
     if items.len() == 1 {
         let item_name = items[0]
-            .get(fields::NAME)
+            .get(db_fields::NAME)
             .and_then(|v| v.as_str())
             .unwrap_or("item");
         return item_status_message(status, order_id, item_name, lang, is_pickup);
@@ -1509,7 +1516,7 @@ fn urgent_perishable_message(order_id: &str, items: &[Value], lang: &str) -> (St
     let names = items
         .iter()
         .take(3)
-        .filter_map(|item| item.get(fields::NAME).and_then(|v| v.as_str()))
+        .filter_map(|item| item.get(db_fields::NAME).and_then(|v| v.as_str()))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -1691,7 +1698,7 @@ mod tests {
                 collections::USERS,
                 user_id,
                 json!({
-                    fields::EMAIL: format!("{user_id}@example.com"),
+                    db_fields::EMAIL: format!("{user_id}@example.com"),
                     fields::PREFERRED_LANGUAGE: lang,
                 }),
             )
@@ -1884,9 +1891,9 @@ mod tests {
     fn perishable_items_for_seller_filters_by_seller_and_flag() {
         let order = json!({
             fields::ITEMS: [
-                {fields::SELLER_ID: "s1", fields::IS_PERISHABLE: true, fields::TITLE: "Milk"},
-                {fields::SELLER_ID: "s1", fields::IS_PERISHABLE: false, fields::TITLE: "Book"},
-                {fields::SELLER_ID: "s2", fields::IS_PERISHABLE: true, fields::TITLE: "Fish"},
+                {db_fields::SELLER_ID: "s1", fields::IS_PERISHABLE: true, fields::TITLE: "Milk"},
+                {db_fields::SELLER_ID: "s1", fields::IS_PERISHABLE: false, fields::TITLE: "Book"},
+                {db_fields::SELLER_ID: "s2", fields::IS_PERISHABLE: true, fields::TITLE: "Fish"},
             ]
         });
 
@@ -1911,7 +1918,7 @@ mod tests {
                 collections::STOCK_NOTIFICATIONS,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "variantKey": "blue",
                 }),
             )
@@ -1920,10 +1927,10 @@ mod tests {
 
         let before = json!({
             fields::ORDER_STATUS: "pending",
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::ITEMS: [{
                 fields::PRODUCT_ID: &product_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::SELLER_ID: &seller_id,
                 fields::IS_PERISHABLE: true,
                 "variantKey": "blue",
                 fields::TITLE: "Milk crate",
@@ -1931,10 +1938,10 @@ mod tests {
         });
         let after = json!({
             fields::ORDER_STATUS: "confirmed",
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::ITEMS: [{
                 fields::PRODUCT_ID: &product_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::SELLER_ID: &seller_id,
                 fields::IS_PERISHABLE: true,
                 "variantKey": "blue",
                 fields::TITLE: "Milk crate",
@@ -2003,12 +2010,12 @@ mod tests {
         seed_user(&executor, &buyer_id, "en").await;
 
         let before = json!({
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::PAYMENT_STATUS: "captured",
             fields::CUMULATIVE_REFUNDED_CENTS: 0,
         });
         let after = json!({
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::PAYMENT_STATUS: "refunded",
             fields::CUMULATIVE_REFUNDED_CENTS: 1250,
         });
@@ -2028,7 +2035,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(notifications.len(), 1);
-        assert_eq!(notifications[0][fields::USER_ID], buyer_id.as_str());
+        assert_eq!(notifications[0][db_fields::USER_ID], buyer_id.as_str());
         assert_eq!(
             notifications[0][fields::NOTIFICATION_TYPE],
             notification_types::REFUND_ISSUED
@@ -2043,19 +2050,19 @@ mod tests {
         seed_user(&executor, &buyer_id, "en").await;
 
         let before = json!({
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::ORDER_STATUS: "processing",
             fields::ITEMS: [
-                { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Box A" },
-                { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Box B" }
+                { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Box A" },
+                { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Box B" }
             ],
         });
         let after = json!({
-            fields::USER_ID: &buyer_id,
+            db_fields::USER_ID: &buyer_id,
             fields::ORDER_STATUS: "processing",
             fields::ITEMS: [
-                { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Box A" },
-                { fields::CART_ITEM_ID: "c2", fields::STATUS: "delivered", fields::IS_DIGITAL: false, fields::TITLE: "Box B" }
+                { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Box A" },
+                { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "delivered", fields::IS_DIGITAL: false, fields::TITLE: "Box B" }
             ],
         });
 
@@ -2106,14 +2113,14 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: &order_id,
-                fields::BUYER_ID: &buyer_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::BUYER_ID: &buyer_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "received",
                 fields::ORDER_ID: &order_id,
-                fields::BUYER_ID: &buyer_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::BUYER_ID: &buyer_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2173,8 +2180,8 @@ mod tests {
             let order_id = format!("orders:status_case_{}_{}", uuid::Uuid::new_v4(), idx);
             let mut after = json!({
                 fields::ORDER_STATUS: new_status,
-                fields::USER_ID: &buyer_id,
-                fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                db_fields::USER_ID: &buyer_id,
+                fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
             });
             if let Some(after_obj) = after.as_object_mut()
                 && let Some(extra_obj) = extra.as_object()
@@ -2189,8 +2196,8 @@ mod tests {
                     &order_id,
                     &json!({
                         fields::ORDER_STATUS: "processing",
-                        fields::USER_ID: &buyer_id,
-                        fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                        db_fields::USER_ID: &buyer_id,
+                        fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                     }),
                     &after,
                 )
@@ -2266,14 +2273,14 @@ mod tests {
                 &oid1,
                 &json!({
                     fields::ORDER_STATUS: "shipped",
-                    fields::USER_ID: &buyer_id,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    db_fields::USER_ID: &buyer_id,
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
                 &json!({
                     fields::ORDER_STATUS: "delivered",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "confirmedByClient": true,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
             )
             .await
@@ -2285,14 +2292,14 @@ mod tests {
                 &oid2,
                 &json!({
                     fields::ORDER_STATUS: "shipped",
-                    fields::USER_ID: &buyer_id,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    db_fields::USER_ID: &buyer_id,
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
                 &json!({
                     fields::ORDER_STATUS: "delivered",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "autoConfirmed": true,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
             )
             .await
@@ -2347,14 +2354,14 @@ mod tests {
                 before_data: Some(json!({
                     fields::RETURN_STATUS: old_status,
                     fields::ORDER_ID: format!("ord_variant_{uid}_{idx}"),
-                    fields::BUYER_ID: &buyer_id,
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::BUYER_ID: &buyer_id,
+                    db_fields::SELLER_ID: &seller_id,
                 })),
                 after_data: Some(json!({
                     fields::RETURN_STATUS: new_status,
                     fields::ORDER_ID: format!("ord_variant_{uid}_{idx}"),
-                    fields::BUYER_ID: &buyer_id,
-                    fields::SELLER_ID: &seller_id,
+                    db_fields::BUYER_ID: &buyer_id,
+                    db_fields::SELLER_ID: &seller_id,
                 })),
                 timestamp: chrono::Utc::now().to_rfc3339(),
             };
@@ -2430,19 +2437,19 @@ mod tests {
             .handle_order_item_status_changes(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Physical item" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "processing", fields::IS_DIGITAL: true, fields::TITLE: "Digital item" }
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Physical item" },
+                        { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "processing", fields::IS_DIGITAL: true, fields::TITLE: "Digital item" }
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Physical item" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", fields::IS_DIGITAL: true, fields::TITLE: "Digital item" }
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Physical item" },
+                        { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "shipped", fields::IS_DIGITAL: true, fields::TITLE: "Digital item" }
                     ],
                 }),
             )
@@ -2507,7 +2514,7 @@ mod tests {
             .upsert_document(
                 collections::USERS,
                 "user_no_lang",
-                json!({ fields::EMAIL: "test@example.com" }),
+                json!({ db_fields::EMAIL: "test@example.com" }),
             )
             .await
             .unwrap();
@@ -2580,7 +2587,7 @@ mod tests {
                 collections::USERS,
                 &buyer_id,
                 json!({
-                    fields::EMAIL: &email,
+                    db_fields::EMAIL: &email,
                     fields::PREFERRED_LANGUAGE: "fr",
                 }),
             )
@@ -2615,7 +2622,7 @@ mod tests {
 
         assert_eq!(mail_logs.len(), 1);
         assert_eq!(mail_logs[0]["to"], email.as_str());
-        assert_eq!(mail_logs[0][fields::STATUS], "pending");
+        assert_eq!(mail_logs[0][db_fields::STATUS], "pending");
         assert!(
             mail_logs[0]["html"]
                 .as_str()
@@ -2691,7 +2698,7 @@ mod tests {
                 collections::USERS,
                 &buyer_id,
                 json!({
-                    fields::EMAIL: &email,
+                    db_fields::EMAIL: &email,
                     fields::PREFERRED_LANGUAGE: "en",
                 }),
             )
@@ -2717,7 +2724,7 @@ mod tests {
             .state
             .db
             .query_bind(
-                "SELECT * FROM _pending_notifications WHERE notificationId = $nid",
+                "SELECT * FROM _pending_notifications WHERE data->>'notificationId' = $nid",
                 json!({"nid": &notif_id}),
             )
             .await
@@ -2884,12 +2891,12 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2908,12 +2915,12 @@ mod tests {
             data: json!({}),
             before_data: Some(json!({
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2938,12 +2945,12 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: &order_id,
-                fields::USER_ID: &buyer_id,
+                db_fields::USER_ID: &buyer_id,
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: &order_id,
-                fields::USER_ID: &buyer_id,
+                db_fields::USER_ID: &buyer_id,
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -2979,12 +2986,12 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: &order_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: &order_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -3011,8 +3018,8 @@ mod tests {
         executor
             .handle_order_status_change(
                 "orders:ord_same",
-                &json!({ fields::ORDER_STATUS: "confirmed", fields::USER_ID: "buyer_1" }),
-                &json!({ fields::ORDER_STATUS: "confirmed", fields::USER_ID: "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", db_fields::USER_ID: "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", db_fields::USER_ID: "buyer_1" }),
             )
             .await
             .unwrap();
@@ -3032,11 +3039,11 @@ mod tests {
                 &order_id,
                 &json!({
                     fields::ORDER_STATUS: "pending",
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
                 &json!({
                     fields::ORDER_STATUS: "confirmed",
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                 }),
             )
             .await
@@ -3070,14 +3077,14 @@ mod tests {
                 &order_id,
                 &json!({
                     fields::ORDER_STATUS: "processing",
-                    fields::USER_ID: &buyer_id,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    db_fields::USER_ID: &buyer_id,
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                     fields::LAST_ACTOR_ID: &seller_id,
                 }),
                 &json!({
                     fields::ORDER_STATUS: "shipped",
-                    fields::USER_ID: &buyer_id,
-                    fields::ITEMS: [{ fields::SELLER_ID: &seller_id }],
+                    db_fields::USER_ID: &buyer_id,
+                    fields::ITEMS: [{ db_fields::SELLER_ID: &seller_id }],
                     fields::LAST_ACTOR_ID: &seller_id,
                 }),
             )
@@ -3123,18 +3130,18 @@ mod tests {
                 &order_id,
                 &json!({
                     fields::ORDER_STATUS: "pending",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::IS_PERISHABLE: false,
                         fields::TITLE: "Book",
                     }],
                 }),
                 &json!({
                     fields::ORDER_STATUS: "confirmed",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::IS_PERISHABLE: false,
                         fields::TITLE: "Book",
                     }],
@@ -3180,8 +3187,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:pay_same",
-                &json!({ fields::PAYMENT_STATUS: "captured", fields::USER_ID: "buyer_1" }),
-                &json!({ fields::PAYMENT_STATUS: "captured", fields::USER_ID: "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", db_fields::USER_ID: "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", db_fields::USER_ID: "buyer_1" }),
             )
             .await
             .unwrap();
@@ -3193,8 +3200,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:pay_captured",
-                &json!({ fields::PAYMENT_STATUS: "authorized", fields::USER_ID: "buyer_1" }),
-                &json!({ fields::PAYMENT_STATUS: "captured", fields::USER_ID: "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "authorized", db_fields::USER_ID: "buyer_1" }),
+                &json!({ fields::PAYMENT_STATUS: "captured", db_fields::USER_ID: "buyer_1" }),
             )
             .await
             .unwrap();
@@ -3237,17 +3244,17 @@ mod tests {
             .handle_order_item_status_changes(
                 "orders:no_cart_id",
                 &json!({
-                    fields::USER_ID: "buyer_1",
+                    db_fields::USER_ID: "buyer_1",
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::TITLE: "No Cart ID Item", fields::STATUS: "processing" }
+                        { fields::TITLE: "No Cart ID Item", db_fields::STATUS: "processing" }
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: "buyer_1",
+                    db_fields::USER_ID: "buyer_1",
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::TITLE: "No Cart ID Item", fields::STATUS: "shipped" }
+                        { fields::TITLE: "No Cart ID Item", db_fields::STATUS: "shipped" }
                     ],
                 }),
             )
@@ -3266,17 +3273,17 @@ mod tests {
             .handle_order_item_status_changes(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::TITLE: "A" }
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::TITLE: "A" }
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::TITLE: "A" }
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::TITLE: "A" }
                     ],
                 }),
             )
@@ -3307,7 +3314,7 @@ mod tests {
     async fn cleanup_stock_notifications_no_items_returns_early() {
         let executor = setup_executor().await;
         executor
-            .cleanup_stock_notifications(&json!({ fields::USER_ID: "buyer_1" }))
+            .cleanup_stock_notifications(&json!({ db_fields::USER_ID: "buyer_1" }))
             .await;
     }
 
@@ -3316,7 +3323,7 @@ mod tests {
         let executor = setup_executor().await;
         executor
             .cleanup_stock_notifications(&json!({
-                fields::USER_ID: "buyer_1",
+                db_fields::USER_ID: "buyer_1",
                 fields::ITEMS: [{ "variantKey": "blue" }],
             }))
             .await;
@@ -3334,7 +3341,7 @@ mod tests {
                 collections::STOCK_NOTIFICATIONS,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "variantKey": "red",
                 }),
             )
@@ -3342,7 +3349,7 @@ mod tests {
 
         executor
             .cleanup_stock_notifications(&json!({
-                fields::USER_ID: &buyer_id,
+                db_fields::USER_ID: &buyer_id,
                 fields::ITEMS: [{
                     fields::PRODUCT_ID: &product_id,
                     "variantKey": "blue",
@@ -3368,7 +3375,7 @@ mod tests {
         // This just exercises the path where rows lack an id field — the cleanup is a best-effort
         executor
             .cleanup_stock_notifications(&json!({
-                fields::USER_ID: "buyer_1",
+                db_fields::USER_ID: "buyer_1",
                 fields::ITEMS: [{
                     fields::PRODUCT_ID: "prod_nonexistent",
                     "variantKey": "",
@@ -4228,19 +4235,19 @@ mod tests {
             .handle_order_item_status_changes(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::DELIVERY_SPEED: "pickup",
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Item A" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "processing", fields::IS_DIGITAL: false, fields::TITLE: "Item A" },
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::DELIVERY_SPEED: "pickup",
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Item A" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::IS_DIGITAL: false, fields::TITLE: "Item A" },
                     ],
                 }),
             )
@@ -4278,19 +4285,19 @@ mod tests {
             .handle_order_item_status_changes(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::TITLE: "A" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "shipped", fields::TITLE: "B" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::TITLE: "A" },
+                        { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "shipped", fields::TITLE: "B" },
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "shipped",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "delivered", fields::TITLE: "A" },
-                        { fields::CART_ITEM_ID: "c2", fields::STATUS: "delivered", fields::TITLE: "B" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "delivered", fields::TITLE: "A" },
+                        { fields::CART_ITEM_ID: "c2", db_fields::STATUS: "delivered", fields::TITLE: "B" },
                     ],
                 }),
             )
@@ -4328,11 +4335,11 @@ mod tests {
             .handle_order_payment_status_change(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::PAYMENT_STATUS: "captured",
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::PAYMENT_STATUS: "partially_refunded",
                     fields::PARTIAL_REFUND_AMOUNT_CENTS: 550,
                 }),
@@ -4360,8 +4367,8 @@ mod tests {
         executor
             .handle_order_payment_status_change(
                 "orders:empty_old",
-                &json!({ fields::USER_ID: "buyer_1" }),
-                &json!({ fields::USER_ID: "buyer_1", fields::PAYMENT_STATUS: "refunded" }),
+                &json!({ db_fields::USER_ID: "buyer_1" }),
+                &json!({ db_fields::USER_ID: "buyer_1", fields::PAYMENT_STATUS: "refunded" }),
             )
             .await
             .unwrap();
@@ -4375,8 +4382,8 @@ mod tests {
         executor
             .handle_order_status_change(
                 "orders:empty_old",
-                &json!({ fields::USER_ID: "buyer_1" }),
-                &json!({ fields::ORDER_STATUS: "confirmed", fields::USER_ID: "buyer_1" }),
+                &json!({ db_fields::USER_ID: "buyer_1" }),
+                &json!({ fields::ORDER_STATUS: "confirmed", db_fields::USER_ID: "buyer_1" }),
             )
             .await
             .unwrap();
@@ -4389,7 +4396,7 @@ mod tests {
         let item = json!({
             fields::PRODUCT_ID: "prod_1",
             fields::TITLE: "Widget",
-            fields::STATUS: "shipped",
+            db_fields::STATUS: "shipped",
         });
         let key = notification_item_key(&item);
         // Should be a hex hash string
@@ -4412,12 +4419,12 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "approved",
                 fields::ORDER_ID: "ord_1",
-                fields::BUYER_ID: "buyer_1",
+                db_fields::BUYER_ID: "buyer_1",
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -4434,8 +4441,8 @@ mod tests {
             collection: "orders".into(),
             document_id: "orders:ord_ev".into(),
             data: json!({}),
-            before_data: Some(json!({ fields::ORDER_STATUS: "pending", fields::USER_ID: "b1" })),
-            after_data: Some(json!({ fields::ORDER_STATUS: "pending", fields::USER_ID: "b1" })),
+            before_data: Some(json!({ fields::ORDER_STATUS: "pending", db_fields::USER_ID: "b1" })),
+            after_data: Some(json!({ fields::ORDER_STATUS: "pending", db_fields::USER_ID: "b1" })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
         executor.handle_event(event).await.unwrap();
@@ -4458,7 +4465,7 @@ mod tests {
                 collections::STOCK_NOTIFICATIONS,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "variantKey": "",
                 }),
             )
@@ -4469,7 +4476,7 @@ mod tests {
                 &order_id,
                 &json!({
                     fields::ORDER_STATUS: "confirmed",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         "variantKey": "",
@@ -4477,7 +4484,7 @@ mod tests {
                 }),
                 &json!({
                     fields::ORDER_STATUS: "processing",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: &product_id,
                         "variantKey": "",
@@ -4519,14 +4526,14 @@ mod tests {
             before_data: Some(json!({
                 fields::RETURN_STATUS: "pending",
                 fields::ORDER_ID: &order_id,
-                fields::BUYER_ID: &buyer_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::BUYER_ID: &buyer_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             after_data: Some(json!({
                 fields::RETURN_STATUS: "requested",
                 fields::ORDER_ID: &order_id,
-                fields::BUYER_ID: &buyer_id,
-                fields::SELLER_ID: &seller_id,
+                db_fields::BUYER_ID: &buyer_id,
+                db_fields::SELLER_ID: &seller_id,
             })),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
@@ -4565,18 +4572,18 @@ mod tests {
                 &order_id,
                 &json!({
                     fields::ORDER_STATUS: "pending",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::IS_PERISHABLE: true,
                         fields::TITLE: "Lait",
                     }],
                 }),
                 &json!({
                     fields::ORDER_STATUS: "confirmed",
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ITEMS: [{
-                        fields::SELLER_ID: &seller_id,
+                        db_fields::SELLER_ID: &seller_id,
                         fields::IS_PERISHABLE: true,
                         fields::TITLE: "Lait",
                     }],
@@ -4630,11 +4637,11 @@ mod tests {
             .handle_order_payment_status_change(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::PAYMENT_STATUS: "captured",
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::PAYMENT_STATUS: "refunded",
                     fields::CUMULATIVE_REFUNDED_CENTS: 2000,
                 }),
@@ -4672,17 +4679,17 @@ mod tests {
             .handle_order_item_status_changes(
                 &order_id,
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "processing", fields::TITLE: "Lait" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "processing", fields::TITLE: "Lait" },
                     ],
                 }),
                 &json!({
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     fields::ORDER_STATUS: "processing",
                     fields::ITEMS: [
-                        { fields::CART_ITEM_ID: "c1", fields::STATUS: "shipped", fields::TITLE: "Lait" },
+                        { fields::CART_ITEM_ID: "c1", db_fields::STATUS: "shipped", fields::TITLE: "Lait" },
                     ],
                 }),
             )
@@ -4736,13 +4743,13 @@ mod tests {
 
     #[test]
     fn order_status_falls_back_to_status_field() {
-        let v = json!({ fields::STATUS: "shipped" });
+        let v = json!({ db_fields::STATUS: "shipped" });
         assert_eq!(order_status(&v), "shipped");
     }
 
     #[test]
     fn order_buyer_id_falls_back_to_buyer_id_then_uid() {
-        let v1 = json!({ fields::BUYER_ID: "b1" });
+        let v1 = json!({ db_fields::BUYER_ID: "b1" });
         assert_eq!(order_buyer_id(&v1), "b1");
 
         let v2 = json!({ fields::UID: "u1" });
@@ -4770,9 +4777,9 @@ mod tests {
     fn seller_ids_deduplicates_and_sorts() {
         let order = json!({
             fields::ITEMS: [
-                { fields::SELLER_ID: "s2" },
-                { fields::SELLER_ID: "s1" },
-                { fields::SELLER_ID: "s2" },
+                { db_fields::SELLER_ID: "s2" },
+                { db_fields::SELLER_ID: "s1" },
+                { db_fields::SELLER_ID: "s2" },
             ]
         });
         let ids = seller_ids(&order);
@@ -4818,7 +4825,7 @@ mod tests {
             document_id: "products:p1".into(),
             data: json!({
                 fields::TITLE: "Test Product",
-                fields::LIFECYCLE_STATUS: "active",
+                db_fields::LIFECYCLE_STATUS: "active",
             }),
             before_data: None,
             after_data: None,
@@ -4837,7 +4844,7 @@ mod tests {
             document_id: "products:p1".into(),
             data: json!({
                 fields::TITLE: "Updated Product",
-                fields::LIFECYCLE_STATUS: "active",
+                db_fields::LIFECYCLE_STATUS: "active",
             }),
             before_data: None,
             after_data: None,
@@ -4889,7 +4896,7 @@ mod tests {
                 collections::USERS,
                 "buyer_email_test",
                 json!({
-                    fields::EMAIL: "buyer_email_test@example.com",
+                    db_fields::EMAIL: "buyer_email_test@example.com",
                     fields::PREFERRED_LANGUAGE: "en",
                 }),
             )
@@ -5062,7 +5069,7 @@ mod tests {
                 collections::STOCK_NOTIFICATIONS,
                 json!({
                     fields::PRODUCT_ID: &product_id,
-                    fields::USER_ID: &buyer_id,
+                    db_fields::USER_ID: &buyer_id,
                     "variantKey": "blue"
                 }),
             )
@@ -5070,7 +5077,7 @@ mod tests {
 
         executor
             .cleanup_stock_notifications(&json!({
-                fields::USER_ID: &buyer_id,
+                db_fields::USER_ID: &buyer_id,
                 fields::ITEMS: [{
                     fields::PRODUCT_ID: &product_id,
                     "variantKey": "blue",
@@ -5097,7 +5104,7 @@ mod tests {
         let item = json!({
             fields::PRODUCT_ID: "prod_1",
             fields::TITLE: "Widget",
-            fields::STATUS: "shipped",
+            db_fields::STATUS: "shipped",
         });
         let key = notification_item_key(&item);
         // Should be a hex hash (16 chars)

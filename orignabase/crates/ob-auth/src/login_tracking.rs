@@ -6,6 +6,7 @@ use sha2::{Digest, Sha256};
 
 use crate::middleware::AuthContext;
 use crate::routes::AuthState;
+use ob_database::fields;
 
 // ── Data Structures ──────────────────────────────────────────────────
 
@@ -130,12 +131,9 @@ pub async fn upsert_known_device(
 
     if let Some(device) = existing.first() {
         // Update last_used
-        if let Some(id) = device["id"].as_str() {
+        if let Some(id) = device[fields::ID].as_str() {
             let _ = db
-                .query_bind(
-                    "UPDATE type::thing($id) SET last_used = $now",
-                    json!({ "id": id, "now": now }),
-                )
+                .update_document("known_devices", id, json!({ "last_used": now }))
                 .await;
         }
     } else {
@@ -411,28 +409,11 @@ pub async fn delete_known_device(
     }
 
     // Verify the device belongs to the current user before deleting
-    let devices = state
-        .db
-        .query_bind(
-            "SELECT * FROM type::thing($id) WHERE user_id = $uid",
-            json!({ "id": path.id, "uid": auth.user_id }),
-        )
-        .await?;
-
-    if devices.is_empty() {
+    let device = state.db.get_document("known_devices", &path.id).await?;
+    if device.get("user_id").and_then(|v| v.as_str()) != Some(auth.user_id.as_str()) {
         return Err(Error::NotFound("Device not found".into()));
     }
-
-    // Extract just the record key from the full ID
-    let record_id = devices[0]["id"].as_str().unwrap_or(&path.id);
-
-    // Delete — use the collection + short id
-    let parts: Vec<&str> = record_id.splitn(2, ':').collect();
-    if parts.len() == 2 {
-        let _ = state.db.delete_document(parts[0], parts[1]).await;
-    } else {
-        let _ = state.db.delete_document("known_devices", record_id).await;
-    }
+    let _ = state.db.delete_document("known_devices", &path.id).await;
 
     Ok(Json(json!({ "ok": true })))
 }
@@ -473,25 +454,15 @@ pub async fn acknowledge_alert(
     }
 
     // Verify the alert belongs to the current user
-    let alerts = state
-        .db
-        .query_bind(
-            "SELECT * FROM type::thing($id) WHERE user_id = $uid",
-            json!({ "id": path.id, "uid": auth.user_id }),
-        )
-        .await?;
-
-    if alerts.is_empty() {
+    let alert = state.db.get_document("security_alerts", &path.id).await?;
+    if alert.get("user_id").and_then(|v| v.as_str()) != Some(auth.user_id.as_str()) {
         return Err(Error::NotFound("Alert not found".into()));
     }
 
     // Update acknowledged flag
     let _ = state
         .db
-        .query_bind(
-            "UPDATE type::thing($id) SET acknowledged = true",
-            json!({ "id": path.id }),
-        )
+        .update_document("security_alerts", &path.id, json!({ "acknowledged": true }))
         .await;
 
     Ok(Json(json!({ "ok": true })))
@@ -666,7 +637,7 @@ mod tests {
         };
         let json = serde_json::to_value(&record).unwrap();
         assert_eq!(json["user_id"], "u1");
-        assert_eq!(json["status"], "success");
+        assert_eq!(json[fields::STATUS], "success");
 
         let deserialized: LoginRecord = serde_json::from_value(json).unwrap();
         assert_eq!(deserialized.user_id, "u1");

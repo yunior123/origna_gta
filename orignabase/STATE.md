@@ -52,7 +52,7 @@
 - [x] CORS: warning log on empty allowed_origins
 - [x] Price validation: max aligned to $100K (was $1M)
 - [x] Email validation: proper regex
-- [x] Webhook event ID: removed SurrealDB format check for Stripe evt_xxx
+- [x] Webhook event ID: removed legacy DB record format check for Stripe evt_xxx
 
 ## Cross-Stack Audit — Dart vs Rust Field Names
 
@@ -495,8 +495,8 @@ All generated models now use `package:origna_gta/` imports. No relative imports 
 
 ### P1 — HIGH (1 FIXED, 2 REMAINING)
 - [x] **S2. No cumulative refund cap** — refunds could exceed original payment. **FIXED:** Added `cumulative > total` guard before Stripe call.
-- [x] **S3. SurrealQL string interpolation in checkout dedup** — **FIXED:** Replaced with `query_bind_value` + `$buyer_id`/`$cutoff` params.
-- [x] **S4. SurrealQL string interpolation in product query** — **FIXED:** Replaced with `query_bind_value` + `$record_ids`/`$product_ids` params.
+- [x] **S3. Legacy query string interpolation in checkout dedup** — **FIXED:** Replaced with `query_bind_value` + `$buyer_id`/`$cutoff` params.
+- [x] **S4. Legacy query string interpolation in product query** — **FIXED:** Replaced with `query_bind_value` + `$record_ids`/`$product_ids` params.
 
 ### P2 — MEDIUM (4 REMAINING)
 - [x] **S5. Default JWT secret "CHANGE_ME_IN_PRODUCTION"** — **FIXED:** Added `assert_jwt_secret_configured()` startup panic in production.
@@ -536,7 +536,7 @@ You are auditing origna_gta — a Flutter e-commerce app (Canada-first multi-ven
 
 PROJECT STRUCTURE:
 - origna_gta/lib/ — Flutter frontend (Dart, Riverpod MVVM, Freezed models)
-- orignabase/crates/ — 14 Rust crates (axum handlers, SurrealDB, JWT auth, Stripe, MCP)
+- orignabase/crates/ — Rust crates (axum handlers, PostgreSQL, JWT auth, Stripe, MCP)
 - orignabase/sdks/flutter/orignabase/ — Flutter SDK for OrignaBase
 - e2e/ — Bun E2E tests
 - docs/ — ARCHITECTURE.md, REPO_MAP.md
@@ -551,7 +551,7 @@ AUDIT CHECKLIST — CHECK EVERY ITEM, NO SKIPPING:
 
 1. SECURITY (OWASP Top 10 + API Security Top 10):
    [ ] IDOR: Every handler in ob-handlers/src/ uses Extension(auth) for user_id, never req.user_id
-   [ ] Injection: No format!() with user input in SurrealQL — all use query_bind_value()
+   [ ] Injection: No format!() with user input in database queries — all use query_bind_value()
    [ ] Auth: JWT secret not default, argon2id for passwords, rate limiting on login
    [ ] Webhook HMAC: constant-time comparison, replay protection (300s), atomic dedup
    [ ] CORS: Not very_permissive() in production
@@ -612,7 +612,7 @@ AUDIT CHECKLIST — CHECK EVERY ITEM, NO SKIPPING:
 9. DATA:
    [ ] Schema field names match between Dart and Rust (schema_constants.dart)
    [ ] Timestamp fields: orders/users=createdAt, products/cart=dateCreated, webhooks=timestamp
-   [ ] SurrealDB IDs sanitized for Meilisearch (: → _)
+   [ ] Database record IDs sanitized for Meilisearch (: → _)
    [ ] All user input validated server-side (not just client forms)
 
 10. PERFORMANCE:
@@ -871,7 +871,7 @@ DO:
 - [x] **QUORUM VERIFIED: TOCTOU Vulnerability in Refund Cumulative Cap**
   - **Location:** `orignabase/crates/ob-handlers/src/orders/refunds.rs:384`
   - **Issue:** A read-then-write pattern is used to validate cumulative refunds instead of dynamically computing the cap from DB state or using an atomic transaction with a WHERE guard.
-  - **Fix:** Refund cap MUST be evaluated within an atomic SurrealDB transaction containing a `WHERE cumulativeRefundedCents + $refund <= totalAmountCents` guard.
+  - **Fix:** Refund cap MUST be evaluated within an atomic PostgreSQL transaction containing a guard on `cumulativeRefundedCents + $refund <= totalAmountCents`.
 - [x] **QUORUM VERIFIED: Unhandled `unwrap()` Panics Triggering DoS**
   - **Location:** `ob-handlers/src/shipping_calc/mod.rs`, `email/helpers.rs`, `ob-search/src/config.rs`
   - **Issue:** Hardcoded `.unwrap()` calls are made on `Result`/`Option` inside dynamic route processing.
@@ -909,7 +909,7 @@ SCAN THESE DIRECTORIES:
 2. origna_gta/lib/ — Flutter app (excluding generated files in models/generated/*.freezed.dart and *.g.dart)
 
 WHAT COUNTS AS A MAGIC STRING VIOLATION:
-- Hardcoded SurrealDB collection names like "orders", "products", "users" instead of collections::ORDERS, collections::PRODUCTS, collections::USERS
+- Hardcoded collection names like "orders", "products", "users" instead of collections::ORDERS, collections::PRODUCTS, collections::USERS
 - Hardcoded field names like "userId", "sellerId", "priceCents", "orderStatus" instead of fields::USER_ID, fields::SELLER_ID, fields::PRICE_CENTS, fields::ORDER_STATUS
 - Hardcoded status values like "pending", "confirmed", "shipped", "delivered", "cancelled" instead of OrderStatusValues or PaymentStatusValues enums
 - Hardcoded route strings instead of AppRoutes constants
@@ -922,7 +922,7 @@ WHAT IS NOT A VIOLATION (ignore these):
 - String literals in test files (test/)
 - Strings inside schema_constants.dart or schema.rs definitions themselves
 - Log messages and error messages (these are developer-facing, not field keys)
-- format!() for SurrealQL queries where the collection comes from collections:: constant
+- format!() for static SQL where the collection comes from a collections:: constant
 - JSON keys in serde derive macros or #[serde(rename = "...")] attributes
 
 OUTPUT FORMAT — append each finding as a checklist item:
@@ -1256,7 +1256,7 @@ Root cause: `buildGlassTextField()`, `buildGlassToggle()`, `buildGlassDropdown()
 
 ### Performance — 5 CRITICAL, 5 WARNING
 
-- [x] **[CRITICAL] [returns.rs:146]** admin_user_ids() N+1 — FIXED: single SurrealQL query with WHERE roles CONTAINS 'admin' ✅
+- [x] **[CRITICAL] [returns.rs:146]** admin_user_ids() N+1 — FIXED: single PostgreSQL query with role filter ✅
 - [x] **[CRITICAL] [returns.rs:195]** N+1 push tokens — FIXED: batch query with WHERE user_id IN $admin_ids ✅
 - [x] **[CRITICAL] [cron/mod.rs:1250]** SELECT * LIMIT 2000 — VERIFIED: bounded with WHERE + LIMIT, acceptable for batch cron ✅
 - [x] **[CRITICAL] [cron/mod.rs:1413]** SELECT * LIMIT 5000 — VERIFIED: bounded with WHERE lifecycleStatus='active' + LIMIT ✅
@@ -1312,7 +1312,7 @@ _(Agent completed scan of auth/registration, email templates, translations, term
 - [x] Cron json! magic strings → 140+ replacements + 43 new field constants
 - [x] Meilisearch sync no retry → 3-attempt exponential backoff
 - [x] Search config snake_case → fixed to camelCase
-- [x] returns.rs N+1 query → single SurrealQL + batch token fetch
+- [x] returns.rs N+1 query → single PostgreSQL query + batch token fetch
 - [x] Missing indexes → 5 new indexes added
 - [x] Shipping dead perishable_surcharge → removed
 - [x] Shipping province defaults to "ON" → returns validation error
@@ -1343,4 +1343,3 @@ _(Agent completed scan of auth/registration, email templates, translations, term
 
 ### Deferred to Separate Session
 - Token revocation/logout endpoint (spans 4+ files, needs design review)
-

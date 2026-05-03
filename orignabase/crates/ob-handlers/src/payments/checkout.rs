@@ -17,6 +17,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{OrderStatus, collections, fields, lifecycle_status};
 use crate::shared::validation::{validate_string, validate_uid};
+use ob_database::fields as db_fields;
 
 /// Request body for POST /api/payments/checkout — creates a Stripe Checkout Session.
 ///
@@ -297,7 +298,7 @@ async fn validate_checkout_coupon(
         Ok(doc) if !doc.is_null() => doc,
         _ => {
             let query = format!(
-                "SELECT * FROM {} WHERE {} = $code LIMIT 1",
+                "SELECT * FROM {} WHERE data->>'{}' = $code LIMIT 1",
                 collections::COUPONS,
                 fields::CODE
             );
@@ -331,7 +332,7 @@ async fn validate_checkout_coupon(
         ));
     }
 
-    if let Some(coupon_seller) = coupon.get(fields::SELLER_ID).and_then(|v| v.as_str())
+    if let Some(coupon_seller) = coupon.get(db_fields::SELLER_ID).and_then(|v| v.as_str())
         && !seller_ids
             .iter()
             .any(|seller_id| seller_id == coupon_seller)
@@ -378,7 +379,7 @@ async fn validate_checkout_coupon(
         "SELECT COUNT(*) AS count FROM {} WHERE data->>'{}' = $coupon_id AND data->>'{}' = $user_id",
         collections::COUPON_USES,
         fields::COUPON_ID,
-        fields::USER_ID,
+        db_fields::USER_ID,
     );
     let user_use_count = state
         .db
@@ -595,7 +596,7 @@ async fn create_checkout_session(
         let product = product_rows
             .iter()
             .find(|p| {
-                p.get("id")
+                p.get(db_fields::ID)
                     .and_then(|v| v.as_str())
                     .map(|id| id.ends_with(&cart_item.product_id))
                     .unwrap_or(false)
@@ -605,7 +606,7 @@ async fn create_checkout_session(
             })?;
 
         let lifecycle = product
-            .get(fields::LIFECYCLE_STATUS)
+            .get(db_fields::LIFECYCLE_STATUS)
             .and_then(|v| v.as_str())
             .unwrap_or("");
         if lifecycle != lifecycle_status::ACTIVE {
@@ -627,7 +628,7 @@ async fn create_checkout_session(
         }
 
         let price_cents = product
-            .get(fields::PRICE_CENTS)
+            .get(db_fields::PRICE_CENTS)
             .and_then(|v| v.as_i64())
             .unwrap_or(0);
         if price_cents <= 0 {
@@ -640,7 +641,7 @@ async fn create_checkout_session(
         actual_subtotal_cents += price_cents * cart_item.quantity as i64;
 
         let seller_id = product
-            .get(fields::SELLER_ID)
+            .get(db_fields::SELLER_ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
@@ -703,8 +704,8 @@ async fn create_checkout_session(
         validated_items.push(serde_json::json!({
             fields::PRODUCT_ID: cart_item.product_id,
             fields::QUANTITY: cart_item.quantity,
-            fields::PRICE_CENTS: price_cents,
-            fields::SELLER_ID: seller_id,
+            db_fields::PRICE_CENTS: price_cents,
+            db_fields::SELLER_ID: seller_id,
             fields::TITLE: product.get(fields::TITLE).and_then(|v| v.as_str()).unwrap_or(""),
             fields::IMAGE_URL: product.get(fields::IMAGE_URLS)
                 .and_then(|v| v.as_array())
@@ -723,7 +724,7 @@ async fn create_checkout_session(
     let unique_seller_ids: Vec<String> = validated_items
         .iter()
         .filter_map(|item| {
-            item.get(fields::SELLER_ID)
+            item.get(db_fields::SELLER_ID)
                 .and_then(|v| v.as_str())
                 .map(String::from)
         })
@@ -841,10 +842,10 @@ async fn create_checkout_session(
         )
     });
     let dedup_query = format!(
-        "SELECT * FROM {} WHERE {} = $buyer_id AND {} = $idempotency_key LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = $buyer_id AND data->>'{}' = $idempotency_key LIMIT 1",
         collections::ORDERS,
-        fields::BUYER_ID,
-        fields::IDEMPOTENCY_KEY,
+        db_fields::BUYER_ID,
+        db_fields::IDEMPOTENCY_KEY,
     );
     let existing: Vec<Value> = match state
         .db
@@ -961,7 +962,7 @@ async fn create_checkout_session(
     }
 
     for (i, item) in validated_items.iter().enumerate() {
-        let price_cents = item[fields::PRICE_CENTS].as_i64().unwrap_or(0);
+        let price_cents = item[db_fields::PRICE_CENTS].as_i64().unwrap_or(0);
         let name = item[fields::TITLE].as_str().unwrap_or("Item");
         let qty = item[fields::QUANTITY].as_u64().unwrap_or(1);
 
@@ -1002,7 +1003,7 @@ async fn create_checkout_session(
         .json()
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Failed to parse Stripe response: {e}")))?;
-    let session_id = session["id"]
+    let session_id = session[db_fields::ID]
         .as_str()
         .ok_or_else(|| ob_core::Error::Internal("Missing session ID from Stripe".into()))?;
     let checkout_url = session["url"].as_str().map(str::to_string);
@@ -1018,18 +1019,18 @@ async fn create_checkout_session(
     let now = chrono::Utc::now().to_rfc3339();
     let order_doc = serde_json::json!({
         fields::ORDER_ID: order_id,
-        fields::BUYER_ID: user_id,
+        db_fields::BUYER_ID: user_id,
         fields::ORDER_STATUS: OrderStatus::PendingPayment.as_str(),
         fields::PAYMENT_STATUS: "awaiting_payment",
         fields::ITEMS: validated_items,
-        fields::SUBTOTAL_CENTS: actual_subtotal_cents,
+        db_fields::SUBTOTAL_CENTS: actual_subtotal_cents,
         fields::COUPON_CODE: normalized_coupon_code,
         fields::DISCOUNT_AMOUNT_CENTS: discount_amount_cents,
         fields::TAX_AMOUNT_CENTS: tax_amount_cents,
         fields::SHIPPING_COST_CENTS: shipping_cost_cents,
-        fields::TOTAL_AMOUNT_CENTS: total_amount_cents,
+        db_fields::TOTAL_AMOUNT_CENTS: total_amount_cents,
         fields::PLATFORM_FEE_CENTS: platform_fee_cents,
-        fields::IDEMPOTENCY_KEY: idempotency_key,
+        db_fields::IDEMPOTENCY_KEY: idempotency_key,
         fields::SHIPPING_ADDRESS: serde_json::json!({
             fields::STREET: req.shipping_address.street,
             fields::CITY: req.shipping_address.city,
@@ -1038,8 +1039,8 @@ async fn create_checkout_session(
             fields::COUNTRY: "CA",
         }),
         fields::CHECKOUT_SESSION_ID: session_id,
-        fields::CREATED_AT: now,
-        fields::UPDATED_AT: now,
+        db_fields::CREATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     // --- Atomic order creation with stock reservation ---
@@ -1053,7 +1054,10 @@ async fn create_checkout_session(
     // Operation 1: Create the order
     // Use INSERT with explicit ID to ensure the order_id is used as the record key
     tx.add(
-        &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::ORDERS),
+        &format!(
+            "INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *",
+            collections::ORDERS
+        ),
         Some(serde_json::json!({
             "id": order_id,
             "data": order_doc,
@@ -1062,16 +1066,20 @@ async fn create_checkout_session(
 
     if let Some(coupon_code) = &normalized_coupon_code {
         tx.add(
-            &format!("INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *", collections::COUPON_USES),
+            &format!(
+                "INSERT INTO {} (id, data) VALUES ($id, $data::jsonb) RETURNING *",
+                collections::COUPON_USES
+            ),
             Some(serde_json::json!({
+                "id": format!("{}:{}:{}", order_id, coupon_code, user_id),
                 "data": {
                     fields::COUPON_ID: coupon_code,
                     fields::COUPON_CODE: coupon_code,
-                    fields::USER_ID: user_id,
+                    db_fields::USER_ID: user_id,
                     fields::ORDER_ID: order_id,
                     fields::REDEEMED_AT: Value::Null,
-                    fields::CREATED_AT: now,
-                    fields::UPDATED_AT: now,
+                    db_fields::CREATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }
             })),
         );
@@ -1647,10 +1655,10 @@ mod tests {
                 &prod_stock,
                 json!({
                     fields::PRODUCT_ID: prod_stock,
-                    fields::SELLER_ID: seller_1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: seller_1,
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 1,
-                    fields::PRICE_CENTS: 1000,
+                    db_fields::PRICE_CENTS: 1000,
                     fields::TITLE: "Widget",
                     fields::IMAGE_URLS: ["https://example.com/widget.png"],
                 }),
@@ -1728,10 +1736,10 @@ mod tests {
                 &prod_restricted,
                 json!({
                     fields::PRODUCT_ID: prod_restricted,
-                    fields::SELLER_ID: seller_2,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: seller_2,
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 3,
-                    fields::PRICE_CENTS: 2500,
+                    db_fields::PRICE_CENTS: 2500,
                     fields::IS_AGE_RESTRICTED: true,
                     fields::IS_DIGITAL: true,
                     fields::TITLE: "Restricted Digital",
@@ -1831,10 +1839,10 @@ mod tests {
                 &prod_physical,
                 json!({
                     fields::PRODUCT_ID: prod_physical,
-                    fields::SELLER_ID: seller_id,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: seller_id,
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 1500,
+                    db_fields::PRICE_CENTS: 1500,
                     fields::TITLE: "Physical Widget",
                     fields::IMAGE_URLS: ["https://example.com/widget.png"],
                     fields::IS_DIGITAL: false,
@@ -1899,11 +1907,11 @@ mod tests {
         );
         assert_eq!(order[fields::PAYMENT_STATUS], "awaiting_payment");
         assert_eq!(order[fields::CHECKOUT_SESSION_ID], "cs_test_123");
-        assert_eq!(order[fields::SUBTOTAL_CENTS], 3000);
+        assert_eq!(order[db_fields::SUBTOTAL_CENTS], 3000);
         // Total = subtotal (3000) + shipping (899) + tax (ON 13% on 3899 = 507) = 4406
         assert_eq!(order[fields::SHIPPING_COST_CENTS], 899);
         assert_eq!(order[fields::TAX_AMOUNT_CENTS], 507);
-        assert_eq!(order[fields::TOTAL_AMOUNT_CENTS], 4406);
+        assert_eq!(order[db_fields::TOTAL_AMOUNT_CENTS], 4406);
 
         let product = state
             .db
@@ -1943,10 +1951,10 @@ mod tests {
                 &product_id,
                 json!({
                     fields::PRODUCT_ID: product_id,
-                    fields::SELLER_ID: seller_id,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: seller_id,
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 3000,
+                    db_fields::PRICE_CENTS: 3000,
                     fields::TITLE: "Coupon Widget",
                     fields::IMAGE_URLS: ["https://example.com/widget.png"],
                     fields::IS_DIGITAL: false,
@@ -2025,16 +2033,16 @@ mod tests {
             .unwrap();
         assert_eq!(order[fields::COUPON_CODE], "SAVE10");
         assert_eq!(order[fields::DISCOUNT_AMOUNT_CENTS], 300);
-        assert_eq!(order[fields::SUBTOTAL_CENTS], 2700);
+        assert_eq!(order[db_fields::SUBTOTAL_CENTS], 2700);
         assert_eq!(order[fields::TAX_AMOUNT_CENTS], 468);
-        assert_eq!(order[fields::TOTAL_AMOUNT_CENTS], 4067);
-        assert_eq!(order[fields::IDEMPOTENCY_KEY], "idem-coupon-1");
+        assert_eq!(order[db_fields::TOTAL_AMOUNT_CENTS], 4067);
+        assert_eq!(order[db_fields::IDEMPOTENCY_KEY], "idem-coupon-1");
 
         let reservations: Vec<Value> = state
             .db
             .query_bind_value(
                 &format!(
-                    "SELECT * FROM {} WHERE {} = $order_id AND {} = $coupon_code LIMIT 1",
+                    "SELECT * FROM {} WHERE data->>'{}' = $order_id AND data->>'{}' = $coupon_code LIMIT 1",
                     collections::COUPON_USES,
                     fields::ORDER_ID,
                     fields::COUPON_CODE,
@@ -2081,10 +2089,10 @@ mod tests {
                 &product_id,
                 json!({
                     fields::PRODUCT_ID: product_id,
-                    fields::SELLER_ID: seller_id,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: seller_id,
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 1200,
+                    db_fields::PRICE_CENTS: 1200,
                     fields::TITLE: "Idem Widget",
                     fields::IMAGE_URLS: ["https://example.com/widget.png"],
                     fields::IS_DIGITAL: false,
@@ -2181,10 +2189,10 @@ mod tests {
                 "prod_negative_price",
                 json!({
                     fields::PRODUCT_ID: "prod_negative_price",
-                    fields::SELLER_ID: "seller_negative",
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: "seller_negative",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: -500,
+                    db_fields::PRICE_CENTS: -500,
                     fields::TITLE: "Broken Widget",
                     fields::IMAGE_URLS: [],
                 }),
@@ -2247,10 +2255,10 @@ mod tests {
                 "prod_1",
                 json!({
                     fields::PRODUCT_ID: "prod_1",
-                    fields::SELLER_ID: "seller_1",
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: "seller_1",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 1000,
+                    db_fields::PRICE_CENTS: 1000,
                     fields::TITLE: "Widget",
                     fields::IMAGE_URLS: [],
                 }),
@@ -2349,9 +2357,9 @@ mod tests {
                 collections::PRODUCTS,
                 "prod_ok",
                 json!({
-                    fields::PRICE_CENTS: 1000,
+                    db_fields::PRICE_CENTS: 1000,
                     fields::STOCK_QUANTITY: 5,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                 }),
             )
             .await
@@ -2362,9 +2370,9 @@ mod tests {
                 collections::PRODUCTS,
                 "prod_price",
                 json!({
-                    fields::PRICE_CENTS: 1500,
+                    db_fields::PRICE_CENTS: 1500,
                     fields::STOCK_QUANTITY: 5,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                 }),
             )
             .await
@@ -2375,9 +2383,9 @@ mod tests {
                 collections::PRODUCTS,
                 "prod_stock",
                 json!({
-                    fields::PRICE_CENTS: 500,
+                    db_fields::PRICE_CENTS: 500,
                     fields::STOCK_QUANTITY: 1,
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::LIFECYCLE_STATUS: "active",
                 }),
             )
             .await
@@ -2388,9 +2396,9 @@ mod tests {
                 collections::PRODUCTS,
                 "prod_inactive",
                 json!({
-                    fields::PRICE_CENTS: 900,
+                    db_fields::PRICE_CENTS: 900,
                     fields::STOCK_QUANTITY: 5,
-                    fields::LIFECYCLE_STATUS: "draft",
+                    db_fields::LIFECYCLE_STATUS: "draft",
                 }),
             )
             .await
@@ -2747,10 +2755,10 @@ mod tests {
                 "prod_draft",
                 json!({
                     fields::PRODUCT_ID: "prod_draft",
-                    fields::SELLER_ID: "seller_1",
-                    fields::LIFECYCLE_STATUS: "draft",
+                    db_fields::SELLER_ID: "seller_1",
+                    db_fields::LIFECYCLE_STATUS: "draft",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 1000,
+                    db_fields::PRICE_CENTS: 1000,
                     fields::TITLE: "Draft Item",
                     fields::IMAGE_URLS: [],
                 }),
@@ -2797,10 +2805,10 @@ mod tests {
                 "prod_free",
                 json!({
                     fields::PRODUCT_ID: "prod_free",
-                    fields::SELLER_ID: "seller_1",
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: "seller_1",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 0,
+                    db_fields::PRICE_CENTS: 0,
                     fields::TITLE: "Free Item",
                     fields::IMAGE_URLS: [],
                 }),
@@ -2860,10 +2868,10 @@ mod tests {
                 "prod_ok",
                 json!({
                     fields::PRODUCT_ID: "prod_ok",
-                    fields::SELLER_ID: "seller_1",
-                    fields::LIFECYCLE_STATUS: "active",
+                    db_fields::SELLER_ID: "seller_1",
+                    db_fields::LIFECYCLE_STATUS: "active",
                     fields::STOCK_QUANTITY: 5,
-                    fields::PRICE_CENTS: 1000,
+                    db_fields::PRICE_CENTS: 1000,
                     fields::TITLE: "Widget",
                     fields::IMAGE_URLS: [],
                 }),
@@ -3121,7 +3129,7 @@ async fn verify_cart_prices(
         match doc {
             Ok(product) => {
                 let db_price = product
-                    .get(fields::PRICE_CENTS)
+                    .get(db_fields::PRICE_CENTS)
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0);
                 let in_stock = product
@@ -3129,7 +3137,7 @@ async fn verify_cart_prices(
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0);
                 let active = product
-                    .get(fields::LIFECYCLE_STATUS)
+                    .get(db_fields::LIFECYCLE_STATUS)
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     == "active";

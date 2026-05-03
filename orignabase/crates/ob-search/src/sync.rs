@@ -204,7 +204,7 @@ mod tests {
         assert!(matches!(event.action, SearchAction::Upsert));
         assert_eq!(event.index, "products");
         assert_eq!(event.document_id, "prod_123");
-        assert_eq!(event.data["name"], "Widget");
+        assert_eq!(event.data[f::NAME], "Widget");
     }
 
     #[test]
@@ -242,9 +242,9 @@ mod tests {
             "products:abc123",
             &serde_json::json!({"id": "products:abc123", "name": "Widget"}),
         );
-        assert_eq!(normalized["id"], "products_abc123");
+        assert_eq!(normalized[f::ID], "products_abc123");
         assert_eq!(normalized["origId"], "products:abc123");
-        assert_eq!(normalized["name"], "Widget");
+        assert_eq!(normalized[f::NAME], "Widget");
     }
 
     // ── sanitize_document_id additional tests ──
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn test_normalize_document_with_null_data() {
         let normalized = normalize_document_for_indexing("doc_1", &Value::Null);
-        assert_eq!(normalized["id"], "doc_1");
+        assert_eq!(normalized[f::ID], "doc_1");
         assert_eq!(normalized["origId"], "doc_1");
         assert_eq!(normalized["value"], Value::Null);
     }
@@ -299,7 +299,7 @@ mod tests {
     fn test_normalize_document_with_string_data() {
         let normalized =
             normalize_document_for_indexing("doc_2", &Value::String("hello".to_string()));
-        assert_eq!(normalized["id"], "doc_2");
+        assert_eq!(normalized[f::ID], "doc_2");
         assert_eq!(normalized["origId"], "doc_2");
         assert_eq!(normalized["value"], "hello");
     }
@@ -307,7 +307,7 @@ mod tests {
     #[test]
     fn test_normalize_document_with_number_data() {
         let normalized = normalize_document_for_indexing("doc_3", &serde_json::json!(42));
-        assert_eq!(normalized["id"], "doc_3");
+        assert_eq!(normalized[f::ID], "doc_3");
         assert_eq!(normalized["value"], 42);
     }
 
@@ -315,14 +315,14 @@ mod tests {
     fn test_normalize_document_with_array_data() {
         let data = serde_json::json!([1, 2, 3]);
         let normalized = normalize_document_for_indexing("doc_4", &data);
-        assert_eq!(normalized["id"], "doc_4");
+        assert_eq!(normalized[f::ID], "doc_4");
         assert_eq!(normalized["value"], serde_json::json!([1, 2, 3]));
     }
 
     #[test]
     fn test_normalize_document_with_boolean_data() {
         let normalized = normalize_document_for_indexing("doc_5", &Value::Bool(true));
-        assert_eq!(normalized["id"], "doc_5");
+        assert_eq!(normalized[f::ID], "doc_5");
         assert_eq!(normalized["value"], true);
     }
 
@@ -337,13 +337,13 @@ mod tests {
             "phone": "+15145551234"
         });
         let normalized = normalize_document_for_indexing("prod:1", &data);
-        assert_eq!(normalized["id"], "prod_1");
+        assert_eq!(normalized[f::ID], "prod_1");
         assert_eq!(normalized["origId"], "prod:1");
-        assert_eq!(normalized["name"], "Widget");
-        assert_eq!(normalized["priceCents"], 999);
+        assert_eq!(normalized[f::NAME], "Widget");
+        assert_eq!(normalized[f::PRICE_CENTS], 999);
         assert_eq!(normalized["keywords"].as_array().unwrap().len(), 2);
         // PII fields must NOT be present
-        assert!(normalized.get("email").is_none());
+        assert!(normalized.get(f::EMAIL).is_none());
         assert!(normalized.get("passwordHash").is_none());
         assert!(normalized.get("phone").is_none());
     }
@@ -352,7 +352,7 @@ mod tests {
     fn test_normalize_document_overwrites_existing_id() {
         let data = serde_json::json!({"id": "old_id", "name": "Test"});
         let normalized = normalize_document_for_indexing("new:id", &data);
-        assert_eq!(normalized["id"], "new_id");
+        assert_eq!(normalized[f::ID], "new_id");
         assert_eq!(normalized["origId"], "new:id");
     }
 

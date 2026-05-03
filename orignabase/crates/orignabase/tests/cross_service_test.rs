@@ -4,6 +4,7 @@
 //! Run: cargo test -p orignabase --test cross_service_test -- --ignored
 
 use futures_util::{SinkExt, StreamExt};
+use ob_database::fields;
 use reqwest::Client;
 use serde_json::{Value, json};
 use std::time::Duration;
@@ -44,7 +45,7 @@ async fn login_seller(c: &Client) -> (String, String, String) {
     let body: Value = resp.json().await.unwrap();
     let token = body["access_token"].as_str().unwrap_or("").to_string(); // ignore-magic
     let refresh = body["refresh_token"].as_str().unwrap_or("").to_string(); // ignore-magic
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, refresh, user_id)
 }
 
@@ -64,7 +65,7 @@ async fn create_doc(c: &Client, token: &str, collection: &str, data: &Value) -> 
     let escaped = serde_json::to_string(&data_str).unwrap();
     let q = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
     let body = graphql(c, token, &q).await;
-    body["data"]["create"]["id"] // ignore-magic
+    body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .or(body["data"]["create"]["_id"].as_str()) // ignore-magic
         .or(body["data"]["create"].as_str()) // ignore-magic
@@ -103,7 +104,7 @@ async fn search_finds_created_product() {
         .await;
         if let Some(results) = resp["data"]["search"].as_array() // ignore-magic
             && results.iter().any(|r| {
-                r["name"].as_str() == Some(&name) // ignore-magic
+                r[fields::NAME].as_str() == Some(&name) // ignore-magic
                     || serde_json::to_string(r).unwrap_or_default().contains(&name)
             })
         {
@@ -398,7 +399,7 @@ async fn create_then_read_matches() {
     .await;
     let doc = &body["data"]["get"]; // ignore-magic
     assert!(
-        doc["name"] // ignore-magic
+        doc[fields::NAME] // ignore-magic
             .as_str()
             .map(|n| n.contains("verify_me"))
             .unwrap_or(false)

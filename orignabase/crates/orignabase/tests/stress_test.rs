@@ -5,6 +5,7 @@
 //!
 //! Set `OB_TEST_URL` to override the default base URL.
 
+use ob_database::fields;
 use reqwest::StatusCode;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -75,7 +76,7 @@ async fn register_seller_user(client: &reqwest::Client) -> (String, String) {
         "seller registration should succeed"
     );
     let body: Value = resp.json().await.expect("seller register json");
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing seller user id")
         .to_string();
@@ -145,7 +146,7 @@ async fn create_doc(
     data: &Value,
 ) -> String {
     let body = create_doc_response(client, token, collection, data).await;
-    body["data"]["create"]["id"] // ignore-magic
+    body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .or_else(|| body["data"]["create"]["_id"].as_str()) // ignore-magic
         .or_else(|| body["data"]["create"].as_str()) // ignore-magic

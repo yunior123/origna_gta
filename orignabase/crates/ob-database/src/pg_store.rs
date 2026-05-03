@@ -3,6 +3,7 @@
 //! Uses sqlx with connection pooling. Stores documents as JSONB rows
 //! with a standard schema: `id UUID, data JSONB, created_at, updated_at`.
 
+use crate::fields;
 use ob_core::ports::db_store::{AppResult, DatabaseStore};
 use serde_json::Value;
 use sqlx::Row;
@@ -241,10 +242,7 @@ fn json_to_text(val: &Value) -> String {
 
 /// Simple named→positional parameter conversion for PostgreSQL.
 /// Converts `$param_name` to `$1, $2, ...` and returns ordered values.
-pub(crate) fn named_to_positional(
-    query: &str,
-    binds: Value,
-) -> AppResult<(String, Vec<Value>)> {
+pub(crate) fn named_to_positional(query: &str, binds: Value) -> AppResult<(String, Vec<Value>)> {
     let obj = binds
         .as_object()
         .ok_or_else(|| ob_core::Error::Database("Binds must be a JSON object".into()))?;
@@ -345,13 +343,19 @@ fn inject_document_metadata(
     updated_at: Option<chrono::DateTime<chrono::Utc>>,
 ) {
     if let Some(id) = id {
-        obj.insert("id".to_string(), Value::String(id));
+        obj.insert(fields::ID.to_string(), Value::String(id));
     }
     if let Some(ts) = created_at {
-        obj.insert("createdAt".to_string(), Value::String(ts.to_rfc3339()));
+        obj.insert(
+            fields::CREATED_AT.to_string(),
+            Value::String(ts.to_rfc3339()),
+        );
     }
     if let Some(ts) = updated_at {
-        obj.insert("updatedAt".to_string(), Value::String(ts.to_rfc3339()));
+        obj.insert(
+            fields::UPDATED_AT.to_string(),
+            Value::String(ts.to_rfc3339()),
+        );
     }
 }
 
@@ -433,7 +437,7 @@ impl DatabaseStore for PgDatabaseStore {
         let table = sanitize_table_name(collection)?;
 
         let id = data
-            .get("id")
+            .get(fields::ID)
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
@@ -496,7 +500,7 @@ impl DatabaseStore for PgDatabaseStore {
         if let Some(obj) = result.as_object_mut() {
             inject_document_metadata(
                 obj,
-                Some(row.get("id")),
+                Some(row.get(fields::ID)),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
@@ -534,7 +538,7 @@ impl DatabaseStore for PgDatabaseStore {
         if let Some(obj) = result.as_object_mut() {
             inject_document_metadata(
                 obj,
-                Some(row.get("id")),
+                Some(row.get(fields::ID)),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
@@ -568,7 +572,7 @@ impl DatabaseStore for PgDatabaseStore {
         if let Some(obj) = result.as_object_mut() {
             inject_document_metadata(
                 obj,
-                Some(row.get("id")),
+                Some(row.get(fields::ID)),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
                 Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
             );
@@ -597,7 +601,7 @@ impl DatabaseStore for PgDatabaseStore {
             .unwrap_or(Value::Object(Default::default()));
 
         if let Some(obj) = result.as_object_mut() {
-            obj.insert("id".to_string(), Value::String(row.get("id")));
+            obj.insert(fields::ID.to_string(), Value::String(row.get(fields::ID)));
         }
 
         Ok(result)
@@ -631,7 +635,7 @@ impl DatabaseStore for PgDatabaseStore {
             if let Some(obj) = val.as_object_mut() {
                 inject_document_metadata(
                     obj,
-                    Some(row.get("id")),
+                    Some(row.get(fields::ID)),
                     Some(row.get::<chrono::DateTime<chrono::Utc>, _>("created_at")),
                     Some(row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")),
                 );
@@ -801,9 +805,9 @@ impl DatabaseStore for PgDatabaseStore {
                     .unwrap_or(Value::Object(Default::default()));
 
                 if let Some(obj) = result.as_object_mut() {
-                    obj.insert("id".to_string(), Value::String(row.get("id")));
+                    obj.insert(fields::ID.to_string(), Value::String(row.get(fields::ID)));
                     obj.insert(
-                        "updatedAt".to_string(),
+                        fields::UPDATED_AT.to_string(),
                         Value::String(
                             row.get::<chrono::DateTime<chrono::Utc>, _>("updated_at")
                                 .to_rfc3339(),
@@ -1010,12 +1014,12 @@ mod tests {
         let store = test_store().await;
         let data = serde_json::json!({"name": "Test User", "email": "test@example.com"});
         let created = store.create_document("test_users", data).await.unwrap();
-        assert!(created.get("id").is_some());
+        assert!(created.get(fields::ID).is_some());
 
-        let id = created["id"].as_str().unwrap().to_string();
+        let id = created[fields::ID].as_str().unwrap().to_string();
         let fetched = store.get_document("test_users", &id).await.unwrap();
-        assert_eq!(fetched["name"], "Test User");
-        assert_eq!(fetched["email"], "test@example.com");
+        assert_eq!(fetched[fields::NAME], "Test User");
+        assert_eq!(fetched[fields::EMAIL], "test@example.com");
     }
 
     #[tokio::test]
@@ -1035,7 +1039,7 @@ mod tests {
         });
 
         let created = store.create_document(&collection, original).await.unwrap();
-        assert_eq!(created["sellerId"], "seller-a");
+        assert_eq!(created[fields::SELLER_ID], "seller-a");
 
         let duplicate = store.create_document(&collection, replacement).await;
         assert!(
@@ -1044,8 +1048,8 @@ mod tests {
         );
 
         let fetched = store.get_document(&collection, id).await.unwrap();
-        assert_eq!(fetched["sellerId"], "seller-a");
-        assert_eq!(fetched["name"], "Original");
+        assert_eq!(fetched[fields::SELLER_ID], "seller-a");
+        assert_eq!(fetched[fields::NAME], "Original");
     }
 
     #[tokio::test]
@@ -1065,18 +1069,21 @@ mod tests {
             .await
             .unwrap();
 
-        let created_at = created["createdAt"].as_str().unwrap();
-        let updated_at = created["updatedAt"].as_str().unwrap();
+        let created_at = created[fields::CREATED_AT].as_str().unwrap();
+        let updated_at = created[fields::UPDATED_AT].as_str().unwrap();
 
         assert_ne!(created_at, stale_created);
         assert_ne!(updated_at, stale_updated);
 
         let fetched = store
-            .get_document("test_metadata_override", created["id"].as_str().unwrap())
+            .get_document(
+                "test_metadata_override",
+                created[fields::ID].as_str().unwrap(),
+            )
             .await
             .unwrap();
-        assert_eq!(fetched["createdAt"], created["createdAt"]);
-        assert_eq!(fetched["updatedAt"], created["updatedAt"]);
+        assert_eq!(fetched[fields::CREATED_AT], created[fields::CREATED_AT]);
+        assert_eq!(fetched[fields::UPDATED_AT], created[fields::UPDATED_AT]);
     }
 
     #[tokio::test]
@@ -1084,14 +1091,14 @@ mod tests {
         let store = test_store().await;
         let data = serde_json::json!({"name": "Alice", "age": 30});
         let created = store.create_document("test_update", data).await.unwrap();
-        let id = created["id"].as_str().unwrap().to_string();
+        let id = created[fields::ID].as_str().unwrap().to_string();
 
         let updated = store
             .update_document("test_update", &id, serde_json::json!({"age": 31}))
             .await
             .unwrap();
         assert_eq!(updated["age"], 31);
-        assert_eq!(updated["name"], "Alice"); // preserved
+        assert_eq!(updated[fields::NAME], "Alice"); // preserved
     }
 
     #[tokio::test]
@@ -1105,8 +1112,8 @@ mod tests {
             .create_document(&collection, serde_json::json!({"name": "Alice"}))
             .await
             .unwrap();
-        let id = created["id"].as_str().unwrap().to_string();
-        let original_created_at = created["createdAt"].clone();
+        let id = created[fields::ID].as_str().unwrap().to_string();
+        let original_created_at = created[fields::CREATED_AT].clone();
 
         let updated = store
             .update_document(
@@ -1121,9 +1128,9 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(updated["createdAt"], original_created_at);
+        assert_eq!(updated[fields::CREATED_AT], original_created_at);
         assert_ne!(
-            updated["updatedAt"],
+            updated[fields::UPDATED_AT],
             serde_json::json!("2000-01-02T00:00:00Z")
         );
     }
@@ -1176,9 +1183,9 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(updated["createdAt"], created["createdAt"]);
+        assert_eq!(updated[fields::CREATED_AT], created[fields::CREATED_AT]);
         assert_ne!(
-            updated["updatedAt"],
+            updated[fields::UPDATED_AT],
             serde_json::json!("2000-01-02T00:00:00Z")
         );
     }
@@ -1188,7 +1195,7 @@ mod tests {
         let store = test_store().await;
         let data = serde_json::json!({"temp": true});
         let created = store.create_document("test_del", data).await.unwrap();
-        let id = created["id"].as_str().unwrap().to_string();
+        let id = created[fields::ID].as_str().unwrap().to_string();
 
         let deleted = store.delete_document("test_del", &id).await.unwrap();
         assert_eq!(deleted["temp"], true);
@@ -1242,5 +1249,4 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("not found"));
     }
-
 }

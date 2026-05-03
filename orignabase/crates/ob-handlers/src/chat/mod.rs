@@ -359,7 +359,7 @@ async fn buyer_has_chat_eligible_order(
     product_id: &str,
 ) -> Result<bool, ob_core::Error> {
     let query = format!(
-        "SELECT * FROM {} WHERE userId = $buyer_id AND data->>'{}' IN ('delivered', 'disputed') LIMIT 50",
+        "SELECT * FROM {} WHERE data->>'userId' = $buyer_id AND data->>'{}' IN ('delivered', 'disputed') LIMIT 50",
         collections::ORDERS,
         fields::ORDER_STATUS
     );
@@ -1213,7 +1213,10 @@ mod tests {
         };
         let result_dup =
             send_message(State(state.clone()), Extension(auth.clone()), Json(req_dup)).await;
-        assert!(result_dup.is_err(), "Dedup should reject duplicate message within 5s");
+        assert!(
+            result_dup.is_err(),
+            "Dedup should reject duplicate message within 5s"
+        );
         assert!(result_dup.unwrap_err().to_string().contains("already sent"));
     }
 

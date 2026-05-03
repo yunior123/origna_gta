@@ -8,6 +8,7 @@
 //! Requirements:
 //!   OB_TEST_URL=http://localhost:8080 (or remote OrignaBase instance)
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -27,7 +28,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String) {
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
     let token = body["access_token"].as_str().unwrap().to_string(); // ignore-magic
-    let user_id = body["user"]["id"].as_str().unwrap().to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap().to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -67,7 +68,10 @@ async fn test_mcp_list_tools() {
         tools.len()
     );
 
-    let tool_names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect(); // ignore-magic
+    let tool_names: Vec<&str> = tools
+        .iter()
+        .filter_map(|t| t[fields::NAME].as_str())
+        .collect(); // ignore-magic
     assert!(
         tool_names.contains(&"search_products"),
         "Should include search_products"
@@ -99,7 +103,7 @@ async fn test_mcp_list_tools_has_descriptions() {
 
     for tool in tools {
         assert!(
-            tool["name"].as_str().is_some(), // ignore-magic
+            tool[fields::NAME].as_str().is_some(), // ignore-magic
             "Each tool should have a name"
         );
         assert!(
@@ -139,7 +143,7 @@ async fn test_mcp_rpc_search_products_anonymous() {
 
     assert_eq!(status, 200, "RPC should return 200: {body:?}");
     assert_eq!(body["jsonrpc"], "2.0"); // ignore-magic
-    assert_eq!(body["id"], 1); // ignore-magic
+    assert_eq!(body[fields::ID], 1); // ignore-magic
 }
 
 #[tokio::test]
@@ -170,7 +174,7 @@ async fn test_mcp_rpc_search_products_authenticated() {
     let body: Value = resp.json().await.unwrap_or(json!({})); // ignore-magic
 
     assert_eq!(status, 200, "Authenticated RPC should succeed: {body:?}");
-    assert_eq!(body["id"], 42); // ignore-magic
+    assert_eq!(body[fields::ID], 42); // ignore-magic
 }
 
 #[tokio::test]
@@ -331,7 +335,7 @@ async fn test_mcp_rpc_string_id() {
 
     assert_eq!(status, 200);
     assert_eq!(
-        body["id"],
+        body[fields::ID],
         "request-abc-123", // ignore-magic
         "String ID should be preserved in response"
     );

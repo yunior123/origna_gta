@@ -14,6 +14,7 @@
 //!
 //! Run: cargo test --test new_features_test -- --ignored
 
+use ob_database::fields;
 use reqwest::{Client, StatusCode};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -369,7 +370,7 @@ mod new_features {
 
         if first.status() == StatusCode::OK || first.status() == StatusCode::CREATED {
             let first_body: Value = first.json().await.unwrap_or(json!({})); // ignore-magic
-            let _first_id = first_body["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+            let _first_id = first_body[fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
 
             // Attempt to create duplicate
             let second = client

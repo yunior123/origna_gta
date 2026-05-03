@@ -9,6 +9,7 @@
 //!
 //! Set OB_TEST_URL to override the default (http://localhost:8080).
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use std::time::Instant;
 use tokio::time::{Duration, sleep};
@@ -70,7 +71,7 @@ async fn create_doc(
     let query = format!(r#"mutation {{ create(collection: "{collection}", data: {escaped}) }}"#);
     let body = graphql(client, token, &query).await;
     let result = &body["data"]["create"]; // ignore-magic
-    result["id"] // ignore-magic
+    result[fields::ID] // ignore-magic
         .as_str()
         .or_else(|| result["_id"].as_str()) // ignore-magic
         .unwrap_or("")
@@ -978,7 +979,7 @@ async fn test_34_analytics_event_ingestion() {
 
     assert_eq!(resp.status(), 200);
     let body: Value = resp.json().await.unwrap();
-    assert_eq!(body["status"], "ok"); // ignore-magic
+    assert_eq!(body[fields::STATUS], "ok"); // ignore-magic
     assert!(body["event_id"].is_string()); // ignore-magic
 }
 
@@ -1901,7 +1902,7 @@ async fn test_64_admin_create_index() {
         .json(&json!({ // ignore-magic
             "collection": col,
             "name": "idx_status", // ignore-magic
-            "fields": ["status"], // ignore-magic
+            "fields": [fields::STATUS], // ignore-magic
             "unique": false
         }))
         .send()
@@ -2390,14 +2391,14 @@ async fn test_75_resumable_upload_init() {
     );
 
     let body: Value = resp.json().await.unwrap();
-    assert!(body["id"].is_string(), "Should return session id"); // ignore-magic
+    assert!(body[fields::ID].is_string(), "Should return session id"); // ignore-magic
     assert_eq!(body["path"], "test/resumable_file.bin"); // ignore-magic
     assert_eq!(body["total_size"], 1000); // ignore-magic
     assert_eq!(body["bytes_received"], 0); // ignore-magic
-    assert_eq!(body["status"], "in_progress"); // ignore-magic
+    assert_eq!(body[fields::STATUS], "in_progress"); // ignore-magic
 
     // Cleanup: cancel the session
-    let session_id = body["id"].as_str().unwrap(); // ignore-magic
+    let session_id = body[fields::ID].as_str().unwrap(); // ignore-magic
     client
         .delete(format!(
             "{}/storage/upload/resumable/{session_id}",
@@ -2429,7 +2430,7 @@ async fn test_76_resumable_upload_full_flow() {
         .unwrap();
     assert_eq!(resp.status().as_u16(), 200);
     let body: Value = resp.json().await.unwrap();
-    let session_id = body["id"].as_str().unwrap().to_string(); // ignore-magic
+    let session_id = body[fields::ID].as_str().unwrap().to_string(); // ignore-magic
 
     // 2. Upload in 3 chunks: 200 + 200 + 100
     for (offset, end) in [(0, 200), (200, 400), (400, 500)] {
@@ -2477,7 +2478,7 @@ async fn test_77_resumable_upload_query_progress() {
         .await
         .unwrap();
     let body: Value = resp.json().await.unwrap();
-    let session_id = body["id"].as_str().unwrap().to_string(); // ignore-magic
+    let session_id = body[fields::ID].as_str().unwrap().to_string(); // ignore-magic
 
     // Upload first chunk (100 bytes)
     client
@@ -2506,7 +2507,7 @@ async fn test_77_resumable_upload_query_progress() {
     let body: Value = resp.json().await.unwrap();
     assert_eq!(body["bytes_received"], 100); // ignore-magic
     assert_eq!(body["total_size"], 300); // ignore-magic
-    assert_eq!(body["status"], "in_progress"); // ignore-magic
+    assert_eq!(body[fields::STATUS], "in_progress"); // ignore-magic
 
     // Cleanup
     client
@@ -2536,7 +2537,7 @@ async fn test_78_resumable_upload_cancel() {
         .await
         .unwrap();
     let body: Value = resp.json().await.unwrap();
-    let session_id = body["id"].as_str().unwrap().to_string(); // ignore-magic
+    let session_id = body[fields::ID].as_str().unwrap().to_string(); // ignore-magic
 
     // Upload partial
     client
@@ -2595,7 +2596,7 @@ async fn test_79_resumable_upload_wrong_offset_rejected() {
         .await
         .unwrap();
     let body: Value = resp.json().await.unwrap();
-    let session_id = body["id"].as_str().unwrap().to_string(); // ignore-magic
+    let session_id = body[fields::ID].as_str().unwrap().to_string(); // ignore-magic
 
     // Try uploading with wrong offset (should be 0, sending 50)
     let resp = client
@@ -3320,7 +3321,9 @@ async fn test_88_admin_create_user() {
     );
     let body: Value = resp.json().await.unwrap();
     assert!(
-        body.get("user").is_some() || body.get("id").is_some() || body.get("email").is_some(), // ignore-magic
+        body.get("user").is_some()
+            || body.get(fields::ID).is_some()
+            || body.get(fields::EMAIL).is_some(), // ignore-magic
         "Response should contain user info: {body}"
     );
 }
@@ -3344,10 +3347,12 @@ async fn test_89_admin_get_user() {
     let users = body["users"].as_array().unwrap_or(&empty); // ignore-magic
 
     // Find our user's ID
-    let user = users.iter().find(|u| u["email"].as_str() == Some(&email)); // ignore-magic
+    let user = users
+        .iter()
+        .find(|u| u[fields::EMAIL].as_str() == Some(&email)); // ignore-magic
     assert!(user.is_some(), "Should find registered user in admin list");
 
-    let user_id = user.unwrap()["id"].as_str().unwrap_or(""); // ignore-magic
+    let user_id = user.unwrap()[fields::ID].as_str().unwrap_or(""); // ignore-magic
 
     // Get individual user
     let resp = client
@@ -3380,9 +3385,9 @@ async fn test_90_admin_update_user() {
     let users = body["users"].as_array().unwrap_or(&empty); // ignore-magic
     let user = users
         .iter()
-        .find(|u| u["email"].as_str() == Some(&email)) // ignore-magic
+        .find(|u| u[fields::EMAIL].as_str() == Some(&email)) // ignore-magic
         .unwrap();
-    let user_id = user["id"].as_str().unwrap_or(""); // ignore-magic
+    let user_id = user[fields::ID].as_str().unwrap_or(""); // ignore-magic
 
     // Update user
     let resp = client
@@ -3416,9 +3421,9 @@ async fn test_91_admin_set_custom_claims() {
     let users = body["users"].as_array().unwrap_or(&empty); // ignore-magic
     let user = users
         .iter()
-        .find(|u| u["email"].as_str() == Some(&email)) // ignore-magic
+        .find(|u| u[fields::EMAIL].as_str() == Some(&email)) // ignore-magic
         .unwrap();
-    let user_id = user["id"].as_str().unwrap_or(""); // ignore-magic
+    let user_id = user[fields::ID].as_str().unwrap_or(""); // ignore-magic
 
     // Set custom claims (like Firebase Auth custom claims)
     let resp = client
@@ -3457,9 +3462,11 @@ async fn test_92_admin_delete_user() {
     let body: Value = resp.json().await.unwrap();
     let empty = vec![];
     let users = body["users"].as_array().unwrap_or(&empty); // ignore-magic
-    let user = users.iter().find(|u| u["email"].as_str() == Some(&email)); // ignore-magic
+    let user = users
+        .iter()
+        .find(|u| u[fields::EMAIL].as_str() == Some(&email)); // ignore-magic
     assert!(user.is_some(), "Should find user to delete");
-    let user_id = user.unwrap()["id"].as_str().unwrap_or(""); // ignore-magic
+    let user_id = user.unwrap()[fields::ID].as_str().unwrap_or(""); // ignore-magic
 
     // Delete user
     let resp = client
@@ -4373,7 +4380,7 @@ async fn test_110_orignagta_order_state_machine() {
     let query = format!(r#"{{ get(collection: "{col}", id: "{clean_id}") }}"#);
     let body = graphql(&client, &token, &query).await;
     let doc = parse_graphql_json_field(&body["data"]["get"]); // ignore-magic
-    assert_eq!(doc["status"], "delivered"); // ignore-magic
+    assert_eq!(doc[fields::STATUS], "delivered"); // ignore-magic
 }
 
 /// Simulates origna_gta's batch notification fanout

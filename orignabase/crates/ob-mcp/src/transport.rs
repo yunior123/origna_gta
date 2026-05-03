@@ -11,6 +11,7 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
+use ob_database::fields;
 use serde_json::Value;
 use std::sync::Arc;
 #[cfg(not(test))]
@@ -276,7 +277,7 @@ mod tests {
         });
         assert_eq!(error_response["error"]["code"], -32700);
         assert_eq!(error_response["error"]["message"], "Parse error");
-        assert!(error_response["id"].is_null());
+        assert!(error_response[fields::ID].is_null());
     }
 
     // ── list_tools response ──
@@ -305,7 +306,7 @@ mod tests {
 
         let names: Vec<&str> = tool_list
             .iter()
-            .map(|t| t["name"].as_str().unwrap())
+            .map(|t| t[fields::NAME].as_str().unwrap())
             .collect();
         assert!(names.contains(&"search_products"));
         assert!(names.contains(&"get_analytics"));
@@ -417,7 +418,7 @@ mod tests {
         // Verify it serializes correctly
         let serialized = serde_json::to_value(&resp).unwrap();
         assert_eq!(serialized["jsonrpc"], "2.0");
-        assert_eq!(serialized["id"], 42);
+        assert_eq!(serialized[fields::ID], 42);
         assert!(serialized["result"].is_null());
     }
 
@@ -594,7 +595,7 @@ mod tests {
             .unwrap();
         let resp_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
         assert_eq!(resp_json["jsonrpc"], "2.0");
-        assert_eq!(resp_json["id"], 1);
+        assert_eq!(resp_json[fields::ID], 1);
         assert!(resp_json.get("error").is_none() || resp_json["error"].is_null());
     }
 

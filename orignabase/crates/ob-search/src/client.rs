@@ -1,5 +1,6 @@
 use crate::SearchConfig;
 use crate::config::IndexConfig;
+use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -146,7 +147,7 @@ impl SearchClient {
             if let Some(record_id) = record_id
                 && let Some(obj) = hit.as_object_mut()
             {
-                obj.insert("id".to_string(), Value::String(record_id));
+                obj.insert(f::ID.to_string(), Value::String(record_id));
             }
         }
 
@@ -413,11 +414,11 @@ mod tests {
             if let Some(record_id) = record_id
                 && let Some(obj) = hit.as_object_mut()
             {
-                obj.insert("id".to_string(), Value::String(record_id));
+                obj.insert(f::ID.to_string(), Value::String(record_id));
             }
         }
 
-        assert_eq!(result.hits[0]["id"], "products:abc123");
+        assert_eq!(result.hits[0][f::ID], "products:abc123");
     }
 
     // ── SearchClient method tests ──
@@ -599,10 +600,10 @@ mod tests {
         if let Some(record_id) = record_id
             && let Some(obj) = hit.as_object_mut()
         {
-            obj.insert("id".to_string(), Value::String(record_id));
+            obj.insert(f::ID.to_string(), Value::String(record_id));
         }
         // ID should remain unchanged since there's no record_id
-        assert_eq!(hit["id"], "products_1");
+        assert_eq!(hit[f::ID], "products_1");
     }
 
     #[test]
@@ -846,9 +847,9 @@ mod tests {
             .await
             .unwrap();
         // First hit should have record_id restored
-        assert_eq!(result.hits[0]["id"], "products:abc");
+        assert_eq!(result.hits[0][f::ID], "products:abc");
         // Second hit without record_id should keep original id
-        assert_eq!(result.hits[1]["id"], "products_xyz");
+        assert_eq!(result.hits[1][f::ID], "products_xyz");
     }
 
     #[tokio::test]

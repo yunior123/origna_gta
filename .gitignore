@@ -123,6 +123,7 @@ origna_ventures/coverage/
 
 # --- OrignaBase Rust ---
 orignabase/target/
+orignabase/target_*/
 orignabase/**/target/
 orignabase/*.profraw
 orignabase/data/keys/

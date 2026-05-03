@@ -4,6 +4,7 @@ use tracing::warn;
 
 use crate::HandlersState;
 use crate::shared::schema::{collections, fields};
+use ob_database::fields as db_fields;
 
 use super::{
     OrderItem, OrderSummary, order_confirmation_html, seller_notification_html, send_email,
@@ -47,14 +48,14 @@ pub fn item_quantity(item: &Value) -> u32 {
 }
 
 pub fn item_price_cents(item: &Value) -> i64 {
-    item.get(fields::PRICE_CENTS)
+    item.get(db_fields::PRICE_CENTS)
         .and_then(|v| v.as_i64())
         .or_else(|| item.get(fields::PRICE).and_then(|v| v.as_i64()))
         .unwrap_or(0)
 }
 
 pub fn item_name(item: &Value) -> String {
-    item.get(fields::NAME)
+    item.get(db_fields::NAME)
         .or_else(|| item.get(fields::TITLE))
         .and_then(|v| v.as_str())
         .filter(|v| !v.trim().is_empty())
@@ -64,7 +65,7 @@ pub fn item_name(item: &Value) -> String {
 
 pub fn build_order_summary_from_items(order: &Value, items: &[Value]) -> OrderSummary {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or_else(|| record_key(str_field(order, fields::ORDER_ID)))
@@ -88,7 +89,7 @@ pub fn build_order_summary_from_items(order: &Value, items: &[Value]) -> OrderSu
         order_id,
         items: summary_items,
         subtotal_cents: order
-            .get(fields::SUBTOTAL_CENTS)
+            .get(db_fields::SUBTOTAL_CENTS)
             .and_then(|v| v.as_i64())
             .unwrap_or(fallback_subtotal),
         shipping_cost_cents: order
@@ -100,7 +101,7 @@ pub fn build_order_summary_from_items(order: &Value, items: &[Value]) -> OrderSu
             .and_then(|v| v.as_i64())
             .unwrap_or(0),
         total_amount_cents: order
-            .get(fields::TOTAL_AMOUNT_CENTS)
+            .get(db_fields::TOTAL_AMOUNT_CENTS)
             .and_then(|v| v.as_i64())
             .unwrap_or(fallback_subtotal),
     }
@@ -114,7 +115,7 @@ pub fn build_order_summary(order: &Value) -> OrderSummary {
 pub fn build_seller_order_summary(order: &Value, seller_id: &str) -> Option<OrderSummary> {
     let seller_items: Vec<Value> = order_items(order)
         .into_iter()
-        .filter(|item| str_field(item, fields::SELLER_ID) == seller_id)
+        .filter(|item| str_field(item, db_fields::SELLER_ID) == seller_id)
         .collect();
     if seller_items.is_empty() {
         return None;
@@ -134,10 +135,10 @@ pub fn build_seller_order_summary(order: &Value, seller_id: &str) -> Option<Orde
 
 fn order_buyer_id(order: &Value) -> &str {
     order
-        .get(fields::BUYER_ID)
+        .get(db_fields::BUYER_ID)
         .and_then(|v| v.as_str())
         .filter(|v| !v.is_empty())
-        .or_else(|| order.get(fields::USER_ID).and_then(|v| v.as_str()))
+        .or_else(|| order.get(db_fields::USER_ID).and_then(|v| v.as_str()))
         .unwrap_or("")
 }
 
@@ -164,7 +165,7 @@ pub async fn resolve_buyer_contact(
         .map(ToString::to_string)
         .or_else(|| {
             buyer_doc.as_ref().and_then(|doc| {
-                doc.get(fields::EMAIL)
+                doc.get(db_fields::EMAIL)
                     .and_then(|v| v.as_str())
                     .filter(|v| !v.trim().is_empty())
                     .map(ToString::to_string)
@@ -173,7 +174,7 @@ pub async fn resolve_buyer_contact(
 
     let buyer_name = buyer_doc
         .as_ref()
-        .and_then(|doc| doc.get(fields::NAME).and_then(|v| v.as_str()))
+        .and_then(|doc| doc.get(db_fields::NAME).and_then(|v| v.as_str()))
         .filter(|v| !v.trim().is_empty())
         .unwrap_or("Customer")
         .to_string();
@@ -207,7 +208,7 @@ pub async fn resolve_seller_contact(
         .db
         .query_bind_value(
             &format!(
-                "SELECT * FROM {} WHERE uid = $seller_id OR user_id = $seller_id LIMIT 1",
+                "SELECT * FROM {} WHERE data->>'uid' = $seller_id OR data->>'user_id' = $seller_id LIMIT 1",
                 collections::SELLER_PROFILES
             ),
             json!({ "seller_id": seller_id }),
@@ -218,12 +219,12 @@ pub async fn resolve_seller_contact(
     let user_doc = load_user_document(state, seller_id).await;
 
     let email = seller_profile
-        .and_then(|profile| profile.get(fields::EMAIL).and_then(|v| v.as_str()))
+        .and_then(|profile| profile.get(db_fields::EMAIL).and_then(|v| v.as_str()))
         .filter(|v| !v.trim().is_empty())
         .map(ToString::to_string)
         .or_else(|| {
             user_doc.as_ref().and_then(|doc| {
-                doc.get(fields::EMAIL)
+                doc.get(db_fields::EMAIL)
                     .and_then(|v| v.as_str())
                     .filter(|v| !v.trim().is_empty())
                     .map(ToString::to_string)
@@ -233,7 +234,7 @@ pub async fn resolve_seller_contact(
     let seller_name = seller_profile
         .and_then(|profile| {
             profile
-                .get(fields::NAME)
+                .get(db_fields::NAME)
                 .or_else(|| profile.get(fields::BUSINESS_NAME))
                 .or_else(|| profile.get(fields::STORE_NAME))
                 .or_else(|| profile.get(fields::DISPLAY_NAME))
@@ -242,7 +243,7 @@ pub async fn resolve_seller_contact(
         .filter(|v| !v.trim().is_empty())
         .or_else(|| {
             user_doc.as_ref().and_then(|doc| {
-                doc.get(fields::NAME)
+                doc.get(db_fields::NAME)
                     .and_then(|v| v.as_str())
                     .filter(|v| !v.trim().is_empty())
             })
@@ -274,7 +275,7 @@ pub async fn send_order_confirmation_emails(
     order: &Value,
 ) -> Result<(), ob_core::Error> {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
@@ -305,7 +306,7 @@ pub async fn send_order_confirmation_emails(
 
     let mut seller_ids = HashSet::new();
     for item in order_items(order) {
-        let seller_id = str_field(&item, fields::SELLER_ID);
+        let seller_id = str_field(&item, db_fields::SELLER_ID);
         if !seller_id.is_empty() {
             seller_ids.insert(seller_id.to_string());
         }
@@ -345,7 +346,7 @@ pub async fn send_shipping_notification(
     buyer_lang: Option<&str>,
 ) {
     let order_id = order
-        .get("id")
+        .get(db_fields::ID)
         .and_then(|v| v.as_str())
         .map(record_key)
         .unwrap_or("");
@@ -411,48 +412,48 @@ mod tests {
     fn sample_order_with_items() -> Value {
         json!({
             "id": "orders:order1",
-            fields::BUYER_ID: "buyer1",
+            db_fields::BUYER_ID: "buyer1",
             fields::CUSTOMER_EMAIL: "buyer@test.com",
             fields::PREFERRED_LANGUAGE: "en",
             fields::ITEMS: [
                 {
-                    fields::NAME: "Widget",
-                    fields::PRICE_CENTS: 1500,
+                    db_fields::NAME: "Widget",
+                    db_fields::PRICE_CENTS: 1500,
                     "quantity": 2,
-                    fields::SELLER_ID: "seller1"
+                    db_fields::SELLER_ID: "seller1"
                 },
                 {
-                    fields::NAME: "Gadget",
-                    fields::PRICE_CENTS: 3000,
+                    db_fields::NAME: "Gadget",
+                    db_fields::PRICE_CENTS: 3000,
                     "quantity": 1,
-                    fields::SELLER_ID: "seller2"
+                    db_fields::SELLER_ID: "seller2"
                 }
             ],
-            fields::SUBTOTAL_CENTS: 6000,
+            db_fields::SUBTOTAL_CENTS: 6000,
             fields::SHIPPING_COST_CENTS: 500,
             fields::TAX_AMOUNT_CENTS: 780,
-            fields::TOTAL_AMOUNT_CENTS: 7280,
+            db_fields::TOTAL_AMOUNT_CENTS: 7280,
         })
     }
 
     fn sample_order_single_seller() -> Value {
         json!({
             "id": "orders:order2",
-            fields::BUYER_ID: "buyer1",
+            db_fields::BUYER_ID: "buyer1",
             fields::CUSTOMER_EMAIL: "buyer@test.com",
             fields::PREFERRED_LANGUAGE: "fr",
             fields::ITEMS: [
                 {
-                    fields::NAME: "Produit",
-                    fields::PRICE_CENTS: 2000,
+                    db_fields::NAME: "Produit",
+                    db_fields::PRICE_CENTS: 2000,
                     "quantity": 1,
-                    fields::SELLER_ID: "seller1"
+                    db_fields::SELLER_ID: "seller1"
                 }
             ],
-            fields::SUBTOTAL_CENTS: 2000,
+            db_fields::SUBTOTAL_CENTS: 2000,
             fields::SHIPPING_COST_CENTS: 0,
             fields::TAX_AMOUNT_CENTS: 260,
-            fields::TOTAL_AMOUNT_CENTS: 2260,
+            db_fields::TOTAL_AMOUNT_CENTS: 2260,
         })
     }
 
@@ -596,7 +597,7 @@ mod tests {
 
     #[test]
     fn test_item_price_cents_from_price_cents() {
-        let item = json!({fields::PRICE_CENTS: 2500});
+        let item = json!({db_fields::PRICE_CENTS: 2500});
         assert_eq!(item_price_cents(&item), 2500);
     }
 
@@ -608,7 +609,7 @@ mod tests {
 
     #[test]
     fn test_item_price_cents_prefer_price_cents() {
-        let item = json!({fields::PRICE_CENTS: 2500, "price": 1500});
+        let item = json!({db_fields::PRICE_CENTS: 2500, "price": 1500});
         assert_eq!(item_price_cents(&item), 2500);
     }
 
@@ -622,7 +623,7 @@ mod tests {
 
     #[test]
     fn test_item_name_from_name() {
-        let item = json!({fields::NAME: "Widget"});
+        let item = json!({db_fields::NAME: "Widget"});
         assert_eq!(item_name(&item), "Widget");
     }
 
@@ -634,8 +635,8 @@ mod tests {
 
     #[test]
     fn test_item_name_prefer_name_over_title() {
-        // fields::NAME and fields::TITLE both map to "name" now
-        let item = json!({fields::NAME: "Product Name"});
+        // db_fields::NAME and fields::TITLE both map to "name" now
+        let item = json!({db_fields::NAME: "Product Name"});
         assert_eq!(item_name(&item), "Product Name");
     }
 
@@ -647,7 +648,7 @@ mod tests {
 
     #[test]
     fn test_item_name_empty_string() {
-        let item = json!({fields::NAME: "  "});
+        let item = json!({db_fields::NAME: "  "});
         assert_eq!(item_name(&item), "Item");
     }
 
@@ -669,8 +670,8 @@ mod tests {
     fn test_build_order_summary_no_items() {
         let order = json!({
             "id": "orders:empty",
-            fields::SUBTOTAL_CENTS: 0,
-            fields::TOTAL_AMOUNT_CENTS: 0,
+            db_fields::SUBTOTAL_CENTS: 0,
+            db_fields::TOTAL_AMOUNT_CENTS: 0,
         });
         let summary = build_order_summary(&order);
         assert!(summary.items.is_empty());
@@ -683,7 +684,7 @@ mod tests {
         let order = json!({
             "id": "orders:fb",
             fields::ITEMS: [
-                {fields::PRICE_CENTS: 1000, "quantity": 2}
+                {db_fields::PRICE_CENTS: 1000, "quantity": 2}
             ]
         });
         let summary = build_order_summary(&order);
@@ -742,9 +743,9 @@ mod tests {
         let order = json!({
             "id": "orders:multi",
             fields::ITEMS: [
-                {fields::NAME: "A", fields::PRICE_CENTS: 1000, "quantity": 1, fields::SELLER_ID: "s1"},
-                {fields::NAME: "B", fields::PRICE_CENTS: 2000, "quantity": 1, fields::SELLER_ID: "s1"},
-                {fields::NAME: "C", fields::PRICE_CENTS: 500, "quantity": 1, fields::SELLER_ID: "s2"}
+                {db_fields::NAME: "A", db_fields::PRICE_CENTS: 1000, "quantity": 1, db_fields::SELLER_ID: "s1"},
+                {db_fields::NAME: "B", db_fields::PRICE_CENTS: 2000, "quantity": 1, db_fields::SELLER_ID: "s1"},
+                {db_fields::NAME: "C", db_fields::PRICE_CENTS: 500, "quantity": 1, db_fields::SELLER_ID: "s2"}
             ]
         });
         let summary = build_seller_order_summary(&order, "s1");
@@ -760,12 +761,13 @@ mod tests {
     fn test_build_order_summary_from_items_explicit() {
         let order = json!({
             "id": "orders:explicit",
-            fields::SUBTOTAL_CENTS: 5000,
+            db_fields::SUBTOTAL_CENTS: 5000,
             fields::SHIPPING_COST_CENTS: 800,
             fields::TAX_AMOUNT_CENTS: 650,
-            fields::TOTAL_AMOUNT_CENTS: 6450,
+            db_fields::TOTAL_AMOUNT_CENTS: 6450,
         });
-        let items = vec![json!({fields::NAME: "Item1", fields::PRICE_CENTS: 5000, "quantity": 1})];
+        let items =
+            vec![json!({db_fields::NAME: "Item1", db_fields::PRICE_CENTS: 5000, "quantity": 1})];
         let summary = build_order_summary_from_items(&order, &items);
         assert_eq!(summary.subtotal_cents, 5000);
         assert_eq!(summary.shipping_cost_cents, 800);
@@ -798,8 +800,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "found_user",
-                    fields::EMAIL: "found@test.com",
-                    fields::NAME: "Found User",
+                    db_fields::EMAIL: "found@test.com",
+                    db_fields::NAME: "Found User",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -809,7 +811,7 @@ mod tests {
         let result = load_user_document(&state, "found_user").await;
         assert!(result.is_some());
         let doc = result.unwrap();
-        assert_eq!(doc[fields::EMAIL], "found@test.com");
+        assert_eq!(doc[db_fields::EMAIL], "found@test.com");
     }
 
     #[tokio::test]
@@ -821,7 +823,7 @@ mod tests {
                 "users",
                 json!({
                     "id": "prefixed",
-                    fields::EMAIL: "prefixed@test.com",
+                    db_fields::EMAIL: "prefixed@test.com",
                 }),
             )
             .await
@@ -838,7 +840,7 @@ mod tests {
         let state = make_test_state().await;
         let order = json!({
             "id": "orders:oc1",
-            fields::BUYER_ID: "buyer_nodoc",
+            db_fields::BUYER_ID: "buyer_nodoc",
             fields::CUSTOMER_EMAIL: "order@test.com",
             fields::PREFERRED_LANGUAGE: "fr",
         });
@@ -859,8 +861,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "buyer2",
-                    fields::EMAIL: "buyer2@test.com",
-                    fields::NAME: "Bob",
+                    db_fields::EMAIL: "buyer2@test.com",
+                    db_fields::NAME: "Bob",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -869,7 +871,7 @@ mod tests {
 
         let order = json!({
             "id": "orders:oc2",
-            fields::BUYER_ID: "buyer2",
+            db_fields::BUYER_ID: "buyer2",
             fields::CUSTOMER_EMAIL: "",
             fields::PREFERRED_LANGUAGE: "",
         });
@@ -885,7 +887,7 @@ mod tests {
         let state = make_test_state().await;
         let order = json!({
             "id": "orders:oc3",
-            fields::BUYER_ID: "nobody",
+            db_fields::BUYER_ID: "nobody",
             fields::CUSTOMER_EMAIL: "",
         });
         let result = resolve_buyer_contact(&state, &order).await;
@@ -901,7 +903,7 @@ mod tests {
                 "users",
                 json!({
                     "id": "uid_buyer",
-                    fields::EMAIL: "uid@test.com",
+                    db_fields::EMAIL: "uid@test.com",
                 }),
             )
             .await
@@ -926,7 +928,7 @@ mod tests {
                 "users",
                 json!({
                     "id": "lang_buyer",
-                    fields::EMAIL: "lang@test.com",
+                    db_fields::EMAIL: "lang@test.com",
                     fields::PREFERRED_LANGUAGE: "fr",
                 }),
             )
@@ -935,7 +937,7 @@ mod tests {
 
         let order = json!({
             "id": "orders:oc5",
-            fields::BUYER_ID: "lang_buyer",
+            db_fields::BUYER_ID: "lang_buyer",
             fields::CUSTOMER_EMAIL: "lang@test.com",
         });
         let result = resolve_buyer_contact(&state, &order).await;
@@ -962,8 +964,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "seller2",
-                    fields::EMAIL: "seller2@test.com",
-                    fields::NAME: "Seller Two",
+                    db_fields::EMAIL: "seller2@test.com",
+                    db_fields::NAME: "Seller Two",
                 }),
             )
             .await
@@ -993,7 +995,7 @@ mod tests {
                 "users",
                 json!({
                     "id": "seller_noemail",
-                    fields::NAME: "No Email Seller",
+                    db_fields::NAME: "No Email Seller",
                 }),
             )
             .await
@@ -1012,7 +1014,7 @@ mod tests {
                 "users",
                 json!({
                     "id": "seller_fn",
-                    fields::EMAIL: "fn@test.com",
+                    db_fields::EMAIL: "fn@test.com",
                 }),
             )
             .await
@@ -1055,8 +1057,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "buyer1",
-                    fields::EMAIL: "buyer@test.com",
-                    fields::NAME: "Test Buyer",
+                    db_fields::EMAIL: "buyer@test.com",
+                    db_fields::NAME: "Test Buyer",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -1068,8 +1070,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "seller1",
-                    fields::EMAIL: "seller1@test.com",
-                    fields::NAME: "Seller One",
+                    db_fields::EMAIL: "seller1@test.com",
+                    db_fields::NAME: "Seller One",
                 }),
             )
             .await
@@ -1099,13 +1101,13 @@ mod tests {
         let state = make_test_state().await;
         let order = json!({
             "id": "orders:no_buyer",
-            fields::BUYER_ID: "nobody",
+            db_fields::BUYER_ID: "nobody",
             fields::CUSTOMER_EMAIL: "",
             fields::ITEMS: [
-                {fields::NAME: "X", fields::PRICE_CENTS: 100, "quantity": 1, fields::SELLER_ID: "s1"}
+                {db_fields::NAME: "X", db_fields::PRICE_CENTS: 100, "quantity": 1, db_fields::SELLER_ID: "s1"}
             ],
-            fields::SUBTOTAL_CENTS: 100,
-            fields::TOTAL_AMOUNT_CENTS: 100,
+            db_fields::SUBTOTAL_CENTS: 100,
+            db_fields::TOTAL_AMOUNT_CENTS: 100,
         });
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
@@ -1134,8 +1136,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "buyer1",
-                    fields::EMAIL: "buyer@test.com",
-                    fields::NAME: "Test Buyer",
+                    db_fields::EMAIL: "buyer@test.com",
+                    db_fields::NAME: "Test Buyer",
                 }),
             )
             .await
@@ -1143,14 +1145,14 @@ mod tests {
 
         let order = json!({
             "id": "orders:no_seller_email",
-            fields::BUYER_ID: "buyer1",
+            db_fields::BUYER_ID: "buyer1",
             fields::CUSTOMER_EMAIL: "buyer@test.com",
             fields::PREFERRED_LANGUAGE: "en",
             fields::ITEMS: [
-                {fields::NAME: "X", fields::PRICE_CENTS: 100, "quantity": 1, fields::SELLER_ID: "no_seller"}
+                {db_fields::NAME: "X", db_fields::PRICE_CENTS: 100, "quantity": 1, db_fields::SELLER_ID: "no_seller"}
             ],
-            fields::SUBTOTAL_CENTS: 100,
-            fields::TOTAL_AMOUNT_CENTS: 100,
+            db_fields::SUBTOTAL_CENTS: 100,
+            db_fields::TOTAL_AMOUNT_CENTS: 100,
         });
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
@@ -1163,11 +1165,11 @@ mod tests {
         let state = make_test_state().await;
         let order = json!({
             "id": "orders:no_items",
-            fields::BUYER_ID: "nobody",
+            db_fields::BUYER_ID: "nobody",
             fields::CUSTOMER_EMAIL: "test@test.com",
             fields::ITEMS: [],
-            fields::SUBTOTAL_CENTS: 0,
-            fields::TOTAL_AMOUNT_CENTS: 0,
+            db_fields::SUBTOTAL_CENTS: 0,
+            db_fields::TOTAL_AMOUNT_CENTS: 0,
         });
         let result = send_order_confirmation_emails(&state, &order).await;
         assert!(result.is_ok());
@@ -1210,8 +1212,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "buyer1",
-                    fields::EMAIL: "buyer@test.com",
-                    fields::NAME: "Test Buyer",
+                    db_fields::EMAIL: "buyer@test.com",
+                    db_fields::NAME: "Test Buyer",
                     fields::LANGUAGE: "en",
                 }),
             )
@@ -1229,7 +1231,7 @@ mod tests {
         let state = make_test_state().await;
         let order = json!({
             "id": "orders:ship_no_buyer",
-            fields::BUYER_ID: "nobody",
+            db_fields::BUYER_ID: "nobody",
             fields::CUSTOMER_EMAIL: "",
             fields::ITEMS: [],
         });
@@ -1257,8 +1259,8 @@ mod tests {
                 "users",
                 json!({
                     "id": "buyer1",
-                    fields::EMAIL: "buyer@test.com",
-                    fields::NAME: "Test Buyer",
+                    db_fields::EMAIL: "buyer@test.com",
+                    db_fields::NAME: "Test Buyer",
                 }),
             )
             .await

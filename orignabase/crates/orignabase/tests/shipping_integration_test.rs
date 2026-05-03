@@ -2,6 +2,7 @@
 //!
 //! Run with: `cd orignabase && cargo test --test shipping_integration_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -27,7 +28,7 @@ async fn register_test_user(client: &reqwest::Client, prefix: &str) -> (String, 
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"]
+    let user_id = body["user"][fields::ID]
         .as_str()
         .expect("missing user.id")
         .to_string();

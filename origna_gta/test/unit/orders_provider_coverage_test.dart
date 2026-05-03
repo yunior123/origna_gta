@@ -263,8 +263,8 @@ void main() {
       final amounts = container.read(
         sellerOrderNetProvider((orderId: 'o1', sellerId: 'seller_1')),
       );
-      // sellerTotal = 5000/100 * 1 = 50.0
-      expect(amounts.sellerTotal, 50.0);
+      // sellerTotal is stored in integer cents.
+      expect(amounts.sellerTotal, 5000);
       expect(amounts.platformFee, greaterThan(0));
       expect(amounts.sellerNet, lessThan(amounts.sellerTotal));
     });

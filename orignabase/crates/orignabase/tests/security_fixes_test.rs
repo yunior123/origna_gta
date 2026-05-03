@@ -11,6 +11,7 @@
 //!
 //! Run: cargo test --test security_fixes_test -- --ignored
 
+use ob_database::fields;
 use reqwest::{Client, StatusCode};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -58,7 +59,7 @@ mod security_fixes {
             .await
             .expect("register failed");
         let register_body: Value = register.json().await.expect("register body invalid");
-        let user_id = register_body["user"]["id"]
+        let user_id = register_body["user"][fields::ID]
             .as_str()
             .expect("missing user.id")
             .to_string();
@@ -192,7 +193,7 @@ mod security_fixes {
         }
 
         let prod_body: Value = product_resp.json().await.unwrap_or(json!({})); // ignore-magic
-        let product_id = match prod_body.get("id").and_then(|v| v.as_str()) {
+        let product_id = match prod_body.get(fields::ID).and_then(|v| v.as_str()) {
             Some(id) => id.to_string(),
             None => {
                 println!("Could not extract product ID; test infrastructure incomplete");
@@ -548,7 +549,9 @@ mod security_fixes {
             .expect("create request failed");
 
         let create_body: Value = create_resp.json().await.unwrap_or(json!({})); // ignore-magic
-        let product_id = create_body["data"]["create"]["id"].as_str().unwrap_or(""); // ignore-magic
+        let product_id = create_body["data"]["create"][fields::ID]
+            .as_str()
+            .unwrap_or(""); // ignore-magic
 
         if product_id.is_empty() {
             println!("Could not create test product; skipping state transition check");

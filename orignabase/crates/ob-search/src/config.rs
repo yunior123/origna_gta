@@ -1,3 +1,4 @@
+use ob_core::constants::fields as f;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -33,7 +34,7 @@ pub struct IndexConfig {
 }
 
 fn default_pk() -> String {
-    "id".to_string()
+    f::ID.to_string()
 }
 
 impl Default for SearchConfig {

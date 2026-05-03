@@ -1,4 +1,4 @@
-use crate::DatabaseClient;
+use crate::{DatabaseClient, fields};
 use ob_core::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -162,7 +162,7 @@ impl TaskQueue {
             task_type: row.get("job_name"),
             payload: row.try_get::<Value, _>("payload").unwrap_or(Value::Null),
             status: {
-                let s: String = row.get("status");
+                let s: String = row.get(fields::STATUS);
                 serde_json::from_value(Value::String(s)).unwrap_or(TaskStatus::Pending)
             },
             queue: row.try_get("queue").unwrap_or_else(|_| "default".into()),
@@ -257,7 +257,7 @@ impl TaskQueue {
             return Ok(None);
         };
 
-        let task_id: uuid::Uuid = candidate.get("id");
+        let task_id: uuid::Uuid = candidate.get(fields::ID);
 
         // Step 2: Atomically claim it (only if still pending)
         let updated = sqlx::query(
@@ -274,7 +274,7 @@ impl TaskQueue {
         .map_err(|e| Error::Database(format!("Claim update failed: {e}")))?;
 
         if let Some(row) = updated {
-            let id: uuid::Uuid = row.get("id");
+            let id: uuid::Uuid = row.get(fields::ID);
             let task = Self::row_to_task(&row);
             Ok(Some((id.to_string(), task)))
         } else {
@@ -454,9 +454,9 @@ impl TaskQueue {
             let mut val = serde_json::to_value(&task)
                 .map_err(|e| Error::Internal(format!("Task serialization failed: {e}")))?;
             // Include the id
-            let id: uuid::Uuid = row.get("id");
+            let id: uuid::Uuid = row.get(fields::ID);
             if let Some(obj) = val.as_object_mut() {
-                obj.insert("id".into(), Value::String(id.to_string()));
+                obj.insert(fields::ID.into(), Value::String(id.to_string()));
             }
             results.push(val);
         }
@@ -828,7 +828,7 @@ mod tests {
             priority: -5,
         };
         let json = serde_json::to_value(&task).unwrap();
-        assert_eq!(json["status"], "running");
+        assert_eq!(json[fields::STATUS], "running");
         assert_eq!(json["attempts"], 2);
         assert_eq!(json["last_error"], "Connection timeout");
         assert_eq!(json["priority"], -5);

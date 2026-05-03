@@ -1,5 +1,6 @@
 use ob_core::Result;
 use ob_database::DatabaseClient;
+use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
@@ -39,7 +40,10 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
         let pg_type = to_pg_type(&field.field_type);
         let not_null = if field.required { " NOT NULL" } else { "" };
         let comma = if i < schema.fields.len() - 1 { "," } else { "" };
-        query.push_str(&format!("  {} {}{}{}\n", field.name, pg_type, not_null, comma));
+        query.push_str(&format!(
+            "  {} {}{}{}\n",
+            field.name, pg_type, not_null, comma
+        ));
     }
 
     query.push_str(");\n");
@@ -52,12 +56,14 @@ pub async fn create_collection(db: &DatabaseClient, schema: &CollectionSchema) -
             db.query_raw_value(&format!(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_{0}_{1} ON {0} ({1});",
                 schema.name, field.name
-            )).await?;
+            ))
+            .await?;
         } else if field.indexed {
             db.query_raw_value(&format!(
                 "CREATE INDEX IF NOT EXISTS idx_{0}_{1} ON {0} ({1});",
                 schema.name, field.name
-            )).await?;
+            ))
+            .await?;
         }
     }
     tracing::info!("Created collection: {}", schema.name);
@@ -91,7 +97,8 @@ pub async fn drop_collection(db: &DatabaseClient, name: &str) -> Result<()> {
     if !name.chars().all(|c| c.is_alphanumeric() || c == '_') {
         return Err(ob_core::Error::Validation("Invalid collection name".into()));
     }
-    db.query_raw_value(&format!("DROP TABLE IF EXISTS {name} CASCADE")).await?;
+    db.query_raw_value(&format!("DROP TABLE IF EXISTS {name} CASCADE"))
+        .await?;
     tracing::info!("Dropped collection: {name}");
     Ok(())
 }
@@ -161,8 +168,8 @@ mod tests {
         };
 
         let json = serde_json::to_value(&schema).unwrap();
-        assert_eq!(json["name"], "products");
-        assert_eq!(json["fields"][0]["name"], "title");
+        assert_eq!(json[fields::NAME], "products");
+        assert_eq!(json["fields"][0][fields::NAME], "title");
         assert_eq!(json["fields"][0]["field_type"], "string");
         assert_eq!(json["fields"][0]["required"], true);
         assert_eq!(json["fields"][1]["indexed"], true);
@@ -294,7 +301,7 @@ mod tests {
             fields: vec![],
         };
         let json = serde_json::to_value(&schema).unwrap();
-        assert_eq!(json["name"], "empty_table");
+        assert_eq!(json[fields::NAME], "empty_table");
         assert!(json["fields"].as_array().unwrap().is_empty());
 
         // Roundtrip

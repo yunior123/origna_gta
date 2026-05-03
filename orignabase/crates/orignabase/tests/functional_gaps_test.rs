@@ -5,6 +5,7 @@
 //!
 //! Set `OB_TEST_URL` to point at the target server.
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use tokio::time::{Duration, sleep};
 use uuid::Uuid;
@@ -32,7 +33,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -140,7 +141,7 @@ fn clean_id(id: &str) -> String {
 fn extract_id(value: &Value) -> Option<String> {
     let parsed = parse_graphql_json_field(value);
     parsed
-        .get("id")
+        .get(fields::ID)
         .and_then(Value::as_str)
         .or_else(|| parsed.get("_id").and_then(Value::as_str))
         .map(ToString::to_string)
@@ -714,7 +715,7 @@ live_test!(digital_purchase_creates_license, {
         &clean_id(&extract_id(&license).expect("license id")),
     )
     .await;
-    assert_eq!(license_doc["status"], "active"); // ignore-magic
+    assert_eq!(license_doc[fields::STATUS], "active"); // ignore-magic
 });
 
 live_test!(digital_activate_license, {
@@ -738,7 +739,7 @@ live_test!(digital_activate_license, {
         &json!({"status": "active"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "active"); // ignore-magic
+    assert_eq!(updated[fields::STATUS], "active"); // ignore-magic
 });
 
 live_test!(digital_deactivate_license, {
@@ -762,7 +763,7 @@ live_test!(digital_deactivate_license, {
         &json!({"status": "inactive"}), // ignore-magic
     )
     .await;
-    assert_eq!(updated["status"], "inactive"); // ignore-magic
+    assert_eq!(updated[fields::STATUS], "inactive"); // ignore-magic
 });
 
 live_test!(digital_download_link_generation, {
@@ -1091,7 +1092,7 @@ live_test!(qa_post_answer, {
         &clean_id(&extract_id(&created).expect("qa id")),
     )
     .await;
-    assert_eq!(doc["status"], "answered"); // ignore-magic
+    assert_eq!(doc[fields::STATUS], "answered"); // ignore-magic
     assert!(doc["answer"].as_str().unwrap_or("").contains("USB-C")); // ignore-magic
 });
 
@@ -1282,7 +1283,7 @@ live_test!(profile_get_profile, {
     let client = reqwest::Client::new();
     let (token, user_id, email) = register_test_user(&client).await;
     let doc = get_doc(&client, &token, "users", &clean_id(&user_id)).await;
-    assert_eq!(doc["email"], email); // ignore-magic
+    assert_eq!(doc[fields::EMAIL], email); // ignore-magic
 });
 
 live_test!(profile_update_profile_fields, {

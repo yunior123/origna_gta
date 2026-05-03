@@ -11,6 +11,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{SubscriptionStatus, business_rules, collections, fields};
 use crate::shared::validation::validate_uid;
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -173,11 +174,11 @@ async fn ensure_customer(
 
     // Create Stripe customer
     let email = user
-        .get(fields::EMAIL)
+        .get(db_fields::EMAIL)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let name = user
-        .get(fields::NAME)
+        .get(db_fields::NAME)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -207,7 +208,7 @@ async fn ensure_customer(
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Parse error: {e}")))?;
 
-    let customer_id = customer["id"]
+    let customer_id = customer[db_fields::ID]
         .as_str()
         .ok_or_else(|| ob_core::Error::Internal("Missing customer ID from Stripe".into()))?
         .to_string();
@@ -222,7 +223,7 @@ async fn ensure_customer(
             user_id,
             serde_json::json!({
                 fields::CUSTOMER_ID: &customer_id,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -330,10 +331,10 @@ async fn create_subscription(
 
     // Check for existing active subscription (fast-path before Stripe call)
     let existing_sql = format!(
-        "SELECT * FROM {} WHERE {} = $uid AND ({} = 'active' OR {} = 'active') LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'{}' = $uid AND (data->>'{}' = 'active' OR data->>'{}' = 'active') LIMIT 1",
         collections::SUBSCRIPTIONS,
-        fields::BUYER_ID,
-        fields::STATUS,
+        db_fields::BUYER_ID,
+        db_fields::STATUS,
         fields::SUBSCRIPTION_STATUS
     );
     let existing_records = state
@@ -344,7 +345,7 @@ async fn create_subscription(
     if !existing_records.is_empty() {
         let existing = &existing_records[0];
         let existing_sub_id = existing
-            .get("id")
+            .get(db_fields::ID)
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");
         return Err(ob_core::Error::Validation(format!(
@@ -426,7 +427,7 @@ async fn create_subscription(
             .map_err(|e| ob_core::Error::Internal(format!("Parse error: {e}")))?;
 
         let checkout_url = session["url"].as_str().unwrap_or("").to_string();
-        let session_id = session["id"].as_str().unwrap_or("").to_string();
+        let session_id = session[db_fields::ID].as_str().unwrap_or("").to_string();
         if checkout_url.is_empty() {
             return Err(ob_core::Error::Internal(
                 "Stripe did not return a checkout URL".into(),
@@ -442,7 +443,7 @@ async fn create_subscription(
                 json!({
                     fields::LAST_CHECKOUT_SESSION: checkout_url,
                     fields::LAST_CHECKOUT_TIMESTAMP: now,
-                    fields::UPDATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }),
             )
             .await;
@@ -534,8 +535,8 @@ async fn create_subscription(
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Parse error: {e}")))?;
 
-    let sub_id = sub["id"].as_str().unwrap_or("");
-    let sub_status = sub["status"].as_str().unwrap_or("incomplete");
+    let sub_id = sub[db_fields::ID].as_str().unwrap_or("");
+    let sub_status = sub[db_fields::STATUS].as_str().unwrap_or("incomplete");
     let client_secret = sub["latest_invoice"]["payment_intent"]["client_secret"]
         .as_str()
         .map(|s| s.to_string());
@@ -554,15 +555,15 @@ async fn create_subscription(
         "incomplete"
     };
     let sub_doc = json!({
-        fields::BUYER_ID: user_id,
+        db_fields::BUYER_ID: user_id,
         fields::STRIPE_SUBSCRIPTION_ID: sub_id,
-        fields::STATUS: sub_status_value,
+        db_fields::STATUS: sub_status_value,
         fields::SUBSCRIPTION_STATUS: sub_status_value,
         fields::CURRENT_PERIOD_END: period_end,
         fields::CANCEL_AT_PERIOD_END: false,
         fields::BENEFITS_ACTIVE_AT: benefits_active_ts,
-        fields::CREATED_AT: now,
-        fields::UPDATED_AT: now,
+        db_fields::CREATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
     // Strip null values before inserting
     let sub_doc = if let Value::Object(map) = sub_doc {
@@ -593,7 +594,7 @@ async fn create_subscription(
                 &user_id,
                 serde_json::json!({
                     fields::IS_PREMIUM: true,
-                    fields::UPDATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }),
             )
             .await;
@@ -649,7 +650,7 @@ async fn cancel_subscription(
     }
 
     let current_status = sub_doc
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .or_else(|| sub_doc.get(fields::SUBSCRIPTION_STATUS))
         .and_then(|v| v.as_str())
         .unwrap_or("");
@@ -685,7 +686,7 @@ async fn cancel_subscription(
 
     // Check if this is an early cancellation (within EARLY_CANCEL_DAYS of creation)
     let sub_created_at = sub_doc
-        .get(fields::CREATED_AT)
+        .get(db_fields::CREATED_AT)
         .and_then(|v| v.as_str())
         .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
         .map(|dt| dt.timestamp())
@@ -731,12 +732,12 @@ async fn cancel_subscription(
             collections::SUBSCRIPTIONS,
             raw_user_id,
             serde_json::json!({
-                fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
+                db_fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
                 fields::CANCEL_AT_PERIOD_END: true,
                 fields::CANCELLED_AT: now,
                 fields::CANCELS_AT: period_end,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await;
@@ -786,7 +787,7 @@ async fn subscription_status(
         })),
         Some(doc) => {
             let status = doc
-                .get(fields::STATUS)
+                .get(db_fields::STATUS)
                 .or_else(|| doc.get(fields::SUBSCRIPTION_STATUS))
                 .and_then(|v| v.as_str())
                 .unwrap_or("unknown");
@@ -849,7 +850,7 @@ async fn reactivate_subscription(
     }
 
     let current_status = sub_doc
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .or_else(|| sub_doc.get(fields::SUBSCRIPTION_STATUS))
         .and_then(|v| v.as_str())
         .unwrap_or("");
@@ -898,10 +899,10 @@ async fn reactivate_subscription(
             collections::SUBSCRIPTIONS,
             raw_user_id,
             serde_json::json!({
-                fields::STATUS: SubscriptionStatus::Active.as_str(),
+                db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
                 fields::CANCEL_AT_PERIOD_END: false,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await;
@@ -913,7 +914,7 @@ async fn reactivate_subscription(
             &user_id,
             serde_json::json!({
                 fields::IS_PREMIUM: true,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await;
@@ -960,7 +961,7 @@ async fn update_notification_preferences(
     if let Some(v) = req.notify_trending {
         update.insert(fields::NOTIFY_TRENDING.to_string(), json!(v));
     }
-    update.insert(fields::UPDATED_AT.to_string(), json!(now));
+    update.insert(db_fields::UPDATED_AT.to_string(), json!(now));
 
     state
         .db
@@ -1016,7 +1017,7 @@ fn extract_customer_id(event_data: &Value) -> Option<&str> {
 fn extract_uid(user: &Value) -> Option<&str> {
     user.get(fields::UID)
         .and_then(|v| v.as_str())
-        .or_else(|| user.get("id").and_then(|v| v.as_str()))
+        .or_else(|| user.get(db_fields::ID).and_then(|v| v.as_str()))
 }
 
 async fn handle_subscription_created(
@@ -1057,7 +1058,7 @@ async fn handle_subscription_created(
                 fields::IS_PREMIUM: true,
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
                 fields::PREMIUM_SINCE: now,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1096,7 +1097,7 @@ async fn handle_subscription_updated(
         .unwrap_or_else(|| json!({}));
 
     let status = sub_obj
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("unknown");
     let current_period_end = sub_obj
@@ -1117,11 +1118,11 @@ async fn handle_subscription_updated(
             collections::SUBSCRIPTIONS,
             uid_short,
             json!({
-                fields::STATUS: status,
+                db_fields::STATUS: status,
                 fields::SUBSCRIPTION_STATUS: status,
                 fields::CURRENT_PERIOD_END: current_period_end,
                 fields::CANCEL_AT_PERIOD_END: cancel_at_period_end,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1165,7 +1166,7 @@ async fn handle_subscription_deleted(
                 fields::IS_PREMIUM: false,
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Cancelled.as_str(),
                 fields::PREMIUM_EXPIRES_AT: now,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1177,9 +1178,9 @@ async fn handle_subscription_deleted(
             collections::SUBSCRIPTIONS,
             uid_short,
             json!({
-                fields::STATUS: SubscriptionStatus::Cancelled.as_str(),
+                db_fields::STATUS: SubscriptionStatus::Cancelled.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Cancelled.as_str(),
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1221,7 +1222,7 @@ async fn handle_invoice_payment_failed(
             uid_short,
             json!({
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::PastDue.as_str(),
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1232,9 +1233,9 @@ async fn handle_invoice_payment_failed(
             collections::SUBSCRIPTIONS,
             uid_short,
             json!({
-                fields::STATUS: SubscriptionStatus::PastDue.as_str(),
+                db_fields::STATUS: SubscriptionStatus::PastDue.as_str(),
                 fields::SUBSCRIPTION_STATUS: SubscriptionStatus::PastDue.as_str(),
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -1247,13 +1248,13 @@ async fn handle_invoice_payment_failed(
             collections::NOTIFICATIONS,
             &notification_id,
             json!({
-                fields::BUYER_ID: uid_short,
+                db_fields::BUYER_ID: uid_short,
                 fields::NOTIFICATION_TYPE: "payment_failed",
-                fields::STATUS: "unread",
+                db_fields::STATUS: "unread",
                 fields::NOTIFICATION_TITLE: "Payment Failed",
                 fields::NOTIFICATION_BODY: "Your subscription payment failed. Please update your payment method to keep Premium access.",
-                fields::CREATED_AT: now,
-                fields::UPDATED_AT: now,
+                db_fields::CREATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await;
@@ -1273,12 +1274,14 @@ pub async fn is_subscription_benefits_active(state: &HandlersState, user_id: &st
         .db
         .query_bind(
             &format!(
-                "SELECT {}, {} FROM {} WHERE {} = $uid AND ({} = '{}' OR {} = '{}') LIMIT 1",
+                "SELECT data->>'{}' AS \"{}\", data->>'{}' AS \"{}\" FROM {} WHERE data->>'{}' = $uid AND (data->>'{}' = '{}' OR data->>'{}' = '{}') LIMIT 1",
                 fields::BENEFITS_ACTIVE_AT,
-                fields::STATUS,
+                fields::BENEFITS_ACTIVE_AT,
+                db_fields::STATUS,
+                db_fields::STATUS,
                 collections::SUBSCRIPTIONS,
-                fields::BUYER_ID,
-                fields::STATUS,
+                db_fields::BUYER_ID,
+                db_fields::STATUS,
                 SubscriptionStatus::Active.as_str(),
                 fields::SUBSCRIPTION_STATUS,
                 SubscriptionStatus::Active.as_str(),
@@ -1375,7 +1378,7 @@ mod tests {
             "https://checkout.stripe.com/c/pay/cs_test"
         );
         assert_eq!(json["clientSecret"], "pi_xxx_secret_yyy");
-        assert_eq!(json[fields::STATUS], "active");
+        assert_eq!(json[db_fields::STATUS], "active");
     }
 
     #[test]
@@ -1396,7 +1399,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json[fields::IS_PREMIUM], false);
-        assert_eq!(json[fields::STATUS], "none");
+        assert_eq!(json[db_fields::STATUS], "none");
         assert!(json[fields::CURRENT_PERIOD_END].is_null());
     }
 
@@ -1449,7 +1452,7 @@ mod tests {
         assert!(json.get("checkoutUrl").is_none());
         // client_secret is NOT skip_serializing_if — so it's null
         assert!(json.get("clientSecret").is_some());
-        assert_eq!(json[fields::STATUS], "checkout_pending");
+        assert_eq!(json[db_fields::STATUS], "checkout_pending");
     }
 
     #[test]
@@ -1477,7 +1480,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["success"], true);
-        assert_eq!(json[fields::STATUS], "cancelled");
+        assert_eq!(json[db_fields::STATUS], "cancelled");
     }
 
     #[test]
@@ -1491,7 +1494,7 @@ mod tests {
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json[fields::IS_PREMIUM], true);
-        assert_eq!(json[fields::STATUS], "active");
+        assert_eq!(json[db_fields::STATUS], "active");
         assert_eq!(
             json[fields::CURRENT_PERIOD_END],
             "2026-04-10T00:00:00+00:00"
@@ -1506,7 +1509,7 @@ mod tests {
             status: SubscriptionStatus::Active.as_str().to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json[fields::STATUS], "active");
+        assert_eq!(json[db_fields::STATUS], "active");
     }
 
     #[test]
@@ -1573,7 +1576,7 @@ mod tests {
             status: SubscriptionStatus::CancelPending.as_str().to_string(),
         };
         let json = serde_json::to_value(&resp).unwrap();
-        assert_eq!(json[fields::STATUS], "cancel_pending");
+        assert_eq!(json[db_fields::STATUS], "cancel_pending");
     }
 
     // --- Webhook helpers ---
@@ -1583,7 +1586,7 @@ mod tests {
         let event = json!({
             "object": {
                 "customer": "cus_abc123",
-                fields::STATUS: "active"
+                db_fields::STATUS: "active"
             }
         });
         assert_eq!(extract_customer_id(&event), Some("cus_abc123"));
@@ -1600,21 +1603,21 @@ mod tests {
 
     #[test]
     fn test_extract_uid_from_user() {
-        let user = json!({ fields::UID: "user-1", fields::EMAIL: "a@b.com" });
+        let user = json!({ fields::UID: "user-1", db_fields::EMAIL: "a@b.com" });
         assert_eq!(extract_uid(&user), Some("user-1"));
 
         // fallback to "id"
-        let user2 = json!({ fields::ID: "user-2" });
+        let user2 = json!({ db_fields::ID: "user-2" });
         assert_eq!(extract_uid(&user2), Some("user-2"));
 
         // uid takes precedence over id
-        let user3 = json!({ fields::UID: "user-3", fields::ID: "user-4" });
+        let user3 = json!({ fields::UID: "user-3", db_fields::ID: "user-4" });
         assert_eq!(extract_uid(&user3), Some("user-3"));
     }
 
     #[test]
     fn test_extract_uid_missing() {
-        let user = json!({ fields::EMAIL: "a@b.com" });
+        let user = json!({ db_fields::EMAIL: "a@b.com" });
         assert_eq!(extract_uid(&user), None);
     }
 
@@ -1646,8 +1649,8 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_1",
                 json!({
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
-                    fields::BUYER_ID: "users:user_1",
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::BUYER_ID: "users:user_1",
                 }),
             )
             .await
@@ -1657,7 +1660,10 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(found[fields::STATUS], SubscriptionStatus::Active.as_str());
+        assert_eq!(
+            found[db_fields::STATUS],
+            SubscriptionStatus::Active.as_str()
+        );
     }
 
     #[tokio::test]
@@ -1670,9 +1676,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &uid,
                 json!({
-                    fields::BUYER_ID: format!("users:{uid}"),
+                    db_fields::BUYER_ID: format!("users:{uid}"),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                 }),
             )
             .await
@@ -1722,7 +1728,7 @@ mod tests {
                 &uid,
                 json!({
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
-                    fields::STATUS: SubscriptionStatus::Expired.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Expired.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Expired.as_str(),
                 }),
             )
@@ -1773,7 +1779,7 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_1",
                 json!({
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                     fields::CURRENT_PERIOD_END: 1_780_704_000i64,
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
                 }),
@@ -1904,7 +1910,7 @@ mod tests {
             &json!({
                 "object": {
                     "customer": cus,
-                    fields::STATUS: "past_due",
+                    db_fields::STATUS: "past_due",
                     "current_period_end": 12345,
                     "cancel_at_period_end": true
                 }
@@ -1918,7 +1924,7 @@ mod tests {
             .get_document(collections::SUBSCRIPTIONS, &uid)
             .await
             .unwrap();
-        assert_eq!(sub[fields::STATUS], "past_due");
+        assert_eq!(sub[db_fields::STATUS], "past_due");
         assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], true);
         assert_eq!(sub[fields::CURRENT_PERIOD_END], 12345);
     }
@@ -1962,7 +1968,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(user[fields::IS_PREMIUM], false);
-        assert_eq!(sub[fields::STATUS], SubscriptionStatus::Cancelled.as_str());
+        assert_eq!(
+            sub[db_fields::STATUS],
+            SubscriptionStatus::Cancelled.as_str()
+        );
     }
 
     #[tokio::test]
@@ -2006,7 +2015,7 @@ mod tests {
             user[fields::SUBSCRIPTION_STATUS],
             SubscriptionStatus::PastDue.as_str()
         );
-        assert_eq!(sub[fields::STATUS], SubscriptionStatus::PastDue.as_str());
+        assert_eq!(sub[db_fields::STATUS], SubscriptionStatus::PastDue.as_str());
     }
 
     #[tokio::test]
@@ -2042,8 +2051,8 @@ mod tests {
                 &uid,
                 json!({
                     fields::UID: format!("users:{uid}"),
-                    fields::EMAIL: "buyer@example.com",
-                    fields::NAME: "Buyer One",
+                    db_fields::EMAIL: "buyer@example.com",
+                    db_fields::NAME: "Buyer One",
                     fields::ROLES: ["buyer"],
                 }),
             )
@@ -2106,9 +2115,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &uid,
                 json!({
-                    fields::BUYER_ID: format!("users:{uid}"),
+                    db_fields::BUYER_ID: format!("users:{uid}"),
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::Active.as_str(),
                 }),
             )
@@ -2134,7 +2143,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            sub[fields::STATUS],
+            sub[db_fields::STATUS],
             SubscriptionStatus::CancelPending.as_str()
         );
         assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], true);
@@ -2165,9 +2174,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 &uid,
                 json!({
-                    fields::BUYER_ID: format!("users:{uid}"),
+                    db_fields::BUYER_ID: format!("users:{uid}"),
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_123",
-                    fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                     fields::SUBSCRIPTION_STATUS: SubscriptionStatus::CancelPending.as_str(),
                     fields::CANCEL_AT_PERIOD_END: true,
                 }),
@@ -2210,7 +2219,7 @@ mod tests {
             .get_document(collections::USERS, &uid)
             .await
             .unwrap();
-        assert_eq!(sub[fields::STATUS], SubscriptionStatus::Active.as_str());
+        assert_eq!(sub[db_fields::STATUS], SubscriptionStatus::Active.as_str());
         assert_eq!(sub[fields::CANCEL_AT_PERIOD_END], false);
         assert_eq!(user[fields::IS_PREMIUM], true);
     }
@@ -2274,8 +2283,8 @@ mod tests {
                 &uid,
                 json!({
                     fields::UID: format!("users:{uid}"),
-                    fields::EMAIL: "a@b.com",
-                    fields::NAME: "Test",
+                    db_fields::EMAIL: "a@b.com",
+                    db_fields::NAME: "Test",
                 }),
             )
             .await
@@ -2305,8 +2314,8 @@ mod tests {
             &state,
             "user_1",
             json!({
-                fields::STATUS: "active",
-                fields::BUYER_ID: "user_1",
+                db_fields::STATUS: "active",
+                db_fields::BUYER_ID: "user_1",
             }),
         )
         .await
@@ -2317,7 +2326,7 @@ mod tests {
             .get_document(collections::SUBSCRIPTIONS, "user_1")
             .await
             .unwrap();
-        assert_eq!(doc[fields::STATUS], "active");
+        assert_eq!(doc[db_fields::STATUS], "active");
     }
 
     // -----------------------------------------------------------------------
@@ -2389,8 +2398,8 @@ mod tests {
                 "user_seller",
                 json!({
                     fields::UID: "user_seller",
-                    fields::EMAIL: "seller@ex.com",
-                    fields::NAME: "Seller",
+                    db_fields::EMAIL: "seller@ex.com",
+                    db_fields::NAME: "Seller",
                     fields::ROLES: ["seller"],
                 }),
             )
@@ -2444,8 +2453,8 @@ mod tests {
                 "user_chk",
                 json!({
                     fields::UID: "user_chk",
-                    fields::EMAIL: "chk@ex.com",
-                    fields::NAME: "Chk",
+                    db_fields::EMAIL: "chk@ex.com",
+                    db_fields::NAME: "Chk",
                     fields::ROLES: ["buyer"],
                 }),
             )
@@ -2505,8 +2514,8 @@ mod tests {
                 "user_eu",
                 json!({
                     fields::UID: "user_eu",
-                    fields::EMAIL: "eu@ex.com",
-                    fields::NAME: "Eu",
+                    db_fields::EMAIL: "eu@ex.com",
+                    db_fields::NAME: "Eu",
                     fields::ROLES: ["buyer"],
                 }),
             )
@@ -2563,7 +2572,7 @@ mod tests {
             .and(path("/subscriptions"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "sub_pm_123",
-                fields::STATUS: "active",
+                db_fields::STATUS: "active",
                 "current_period_end": 1800000000i64,
                 "latest_invoice": {
                     "payment_intent": {
@@ -2588,8 +2597,8 @@ mod tests {
                 &uid,
                 json!({
                     fields::UID: uid,
-                    fields::EMAIL: "pm@ex.com",
-                    fields::NAME: "PM User",
+                    db_fields::EMAIL: "pm@ex.com",
+                    db_fields::NAME: "PM User",
                 }),
             )
             .await
@@ -2656,8 +2665,8 @@ mod tests {
                 "user_af",
                 json!({
                     fields::UID: "user_af",
-                    fields::EMAIL: "af@ex.com",
-                    fields::NAME: "AF User",
+                    db_fields::EMAIL: "af@ex.com",
+                    db_fields::NAME: "AF User",
                 }),
             )
             .await
@@ -2708,7 +2717,7 @@ mod tests {
             .and(path("/subscriptions"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "sub_aa",
-                fields::STATUS: "incomplete",
+                db_fields::STATUS: "incomplete",
                 "current_period_end": 0,
                 "latest_invoice": {
                     "payment_intent": {
@@ -2732,8 +2741,8 @@ mod tests {
                 "user_aa",
                 json!({
                     fields::UID: "user_aa",
-                    fields::EMAIL: "aa@ex.com",
-                    fields::NAME: "AA User",
+                    db_fields::EMAIL: "aa@ex.com",
+                    db_fields::NAME: "AA User",
                 }),
             )
             .await
@@ -2798,8 +2807,8 @@ mod tests {
                 "user_sf",
                 json!({
                     fields::UID: "user_sf",
-                    fields::EMAIL: "sf@ex.com",
-                    fields::NAME: "SF User",
+                    db_fields::EMAIL: "sf@ex.com",
+                    db_fields::NAME: "SF User",
                 }),
             )
             .await
@@ -2832,8 +2841,8 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_noid",
                 json!({
-                    fields::BUYER_ID: "users:user_noid",
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::BUYER_ID: "users:user_noid",
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                 }),
             )
             .await
@@ -2864,9 +2873,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_cc",
                 json!({
-                    fields::BUYER_ID: "users:user_cc",
+                    db_fields::BUYER_ID: "users:user_cc",
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_cc",
-                    fields::STATUS: SubscriptionStatus::Cancelled.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Cancelled.as_str(),
                 }),
             )
             .await
@@ -2911,9 +2920,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_cf",
                 json!({
-                    fields::BUYER_ID: "users:user_cf",
+                    db_fields::BUYER_ID: "users:user_cf",
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_fail",
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                 }),
             )
             .await
@@ -2968,8 +2977,8 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_noid2",
                 json!({
-                    fields::BUYER_ID: "users:user_noid2",
-                    fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
+                    db_fields::BUYER_ID: "users:user_noid2",
+                    db_fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                 }),
             )
             .await
@@ -3000,9 +3009,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_active",
                 json!({
-                    fields::BUYER_ID: "users:user_active",
+                    db_fields::BUYER_ID: "users:user_active",
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_active",
-                    fields::STATUS: SubscriptionStatus::Active.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::Active.as_str(),
                 }),
             )
             .await
@@ -3047,9 +3056,9 @@ mod tests {
                 collections::SUBSCRIPTIONS,
                 "user_rf",
                 json!({
-                    fields::BUYER_ID: "users:user_rf",
+                    db_fields::BUYER_ID: "users:user_rf",
                     fields::STRIPE_SUBSCRIPTION_ID: "sub_rfail",
-                    fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
+                    db_fields::STATUS: SubscriptionStatus::CancelPending.as_str(),
                 }),
             )
             .await
@@ -3233,7 +3242,7 @@ mod tests {
             &json!({
                 "object": {
                     "customer": "cus_whu",
-                    fields::STATUS: "active",
+                    db_fields::STATUS: "active",
                     "current_period_end": 9999,
                     "cancel_at_period_end": false
                 }

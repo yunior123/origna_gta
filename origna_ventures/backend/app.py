@@ -116,6 +116,9 @@ class Settings:
     github_permission: str = os.getenv("ORIGNA_GITHUB_PERMISSION", "pull")
     github_api_version: str = os.getenv("ORIGNA_GITHUB_API_VERSION", "2022-11-28")
     admin_api_key: str = os.getenv("ORIGNA_ADMIN_API_KEY", "")
+    docuseal_base_url: str = os.getenv(
+        "ORIGNA_DOCUSEAL_BASE_URL", "https://signatures.orignagta.ca"
+    )
 
     @property
     def email_provider_configured(self) -> bool:
@@ -153,6 +156,31 @@ SERVICE_CATALOG = {
 }
 
 ORIGNA_TEAM_MAX_DEVELOPERS = 20
+
+SERVICE_CONTRACTS = {
+    _SERVICE_CODE_ORIGNA_CODE: [
+        "ventures-master-services-v1",
+        "origna-code-source-license-v1",
+    ],
+    _SERVICE_CODE_ORIGNA_LAUNCH: [
+        "ventures-master-services-v1",
+        "origna-code-source-license-v1",
+        "origna-launch-statement-of-work-v1",
+    ],
+    _SERVICE_CODE_ORIGNA_TEAM: [
+        "ventures-master-services-v1",
+        "origna-team-retainer-v1",
+    ],
+}
+
+
+def contract_bundle_for_service(service_code: str) -> List[str]:
+    return list(SERVICE_CONTRACTS.get(service_code, []))
+
+
+def contract_signing_url(slug: str) -> str:
+    base_url = settings.docuseal_base_url.rstrip("/")
+    return f"{base_url}/d/{slug}"
 
 
 class PaymentSessionRequest(BaseModel):
@@ -241,6 +269,10 @@ def render_payment_receipt_email(
         if is_subscription
         else "Achat ponctuel"
     )
+    contract_urls = [
+        contract_signing_url(slug) for slug in contract_bundle_for_service(service_code)
+    ]
+    contract_text = ", ".join(contract_urls) or "N/A"
     heading_en = "Your Origna Ventures receipt"
     heading_fr = "Votre recu Origna Ventures"
     subject_en = (
@@ -265,6 +297,7 @@ def render_payment_receipt_email(
         tax_label: str,
         total_label: str,
         reference_label: str,
+        contracts_label: str,
         support_line: str,
         service_name: str,
         cadence_value: str,
@@ -286,6 +319,7 @@ def render_payment_receipt_email(
             f"<tr><td style='padding:8px 0;color:#9aa3c7;'>{html_escape(tax_label)}</td><td style='padding:8px 0;color:#ffffff;text-align:right;'>{html_escape(tax)}</td></tr>"
             f"<tr><td style='padding:8px 0;color:#9aa3c7;font-weight:700;'>{html_escape(total_label)}</td><td style='padding:8px 0;color:#ffffff;text-align:right;font-weight:700;'>{html_escape(total)}</td></tr>"
             f"<tr><td style='padding:8px 0;color:#9aa3c7;'>{html_escape(reference_label)}</td><td style='padding:8px 0;color:#ffffff;text-align:right;'>{html_escape(stripe_session_id)}</td></tr>"
+            f"<tr><td style='padding:8px 0;color:#9aa3c7;'>{html_escape(contracts_label)}</td><td style='padding:8px 0;color:#ffffff;text-align:right;'>{html_escape(contract_text)}</td></tr>"
             "</table>"
             f"<p style='margin:0;color:#9aa3c7;line-height:1.6;'>{html_escape(support_line)}</p>"
             "</div></div>"
@@ -299,6 +333,7 @@ def render_payment_receipt_email(
             f"{tax_label}: {tax}\n"
             f"{total_label}: {total}\n"
             f"{reference_label}: {stripe_session_id}\n\n"
+            f"{contracts_label}: {contract_text}\n\n"
             f"{support_line}\n"
         )
         return html_body, text_body
@@ -314,6 +349,7 @@ def render_payment_receipt_email(
             tax_label="Taxes",
             total_label="Total",
             reference_label="Reference Stripe",
+            contracts_label="Documents DocuSeal",
             support_line=f"Besoin d'aide ? Ecrivez a {settings.support_email}.",
             service_name=service_name_fr,
             cadence_value=cadence_fr,
@@ -330,18 +366,18 @@ def render_payment_receipt_email(
             "<h2 style='margin:0 0 12px;font-size:28px;line-height:1.2;'>Payment receipt / Recu de paiement</h2>"
             "<p style='margin:0 0 16px;line-height:1.7;color:#d7dcf4;'>English and French summary below.</p>"
             "<div style='padding:18px;border-radius:14px;background:#101227;border:1px solid rgba(255,255,255,0.06);margin:0 0 16px;'>"
-            f"<p style='margin:0 0 8px;color:#9aa3c7;'><strong>EN</strong></p><p style='margin:0;color:#ffffff;line-height:1.6;'>Service: {html_escape(service_name_en)}<br>Type: {html_escape(cadence_en)}<br>Subtotal: {html_escape(subtotal)}<br>Tax: {html_escape(tax)}<br>Total: {html_escape(total)}<br>Stripe reference: {html_escape(stripe_session_id)}</p>"
+            f"<p style='margin:0 0 8px;color:#9aa3c7;'><strong>EN</strong></p><p style='margin:0;color:#ffffff;line-height:1.6;'>Service: {html_escape(service_name_en)}<br>Type: {html_escape(cadence_en)}<br>Subtotal: {html_escape(subtotal)}<br>Tax: {html_escape(tax)}<br>Total: {html_escape(total)}<br>Stripe reference: {html_escape(stripe_session_id)}<br>DocuSeal documents: {html_escape(contract_text)}</p>"
             "</div>"
             "<div style='padding:18px;border-radius:14px;background:#101227;border:1px solid rgba(255,255,255,0.06);margin:0 0 16px;'>"
-            f"<p style='margin:0 0 8px;color:#9aa3c7;'><strong>FR</strong></p><p style='margin:0;color:#ffffff;line-height:1.6;'>Service : {html_escape(service_name_fr)}<br>Type : {html_escape(cadence_fr)}<br>Sous-total : {html_escape(subtotal)}<br>Taxes : {html_escape(tax)}<br>Total : {html_escape(total)}<br>Reference Stripe : {html_escape(stripe_session_id)}</p>"
+            f"<p style='margin:0 0 8px;color:#9aa3c7;'><strong>FR</strong></p><p style='margin:0;color:#ffffff;line-height:1.6;'>Service : {html_escape(service_name_fr)}<br>Type : {html_escape(cadence_fr)}<br>Sous-total : {html_escape(subtotal)}<br>Taxes : {html_escape(tax)}<br>Total : {html_escape(total)}<br>Reference Stripe : {html_escape(stripe_session_id)}<br>Documents DocuSeal : {html_escape(contract_text)}</p>"
             "</div>"
             f"<p style='margin:0;color:#9aa3c7;line-height:1.6;'>Support: {html_escape(settings.support_email)}</p>"
             "</div></div>"
         )
         text_body = (
             "Payment receipt / Recu de paiement\n\n"
-            f"EN\nService: {service_name_en}\nType: {cadence_en}\nSubtotal: {subtotal}\nTax: {tax}\nTotal: {total}\nStripe reference: {stripe_session_id}\n\n"
-            f"FR\nService: {service_name_fr}\nType: {cadence_fr}\nSous-total: {subtotal}\nTaxes: {tax}\nTotal: {total}\nReference Stripe: {stripe_session_id}\n\n"
+            f"EN\nService: {service_name_en}\nType: {cadence_en}\nSubtotal: {subtotal}\nTax: {tax}\nTotal: {total}\nStripe reference: {stripe_session_id}\nDocuSeal documents: {contract_text}\n\n"
+            f"FR\nService: {service_name_fr}\nType: {cadence_fr}\nSous-total: {subtotal}\nTaxes: {tax}\nTotal: {total}\nReference Stripe: {stripe_session_id}\nDocuments DocuSeal: {contract_text}\n\n"
             f"Support: {settings.support_email}\n"
         )
         return bilingual_subject, html_body, text_body
@@ -356,6 +392,7 @@ def render_payment_receipt_email(
         tax_label="Tax",
         total_label="Total",
         reference_label="Stripe reference",
+        contracts_label="DocuSeal documents",
         support_line=f"Need help? Email {settings.support_email}.",
         service_name=service_name_en,
         cadence_value=cadence_en,
@@ -1158,12 +1195,25 @@ def health() -> Dict[str, str]:
 
 @app.get("/api/meta")
 def meta() -> Dict[str, Any]:
+    contract_templates = {
+        service_code: [
+            {"slug": slug, "signingUrl": contract_signing_url(slug)}
+            for slug in contract_bundle_for_service(service_code)
+        ]
+        for service_code in SERVICE_CATALOG
+    }
     return {
         "company": settings.company_legal_name,
         "bn": settings.company_bn,
         "supportEmail": settings.support_email,
         "supportPhone": settings.support_phone,
         "services": SERVICE_CATALOG,
+        "contracts": {
+            "provider": "docuseal",
+            "baseUrl": settings.docuseal_base_url,
+            "flow": "post_payment_signature",
+            "templatesByService": contract_templates,
+        },
     }
 
 
@@ -1378,6 +1428,7 @@ def create_checkout_session_from_service(
     is_subscription = service_code == "origna_team"
     normalized_locale = normalize_checkout_locale(locale)
     normalized_developer_count = developer_count if is_subscription else 1
+    contract_slugs = contract_bundle_for_service(service_code)
     resolved_idempotency_key = (
         idempotency_key or f"checkout:{service_code}:{secrets.token_hex(12)}"
     )
@@ -1392,6 +1443,9 @@ def create_checkout_session_from_service(
         "metadata[service_code]": service_code,
         "metadata[client_locale]": normalized_locale,
         "metadata[developer_count]": str(normalized_developer_count),
+        "metadata[contract_provider]": "docuseal",
+        "metadata[contract_flow]": "post_payment_signature",
+        "metadata[contract_slugs]": ",".join(contract_slugs),
     }
     if not is_subscription:
         payload["submit_type"] = "pay"
@@ -1416,6 +1470,13 @@ def create_checkout_session_from_service(
         payload["subscription_data[metadata][service_code]"] = service_code
         payload["subscription_data[metadata][developer_count]"] = str(
             normalized_developer_count
+        )
+        payload["subscription_data[metadata][contract_provider]"] = "docuseal"
+        payload["subscription_data[metadata][contract_flow]"] = (
+            "post_payment_signature"
+        )
+        payload["subscription_data[metadata][contract_slugs]"] = ",".join(
+            contract_slugs
         )
     if payer_email:
         payload["customer_email"] = payer_email

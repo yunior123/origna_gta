@@ -14,6 +14,7 @@
 //!
 //! Run: cargo test --test payment_fixes_test -- --ignored
 
+use ob_database::fields;
 use reqwest::{Client, StatusCode};
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -89,8 +90,8 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             if let (Some(subtotal), Some(fee)) = (
-                body["subtotalCents"].as_i64(),         // ignore-magic
-                body["platformFeeTotalCents"].as_i64(), // ignore-magic
+                body[fields::SUBTOTAL_CENTS].as_i64(),           // ignore-magic
+                body[fields::PLATFORM_FEE_TOTAL_CENTS].as_i64(), // ignore-magic
             ) {
                 let expected_fee = subtotal / 20; // 5% = 1/20
                 assert_eq!(
@@ -132,11 +133,11 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             if let (Some(subtotal), Some(tax), Some(shipping), Some(total), Some(_fee)) = (
-                body["subtotalCents"].as_i64(),         // ignore-magic
-                body["taxAmountCents"].as_i64(),        // ignore-magic
-                body["shippingCostCents"].as_i64(),     // ignore-magic
-                body["totalAmountCents"].as_i64(),      // ignore-magic
-                body["platformFeeTotalCents"].as_i64(), // ignore-magic
+                body[fields::SUBTOTAL_CENTS].as_i64(),           // ignore-magic
+                body["taxAmountCents"].as_i64(),                 // ignore-magic
+                body["shippingCostCents"].as_i64(),              // ignore-magic
+                body[fields::TOTAL_AMOUNT_CENTS].as_i64(),       // ignore-magic
+                body[fields::PLATFORM_FEE_TOTAL_CENTS].as_i64(), // ignore-magic
             ) {
                 // Total = subtotal + tax + shipping (platform fee collected via Stripe Connect, not deducted from total)
                 let expected_total = subtotal + tax + shipping;
@@ -384,7 +385,7 @@ mod payment_fixes {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
             // Payout status should be nil/pending (not released)
-            if let Some(status) = body["status"].as_str() {
+            if let Some(status) = body[fields::STATUS].as_str() {
                 // ignore-magic
                 assert_ne!(
                     status, "completed",
@@ -503,7 +504,7 @@ mod payment_fixes {
         if response.status() == StatusCode::OK || response.status() == StatusCode::CREATED {
             let body: Value = response.json().await.unwrap_or(json!({})); // ignore-magic
 
-            if let Some(subtotal) = body["subtotalCents"].as_i64() {
+            if let Some(subtotal) = body[fields::SUBTOTAL_CENTS].as_i64() {
                 // ignore-magic
                 let expected_subtotal = 3 * 1337;
                 let difference = (subtotal - expected_subtotal).abs();

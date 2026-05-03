@@ -13,6 +13,7 @@ use axum::{
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use hmac::{Hmac, Mac};
 use ob_auth::middleware::AuthContext;
+use ob_core::constants::fields;
 use ob_storage::{
     LocalStorage, ResumableUploadManager, S3Config, S3Storage, SignedUrlGenerator, StorageBackend,
     routes::{StorageState, storage_router},
@@ -196,7 +197,7 @@ async fn batch_presign_and_resumable_flow_store_bytes_for_authenticated_user() {
     let init_response = app.clone().oneshot(init_request).await.unwrap();
     assert_eq!(init_response.status(), StatusCode::OK);
     let session = response_json(init_response).await;
-    let session_id = session["id"].as_str().unwrap().to_string();
+    let session_id = session[fields::ID].as_str().unwrap().to_string();
 
     let mut append_request = Request::builder()
         .method(Method::PATCH)
@@ -209,7 +210,7 @@ async fn batch_presign_and_resumable_flow_store_bytes_for_authenticated_user() {
     let append_response = app.clone().oneshot(append_request).await.unwrap();
     assert_eq!(append_response.status(), StatusCode::OK);
     let final_session = response_json(append_response).await;
-    assert_eq!(final_session["status"], "complete");
+    assert_eq!(final_session[fields::STATUS], "complete");
 
     let stored = state
         .storage

@@ -16,6 +16,39 @@ NC='\033[0m'
 ok() { echo -e "${GREEN}✓ $1${NC}"; }
 fail() { echo -e "${RED}✗ $1${NC}"; exit 1; }
 
+require_cf_success() {
+    local context="$1"
+    python3 -c '
+import json
+import sys
+
+context = sys.argv[1]
+try:
+    data = json.load(sys.stdin)
+except json.JSONDecodeError as exc:
+    print(f"{context}: invalid Cloudflare JSON response: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+if not data.get("success", False):
+    errors = data.get("errors") or []
+    messages = []
+    for error in errors:
+        code = error.get("code")
+        message = error.get("message", "unknown error")
+        messages.append(f"{code}: {message}" if code else message)
+    print(f"{context}: {'; '.join(messages) or 'Cloudflare request failed'}", file=sys.stderr)
+    sys.exit(1)
+
+json.dump(data, sys.stdout)
+' "$context"
+}
+
+verify_token() {
+    local response
+        "https://api.cloudflare.com/client/v4/user/tokens/verify")
+    echo "$response" | require_cf_success "Cloudflare token verification" >/dev/null
+}
+
 # Upsert a DNS record: create if missing, update if exists with different content/proxied
 upsert_record() {
     local zone_id="$1" zone_name="$2" name="$3" rtype="$4" content="$5" proxied="$6"
@@ -24,7 +57,8 @@ upsert_record() {
     [ "$name" = "@" ] && fqdn="$zone_name"
 
     local existing
-        "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=$fqdn&type=$rtype" 2>/dev/null || echo '{"result":[]}')
+        "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=$fqdn&type=$rtype" \
+        | require_cf_success "Lookup $fqdn")
 
     local record_id
     record_id=$(echo "$existing" | python3 -c "
@@ -54,17 +88,21 @@ print(json.load(sys.stdin)['result'][0].get('content', ''))
             return 0
         fi
 
-        curl -sf -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$record_id" \
+        curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records/$record_id" \
             -H "Content-Type: application/json" \
-            --data "{\"content\":\"$content\",\"proxied\":$proxied}" | python3 -c "
+            --data "{\"content\":\"$content\",\"proxied\":$proxied}" \
+            | require_cf_success "Update $fqdn" \
+            | python3 -c "
 import sys, json
 r = json.load(sys.stdin)
 print(f'  $fqdn: {\"OK\" if r[\"success\"] else r[\"errors\"]}')" 2>/dev/null
         ok "$fqdn updated → proxied=$proxied"
     else
-        curl -sf -X POST "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records" \
+        curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records" \
             -H "Content-Type: application/json" \
-            --data "{\"type\":\"$rtype\",\"name\":\"$name\",\"content\":\"$content\",\"ttl\":1,\"proxied\":$proxied}" | python3 -c "
+            --data "{\"type\":\"$rtype\",\"name\":\"$name\",\"content\":\"$content\",\"ttl\":1,\"proxied\":$proxied}" \
+            | require_cf_success "Create $fqdn" \
+            | python3 -c "
 import sys, json
 r = json.load(sys.stdin)
 print(f'  $fqdn: {\"OK\" if r[\"success\"] else r[\"errors\"]}')" 2>/dev/null
@@ -76,7 +114,9 @@ print(f'  $fqdn: {\"OK\" if r[\"success\"] else r[\"errors\"]}')" 2>/dev/null
 
 if [ "$MODE" = "--all" ] || [ "$MODE" = "--gta-only" ]; then
     echo -e "${BLUE}▶ Setting up orignagta.ca zone...${NC}"
+    verify_token
         "https://api.cloudflare.com/client/v4/zones?name=orignagta.ca" \
+        | require_cf_success "Lookup orignagta.ca zone" \
         | python3 -c "import sys,json; print(json.load(sys.stdin)['result'][0]['id'])")
     echo "  Zone ID: $GTA_ZONE"
 
@@ -87,13 +127,19 @@ if [ "$MODE" = "--all" ] || [ "$MODE" = "--gta-only" ]; then
     upsert_record "$GTA_ZONE" "orignagta.ca" "staging" "A" "$VPS_IP" "true"
     upsert_record "$GTA_ZONE" "orignagta.ca" "docs" "A" "$VPS_IP" "true"
     upsert_record "$GTA_ZONE" "orignagta.ca" "mcp.docs" "A" "$VPS_IP" "true"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "signatures" "A" "$VPS_IP" "true"
+    # Cloudflare Universal SSL covers *.orignagta.ca, not nested *.dev.orignagta.ca.
+    upsert_record "$GTA_ZONE" "orignagta.ca" "signatures.dev" "A" "$VPS_IP" "false"
+    upsert_record "$GTA_ZONE" "orignagta.ca" "signatures.staging" "A" "$VPS_IP" "false"
 fi
 
 # ── OrignaVentures zone ─────────────────────────────────────────────────────────
 
 if [ "$MODE" = "--all" ] || [ "$MODE" = "--ventures-only" ]; then
     echo -e "${BLUE}▶ Setting up orignaventures.ca zone...${NC}"
+    verify_token
         "https://api.cloudflare.com/client/v4/zones?name=orignaventures.ca" \
+        | require_cf_success "Lookup orignaventures.ca zone" \
         | python3 -c "import sys,json; zones=json.load(sys.stdin)['result']; print(zones[0]['id'] if zones else '')" 2>/dev/null || echo "")
 
     if [ -z "$VENTURES_ZONE" ]; then

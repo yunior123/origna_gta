@@ -338,6 +338,7 @@ fn compare_values(left: &Value, op: &CompOp, right: &Value) -> bool {
 mod tests {
     use super::*;
     use crate::parser::parse_rules;
+    use ob_core::constants::fields;
 
     fn test_ctx(authenticated: bool, roles: Vec<&str>) -> SecurityContext {
         SecurityContext {
@@ -1781,8 +1782,8 @@ rules products {
 
         // User → ssn filtered out
         let filtered = engine.filter_fields("users", &doc, &user);
-        assert!(filtered.get("name").is_some());
-        assert!(filtered.get("email").is_some());
+        assert!(filtered.get(fields::NAME).is_some());
+        assert!(filtered.get(fields::EMAIL).is_some());
         assert!(filtered.get("ssn").is_none());
 
         // Admin → ssn kept

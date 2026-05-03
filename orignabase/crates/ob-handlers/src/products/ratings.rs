@@ -11,6 +11,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::{sanitize_html, validate_uid};
+use ob_database::fields as db_fields;
 
 // ─── Request/Response types ─────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ async fn submit_rating(
     }
 
     let order_buyer = order
-        .get(fields::BUYER_ID)
+        .get(db_fields::BUYER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -176,7 +177,7 @@ async fn submit_rating(
 
     // Verify order is in ratable state (DELIVERED or DISPUTED)
     let order_status = order
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -209,7 +210,7 @@ async fn submit_rating(
         .find(|item| {
             item.get(fields::PRODUCT_ID).and_then(|v| v.as_str()) == Some(req.product_id.as_str())
         })
-        .and_then(|item| item.get(fields::SELLER_ID).and_then(|v| v.as_str()));
+        .and_then(|item| item.get(db_fields::SELLER_ID).and_then(|v| v.as_str()));
 
     if rated_item_seller == Some(user_id.as_str()) {
         return Err(ob_core::Error::Forbidden(
@@ -260,14 +261,14 @@ async fn submit_rating(
     let now = chrono::Utc::now().to_rfc3339();
     let rating_doc = serde_json::json!({
         fields::PRODUCT_ID: req.product_id,
-        fields::USER_ID: user_id,
+        db_fields::USER_ID: user_id,
         fields::ORDER_ID: req.order_id,
         fields::RATING: req.rating,
         fields::REVIEW_TEXT: review,
         fields::REVIEW_IMAGE_URLS: req.review_image_urls,
         fields::HELPFUL_COUNT: 0,
         fields::VERIFIED_PURCHASE: true,
-        fields::CREATED_AT: now,
+        db_fields::CREATED_AT: now,
     });
 
     state
@@ -280,7 +281,7 @@ async fn submit_rating(
     let product_update = serde_json::json!({
         fields::AVG_RATING: new_avg,
         fields::TOTAL_REVIEWS: new_count,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -344,7 +345,7 @@ async fn get_ratings(
         "SELECT * FROM {}{} ORDER BY data->>'{}' DESC LIMIT {}",
         collections::PRODUCT_RATINGS,
         where_clause,
-        fields::CREATED_AT,
+        db_fields::CREATED_AT,
         fetch_limit,
     );
 
@@ -360,7 +361,7 @@ async fn get_ratings(
     let next_cursor = if has_more {
         ratings
             .last()
-            .and_then(|r| r.get("id"))
+            .and_then(|r| r.get(db_fields::ID))
             .and_then(|v| v.as_str())
             .map(String::from)
     } else {
@@ -429,11 +430,11 @@ async fn review_vote(
         }
 
         let record_id = record
-            .get(fields::ID)
+            .get(db_fields::ID)
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        // Update vote via CRUD method (avoids SurrealDB UPDATE id SET syntax)
+        // Update vote via CRUD method (avoids raw SQL update strings)
         let now = chrono::Utc::now().to_rfc3339();
         state
             .db
@@ -442,7 +443,7 @@ async fn review_vote(
                 record_id,
                 serde_json::json!({
                     fields::VOTE: vote_str,
-                    fields::UPDATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }),
             )
             .await?;
@@ -482,7 +483,7 @@ async fn review_vote(
                     serde_json::json!({
                         fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
                         fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
-                        fields::UPDATED_AT: now_ts,
+                        db_fields::UPDATED_AT: now_ts,
                     }),
                 )
                 .await?;
@@ -495,10 +496,10 @@ async fn review_vote(
                 vote_col,
                 serde_json::json!({
                     fields::REVIEW_ID: req.review_id,
-                    fields::USER_ID: user_id,
+                    db_fields::USER_ID: user_id,
                     fields::VOTE: vote_str,
-                    fields::CREATED_AT: now_ts,
-                    fields::UPDATED_AT: now_ts,
+                    db_fields::CREATED_AT: now_ts,
+                    db_fields::UPDATED_AT: now_ts,
                 }),
             )
             .await?;
@@ -531,7 +532,7 @@ async fn review_vote(
                     serde_json::json!({
                         fields::HELPFUL_VOTES: cur_helpful + helpful_adj as i64,
                         fields::UNHELPFUL_VOTES: cur_unhelpful + unhelpful_adj as i64,
-                        fields::UPDATED_AT: now_ts,
+                        db_fields::UPDATED_AT: now_ts,
                     }),
                 )
                 .await?;
@@ -606,7 +607,7 @@ async fn answer_review(
         .get_document(collections::PRODUCTS, product_id)
         .await?;
     let owner = product
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if owner != seller_id && !auth.has_role("admin") {
@@ -624,7 +625,7 @@ async fn answer_review(
             serde_json::json!({
                 fields::SELLER_RESPONSE: response_text,
                 fields::SELLER_RESPONDED_AT: now,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             }),
         )
         .await?;
@@ -895,11 +896,11 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: buyer,
-                    fields::STATUS: "delivered",
+                    db_fields::BUYER_ID: buyer,
+                    db_fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: seller,
+                        db_fields::SELLER_ID: seller,
                     }],
                 }),
             )
@@ -911,7 +912,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod,
                 serde_json::json!({
-                    fields::SELLER_ID: seller,
+                    db_fields::SELLER_ID: seller,
                     fields::AVG_RATING: 4.0,
                     fields::TOTAL_REVIEWS: 1,
                 }),
@@ -960,11 +961,11 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: seller,
-                    fields::STATUS: "delivered",
+                    db_fields::BUYER_ID: seller,
+                    db_fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: seller,
+                        db_fields::SELLER_ID: seller,
                     }],
                 }),
             )
@@ -1006,11 +1007,11 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: buyer,
-                    fields::STATUS: "delivered",
+                    db_fields::BUYER_ID: buyer,
+                    db_fields::STATUS: "delivered",
                     fields::ITEMS: [{
                         fields::PRODUCT_ID: prod,
-                        fields::SELLER_ID: "seller_1",
+                        db_fields::SELLER_ID: "seller_1",
                     }],
                 }),
             )
@@ -1024,7 +1025,7 @@ mod tests {
                 serde_json::json!({
                     fields::AVG_RATING: 4.0,
                     fields::TOTAL_REVIEWS: 1,
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                 }),
             )
             .await
@@ -1074,7 +1075,7 @@ mod tests {
                     serde_json::json!({
                         fields::PRODUCT_ID: product,
                         fields::RATING: rating,
-                        fields::CREATED_AT: created_at,
+                        db_fields::CREATED_AT: created_at,
                     }),
                 )
                 .await
@@ -1116,7 +1117,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();
@@ -1173,9 +1174,9 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: buyer,
-                    fields::STATUS: "delivered",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                    db_fields::BUYER_ID: buyer,
+                    db_fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, db_fields::SELLER_ID: "seller_1" }],
                 }),
             )
             .await
@@ -1186,7 +1187,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod,
                 serde_json::json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::AVG_RATING: 0.0,
                     fields::TOTAL_REVIEWS: 0,
                 }),
@@ -1245,8 +1246,8 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: "other_user",
-                    fields::STATUS: "delivered",
+                    db_fields::BUYER_ID: "other_user",
+                    db_fields::STATUS: "delivered",
                     fields::ITEMS: [{ fields::PRODUCT_ID: prod }],
                 }),
             )
@@ -1283,8 +1284,8 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: user,
-                    fields::STATUS: "pending",
+                    db_fields::BUYER_ID: user,
+                    db_fields::STATUS: "pending",
                     fields::ITEMS: [{ fields::PRODUCT_ID: prod }],
                 }),
             )
@@ -1322,8 +1323,8 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: user,
-                    fields::STATUS: "delivered",
+                    db_fields::BUYER_ID: user,
+                    db_fields::STATUS: "delivered",
                     fields::ITEMS: [{ fields::PRODUCT_ID: other_prod }],
                 }),
             )
@@ -1360,9 +1361,9 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: buyer,
-                    fields::STATUS: "delivered",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                    db_fields::BUYER_ID: buyer,
+                    db_fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, db_fields::SELLER_ID: "seller_1" }],
                 }),
             )
             .await
@@ -1422,7 +1423,7 @@ mod tests {
                     serde_json::json!({
                         fields::PRODUCT_ID: prod,
                         fields::RATING: rating,
-                        fields::CREATED_AT: "2026-01-01T00:00:00Z",
+                        db_fields::CREATED_AT: "2026-01-01T00:00:00Z",
                     }),
                 )
                 .await
@@ -1522,9 +1523,9 @@ mod tests {
                 collections::ORDERS,
                 &ord,
                 serde_json::json!({
-                    fields::BUYER_ID: buyer,
-                    fields::STATUS: "delivered",
-                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, fields::SELLER_ID: "seller_1" }],
+                    db_fields::BUYER_ID: buyer,
+                    db_fields::STATUS: "delivered",
+                    fields::ITEMS: [{ fields::PRODUCT_ID: prod, db_fields::SELLER_ID: "seller_1" }],
                 }),
             )
             .await
@@ -1535,7 +1536,7 @@ mod tests {
                 collections::PRODUCTS,
                 &prod,
                 serde_json::json!({
-                    fields::SELLER_ID: "seller_1",
+                    db_fields::SELLER_ID: "seller_1",
                     fields::AVG_RATING: 0.0,
                     fields::TOTAL_REVIEWS: 0,
                 }),
@@ -1580,7 +1581,7 @@ mod tests {
             .upsert_document(
                 collections::PRODUCTS,
                 "prod_1",
-                serde_json::json!({ fields::SELLER_ID: "seller_1" }),
+                serde_json::json!({ db_fields::SELLER_ID: "seller_1" }),
             )
             .await
             .unwrap();

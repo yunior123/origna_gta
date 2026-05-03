@@ -162,6 +162,7 @@ pub async fn emit_change(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ob_database::fields;
 
     #[tokio::test]
     async fn test_dispatcher_sends_to_subscribers() {
@@ -587,7 +588,7 @@ mod tests {
         assert_eq!(json["action"], "update");
         assert_eq!(json["collection"], "orders");
         assert_eq!(json["document_id"], "orders:123");
-        assert_eq!(json["data"]["status"], "shipped");
+        assert_eq!(json["data"][fields::STATUS], "shipped");
 
         // Deserialize back
         let deserialized: ChangeEvent = serde_json::from_value(json).unwrap();

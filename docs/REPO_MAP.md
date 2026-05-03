@@ -74,7 +74,7 @@ Last updated: 2026-04-23
   - [PostgreSQL JSON/JSONB](https://www.postgresql.org/docs/current/datatype-json.html)
 - **Operational Notes**:
   - OrignaBase persists product/user/order documents in PostgreSQL JSONB.
-  - Current query-risk areas: numeric casts, `data->>'field'` extraction, and stale Surreal-style syntax in translated SQL.
+  - Current query-risk areas: numeric casts, `data->>'field'` extraction, and correct positional parameter binding.
 
 ### GlitchTip
 - **SDK**: `sentry_flutter`
@@ -736,4 +736,4 @@ origna_ventures/
 
 ## Known Issues
 
-- **537 ob-handler test failures** — SurrealDB→PostgreSQL query migration in progress. The `ob-handlers` crate tests use SurrealDB-specific query syntax (e.g., `RETURN AFTER`, `type::thing()`, `CREATE CONTENT`, `??` coalesce) that must be translated to PostgreSQL equivalents. See `HANDLER_MIGRATION_STRATEGY.md` for the full migration plan and translation patterns.
+- **Legacy query shim fully removed** — All handlers now emit native PostgreSQL. The old translation functions are gone from `pg_store.rs`. A simple `named_to_positional()` converts `$param_name` to `$1, $2, $3`.

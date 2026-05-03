@@ -104,6 +104,7 @@ impl IntoResponse for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::fields;
     use axum::response::IntoResponse;
     use http_body_util::BodyExt;
 
@@ -339,7 +340,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 401);
+        assert_eq!(json["error"][fields::STATUS], 401);
         assert_eq!(json["error"]["code"], "AUTH_ERROR");
         assert_eq!(json["error"]["message"], "Authentication error: bad creds");
     }
@@ -352,7 +353,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 404);
+        assert_eq!(json["error"][fields::STATUS], 404);
         assert_eq!(json["error"]["code"], "NOT_FOUND");
         assert_eq!(json["error"]["message"], "Not found: item");
     }
@@ -365,7 +366,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 400);
+        assert_eq!(json["error"][fields::STATUS], 400);
         assert_eq!(json["error"]["code"], "VALIDATION_ERROR");
         assert_eq!(json["error"]["message"], "Validation error: missing field");
     }
@@ -378,7 +379,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 403);
+        assert_eq!(json["error"][fields::STATUS], 403);
         assert_eq!(json["error"]["code"], "FORBIDDEN");
         assert_eq!(json["error"]["message"], "Authorization denied: nope");
     }
@@ -391,7 +392,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 500);
+        assert_eq!(json["error"][fields::STATUS], 500);
         assert_eq!(json["error"]["code"], "INTERNAL_ERROR");
         // Must NOT leak internal error details
         assert_eq!(json["error"]["message"], "Internal server error");
@@ -405,7 +406,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 500);
+        assert_eq!(json["error"][fields::STATUS], 500);
         assert_eq!(json["error"]["code"], "CONFIG_ERROR");
         assert_eq!(json["error"]["message"], "Internal server error");
     }
@@ -418,7 +419,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 500);
+        assert_eq!(json["error"][fields::STATUS], 500);
         assert_eq!(json["error"]["code"], "DATABASE_ERROR");
         // Must NOT leak database error details
         assert_eq!(json["error"]["message"], "Internal server error");
@@ -432,7 +433,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 500);
+        assert_eq!(json["error"][fields::STATUS], 500);
         assert_eq!(json["error"]["code"], "CONFIG_ERROR");
         // Must NOT leak config error details
         assert_eq!(json["error"]["message"], "Internal server error");
@@ -463,7 +464,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 415);
+        assert_eq!(json["error"][fields::STATUS], 415);
         assert_eq!(json["error"]["code"], "UNSUPPORTED_MEDIA_TYPE");
         assert_eq!(json["error"]["message"], "Unsupported media type: bad type");
     }
@@ -476,7 +477,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 400);
+        assert_eq!(json["error"][fields::STATUS], 400);
         assert_eq!(json["error"]["code"], "VALIDATION_ERROR");
         assert!(json["error"]["message"].as_str().unwrap().contains("email"));
     }
@@ -489,7 +490,7 @@ mod tests {
 
         let bytes = resp.into_body().collect().await.unwrap().to_bytes();
         let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(json["error"]["status"], 404);
+        assert_eq!(json["error"][fields::STATUS], 404);
         assert_eq!(json["error"]["code"], "NOT_FOUND");
         assert!(
             json["error"]["message"]

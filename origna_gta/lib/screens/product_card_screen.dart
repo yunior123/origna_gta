@@ -1,3 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart'
+    show ImageRenderMethodForWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widget_previews.dart';
 import 'package:origna_gta/utils/preview_helpers.dart';
 import 'package:flutter/material.dart';
@@ -16,13 +20,16 @@ import 'package:origna_gta/utils/design_tokens.dart';
 import 'package:origna_gta/utils/media_url_resolver.dart';
 import 'package:origna_gta/utils/responsive_layout.dart';
 import 'package:origna_gta/utils/utils.dart';
-import 'package:origna_gta/widgets/shared/trending_badge.dart';
-import 'package:origna_gta/widgets/web_cached_image.dart';
 import 'package:origna_gta/widgets/modern_skeleton_loader.dart';
+import 'package:origna_gta/widgets/shared/trending_badge.dart';
 
 part 'parts/product_card_image_section.dart';
 part 'parts/product_card_info_section.dart';
 part 'parts/product_card_helper_widgets.dart';
+
+const _productCardWebRenderMethod = kIsWeb
+    ? ImageRenderMethodForWeb.HtmlImage
+    : ImageRenderMethodForWeb.HttpGet;
 
 void _openProductDetails(
   BuildContext context, {

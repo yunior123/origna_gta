@@ -2,6 +2,7 @@
 //!
 //! Run with: `cargo test --test order_lifecycle_test -- --ignored`
 
+use ob_database::fields;
 use reqwest::Client;
 use serde_json::{Value, json};
 use uuid::Uuid;
@@ -24,7 +25,7 @@ async fn register_test_user(client: &Client) -> (String, String) {
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"].as_str().unwrap_or("").to_string(); // ignore-magic
+    let user_id = body["user"][fields::ID].as_str().unwrap_or("").to_string(); // ignore-magic
     (token, user_id)
 }
 
@@ -84,7 +85,7 @@ async fn register_seller_user(client: &Client) -> (String, String) {
         .expect("seller register failed");
     assert_eq!(register_resp.status(), 200, "seller register failed");
     let register_body: Value = register_resp.json().await.unwrap();
-    let user_id = register_body["user"]["id"]
+    let user_id = register_body["user"][fields::ID]
         .as_str()
         .expect("missing seller user id")
         .to_string();
@@ -142,7 +143,7 @@ async fn test_order_create_pending_status() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -163,7 +164,7 @@ async fn test_order_create_pending_status() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -175,7 +176,7 @@ async fn test_order_create_pending_status() {
     assert_eq!(status, 200);
     let status_field = detail["data"]["get"]["orderStatus"] // ignore-magic
         .as_str()
-        .or_else(|| detail["data"]["get"]["status"].as_str())
+        .or_else(|| detail["data"]["get"][fields::STATUS].as_str())
         .unwrap_or("unknown");
     assert_eq!(
         status_field,
@@ -201,7 +202,7 @@ async fn test_order_cancel_pending() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -219,7 +220,7 @@ async fn test_order_cancel_pending() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -237,7 +238,7 @@ async fn test_order_cancel_pending() {
     assert_eq!(status, 200);
     let status_field = detail["data"]["get"]["orderStatus"] // ignore-magic
         .as_str()
-        .or_else(|| detail["data"]["get"]["status"].as_str())
+        .or_else(|| detail["data"]["get"][fields::STATUS].as_str())
         .unwrap_or("unknown");
     assert_eq!(
         status_field,
@@ -263,7 +264,7 @@ async fn test_order_state_transitions() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -281,7 +282,7 @@ async fn test_order_state_transitions() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -292,7 +293,7 @@ async fn test_order_state_transitions() {
     assert_eq!(status, 200);
     let initial_status = detail["data"]["get"]["orderStatus"] // ignore-magic
         .as_str()
-        .or_else(|| detail["data"]["get"]["status"].as_str())
+        .or_else(|| detail["data"]["get"][fields::STATUS].as_str())
         .unwrap_or("");
     assert_eq!(initial_status, "pending"); // ignore-magic
 
@@ -309,14 +310,20 @@ async fn test_order_state_transitions() {
     let (status, detail) = graphql(&client, Some(&buyer_token), &get_query).await;
     assert_eq!(status, 200);
     let order = &detail["data"]["get"]; // ignore-magic
-    assert!(order.get("buyerId").is_some(), "Order must have buyerId"); // ignore-magic
-    assert!(order.get("sellerId").is_some(), "Order must have sellerId"); // ignore-magic
     assert!(
-        order.get("orderStatus").is_some() || order.get("status").is_some(),
+        order.get(fields::BUYER_ID).is_some(),
+        "Order must have buyerId"
+    ); // ignore-magic
+    assert!(
+        order.get(fields::SELLER_ID).is_some(),
+        "Order must have sellerId"
+    ); // ignore-magic
+    assert!(
+        order.get("orderStatus").is_some() || order.get(fields::STATUS).is_some(),
         "Order must have orderStatus"
     ); // ignore-magic
     assert!(
-        order.get("totalAmountCents").is_some(), // ignore-magic
+        order.get(fields::TOTAL_AMOUNT_CENTS).is_some(), // ignore-magic
         "Order must have totalAmountCents"
     );
     assert!(order.get("items").is_some(), "Order must have items"); // ignore-magic
@@ -339,7 +346,7 @@ async fn test_buyer_orders_pagination() {
         });
         let query = create_doc_query("products", &product_data); // ignore-magic
         let (_, body) = graphql(&client, Some(&seller_token), &query).await;
-        let product_id = body["data"]["create"]["id"] // ignore-magic
+        let product_id = body["data"]["create"][fields::ID] // ignore-magic
             .as_str()
             .unwrap_or("")
             .to_string();
@@ -394,7 +401,7 @@ async fn test_order_detail_fields() {
     let query = create_doc_query("products", &product_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&seller_token), &query).await;
     assert_eq!(status, 200);
-    let product_id = body["data"]["create"]["id"] // ignore-magic
+    let product_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -413,7 +420,7 @@ async fn test_order_detail_fields() {
     let query = create_doc_query("orders", &order_data); // ignore-magic
     let (status, body) = graphql(&client, Some(&buyer_token), &query).await;
     assert_eq!(status, 200);
-    let order_id = body["data"]["create"]["id"] // ignore-magic
+    let order_id = body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap_or("")
         .to_string();
@@ -424,10 +431,13 @@ async fn test_order_detail_fields() {
     assert_eq!(status, 200);
 
     let order = &detail["data"]["get"]; // ignore-magic
-    assert_eq!(order["buyerId"].as_str().unwrap_or(""), buyer_id); // ignore-magic
-    assert_eq!(order["sellerId"].as_str().unwrap_or(""), seller_id); // ignore-magic
-    assert_eq!(order["totalAmountCents"].as_i64().unwrap_or(0), 25000); // ignore-magic
-    assert_eq!(order["subtotalCents"].as_i64().unwrap_or(0), 25000); // ignore-magic
+    assert_eq!(order[fields::BUYER_ID].as_str().unwrap_or(""), buyer_id); // ignore-magic
+    assert_eq!(order[fields::SELLER_ID].as_str().unwrap_or(""), seller_id); // ignore-magic
+    assert_eq!(
+        order[fields::TOTAL_AMOUNT_CENTS].as_i64().unwrap_or(0),
+        25000
+    ); // ignore-magic
+    assert_eq!(order[fields::SUBTOTAL_CENTS].as_i64().unwrap_or(0), 25000); // ignore-magic
 
     let empty_vec = vec![];
     let items = order["items"].as_array().unwrap_or(&empty_vec); // ignore-magic

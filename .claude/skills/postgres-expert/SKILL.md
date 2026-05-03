@@ -14,7 +14,6 @@ Expert-level PostgreSQL guidance for the OrignaBase Rust backend using sqlx, JSO
 - Creating or modifying PostgreSQL migrations
 - Auditing for SQL injection vulnerabilities
 - Designing new tables, relations, or JSONB schemas
-- Migrating from SurrealDB patterns to PostgreSQL
 - Reviewing hexagonal architecture compliance (no SQL leaking into handlers)
 
 ## Architecture: Hexagonal (Ports & Adapters) — Non-Negotiable

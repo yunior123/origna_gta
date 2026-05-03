@@ -25,7 +25,7 @@
 /// VS Code will automatically pass these flags when using launch configurations.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:origna_gta/utils/app_logger.dart';
 
 /// Environment enumeration
@@ -128,8 +128,6 @@ class EnvConfig {
   bool get shouldUseEmulators {
     if (_useEmulators) return true;
     if (environment == AppEnvironment.emulator) return true;
-    // For web, auto-detect localhost logic removed to respect explicit environment config
-    // if (kIsWeb) { ... }
     return false;
   }
 

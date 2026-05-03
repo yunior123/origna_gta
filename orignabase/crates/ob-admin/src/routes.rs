@@ -7,11 +7,12 @@ use ob_auth::middleware::AuthContext;
 use ob_core::constants::fields as f;
 use ob_core::{Error, Result};
 use ob_database::DatabaseClient;
-use sqlx::Row;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use sqlx::Row;
 
 use crate::schema::{self, CollectionSchema};
+use ob_database::fields;
 
 const DASHBOARD_HTML: &str = include_str!("dashboard.html");
 
@@ -396,9 +397,16 @@ async fn config_set(
     // Upsert: create or update
     state
         .db
-        .query_bind(
-            "UPSERT _config SET key = $key, value = $value, type = $type, description = $desc, updated_at = time::now() WHERE key = $key",
-            json!({ "key": key, "value": value, "type": value_type, "desc": description }),
+        .upsert_document(
+            "_config",
+            &key,
+            json!({
+                "key": key,
+                "value": value,
+                "type": value_type,
+                "description": description,
+                "updated_at": chrono::Utc::now().to_rfc3339(),
+            }),
         )
         .await?;
 
@@ -412,17 +420,14 @@ async fn config_delete(
     State(state): State<AdminState>,
     axum::extract::Path(key): axum::extract::Path<String>,
 ) -> Result<Json<Value>> {
-    let results = state
+    state
         .db
-        .query_bind(
-            "DELETE FROM _config WHERE key = $key RETURN BEFORE",
-            json!({ "key": key }),
-        )
-        .await?;
-
-    if results.is_empty() {
-        return Err(Error::NotFound(format!("config key '{key}'")));
-    }
+        .delete_document("_config", &key)
+        .await
+        .map_err(|err| match err {
+            Error::NotFound(_) => Error::NotFound(format!("config key '{key}'")),
+            other => other,
+        })?;
 
     Ok(Json(json!({ "deleted": key })))
 }
@@ -722,7 +727,7 @@ fn extract_allowed_tables(info: &Value) -> Vec<String> {
             .filter_map(|row| {
                 row.get("tablename")
                     .or_else(|| row.get("table_name"))
-                    .or_else(|| row.get("name"))
+                    .or_else(|| row.get(fields::NAME))
                     .and_then(|v| v.as_str())
                     .map(ToOwned::to_owned)
             })
@@ -748,7 +753,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
         .await
         .unwrap_or(json!(null));
     let total_users = user_count
-        .get("total") // ignore-magic: SurrealDB aggregate alias
+        .get("total") // ignore-magic: aggregate query alias
         .or_else(|| {
             user_count
                 .as_array()
@@ -795,7 +800,7 @@ async fn usage_dashboard(State(state): State<AdminState>) -> Result<Json<Value>>
         .await
         .unwrap_or(json!(null));
     let functions_count = functions_val
-        .get("total") // ignore-magic: SurrealDB aggregate alias
+        .get("total") // ignore-magic: aggregate query alias
         .or_else(|| {
             functions_val
                 .as_array()
@@ -826,7 +831,7 @@ async fn system_alerts(State(state): State<AdminState>) -> Result<Json<Value>> {
         .await
         .unwrap_or(json!(null));
     let total_users = user_count_val
-        .get("total") // ignore-magic: SurrealDB aggregate alias
+        .get("total") // ignore-magic: aggregate query alias
         .or_else(|| {
             user_count_val
                 .as_array()
@@ -1095,7 +1100,7 @@ mod tests {
     #[tokio::test]
     async fn test_admin_health_status() {
         let Json(body) = health().await;
-        assert_eq!(body["status"], "ok");
+        assert_eq!(body[fields::STATUS], "ok");
     }
 
     #[tokio::test]
@@ -1122,7 +1127,7 @@ mod tests {
         let Json(body) = health().await;
         let obj = body.as_object().unwrap();
         assert_eq!(obj.len(), 3);
-        assert!(obj.contains_key("status"));
+        assert!(obj.contains_key(fields::STATUS));
         assert!(obj.contains_key("version"));
         assert!(obj.contains_key("timestamp"));
     }
@@ -1192,7 +1197,7 @@ mod tests {
     fn test_metric_requires_name() {
         // Simulate the validation logic from record_metric
         let body = json!({ "value": 42 });
-        let name = body.get("name").and_then(|v| v.as_str());
+        let name = body.get(fields::NAME).and_then(|v| v.as_str());
         assert!(name.is_none(), "Missing 'name' should be None");
     }
 
@@ -1206,7 +1211,7 @@ mod tests {
     #[test]
     fn test_metric_with_both_fields() {
         let body = json!({ "name": "page_load", "value": 123.4 });
-        let name = body.get("name").and_then(|v| v.as_str());
+        let name = body.get(fields::NAME).and_then(|v| v.as_str());
         let value = body.get("value");
         assert_eq!(name, Some("page_load"));
         assert!(value.is_some());
@@ -1231,7 +1236,7 @@ mod tests {
     fn test_create_index_request_unique_default() {
         let json = json!({
             "collection": "users",
-            "fields": ["email"]
+            "fields": [fields::EMAIL]
         });
         let req: CreateIndexRequest = serde_json::from_value(json).unwrap();
         assert!(!req.unique, "'unique' should default to false");
@@ -1258,7 +1263,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_index_surreal_query_non_unique() {
+    fn test_create_index_sql_query_non_unique() {
         let req = CreateIndexRequest {
             collection: "products".to_string(),
             fields: vec!["status".to_string(), "price".to_string()],
@@ -1272,7 +1277,7 @@ mod tests {
     }
 
     #[test]
-    fn test_create_index_surreal_query_unique() {
+    fn test_create_index_sql_query_unique() {
         let req = CreateIndexRequest {
             collection: "users".to_string(),
             fields: vec!["email".to_string()],
@@ -1365,7 +1370,7 @@ mod tests {
     }
 
     #[test]
-    fn test_index_surreal_query_three_fields() {
+    fn test_index_sql_query_three_fields() {
         let req = CreateIndexRequest {
             collection: "orders".to_string(),
             fields: vec![
@@ -1495,7 +1500,7 @@ mod tests {
         };
         let json = serde_json::to_value(&req).unwrap();
         assert_eq!(json["collection"], "products");
-        assert_eq!(json["fields"], json!(["status"]));
+        assert_eq!(json["fields"], json!([fields::STATUS]));
         assert_eq!(json["unique"], true);
     }
 

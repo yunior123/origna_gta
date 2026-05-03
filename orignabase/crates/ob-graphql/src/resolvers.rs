@@ -488,7 +488,7 @@ mod tests {
         let filtered = filter_readable_docs(&engine, "addresses", &sec_ctx, docs);
 
         assert_eq!(filtered.len(), 1);
-        assert_eq!(filtered[0]["id"], "a2");
+        assert_eq!(filtered[0][fields::ID], "a2");
     }
 
     #[test]
@@ -555,7 +555,10 @@ impl MutationRoot {
 
         // Emit realtime change event
         if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
-            let doc_id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("unknown");
+            let doc_id = doc
+                .get(fields::ID)
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
             if let Err(e) = tx
                 .send(ChangeEvent {
                     action: ChangeAction::Create,
@@ -873,7 +876,10 @@ impl MutationRoot {
         // Emit change events
         if let Ok(tx) = ctx.data::<mpsc::Sender<ChangeEvent>>() {
             for doc in &results {
-                let doc_id = doc.get(fields::ID).and_then(|v| v.as_str()).unwrap_or("unknown");
+                let doc_id = doc
+                    .get(fields::ID)
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
                 if let Err(e) = tx
                     .send(ChangeEvent {
                         action: ChangeAction::Create,

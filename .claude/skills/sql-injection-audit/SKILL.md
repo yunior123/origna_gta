@@ -7,7 +7,7 @@ description: "Audit Rust/PostgreSQL query code for SQL injection in the OrignaGT
 
 Use this skill when the task is specifically to find, verify, or remediate SQL injection risk in the Rust backend.
 
-This repo has a real risk pattern: PostgreSQL queries are often assembled across handlers, adapters, and helper functions while migrating away from Surreal-style patterns. Treat any SQL string construction as suspicious until proven safe.
+This repo has a real risk pattern: PostgreSQL queries are often assembled across handlers, adapters, and helper functions. Treat any SQL string construction as suspicious until proven safe.
 
 ## When To Use
 
@@ -129,7 +129,7 @@ If any path bypasses the helper, the query is still vulnerable.
 
 - Prefer adapter-layer SQL over handler-layer SQL
 - Reject `format!` that injects request-derived values into SQL text
-- Check migration-era code for SurrealDB leftovers like custom path syntax or identifier tricks
+- Verify parameterized positional binds for request-derived values
 - Watch for helpers that bind JSON values as strings and accidentally force unsafe fallbacks
 - Verify hybrid top-level/JSONB field selection does not accept runtime field names
 - Review admin/auth list endpoints first; they often combine filtering, sorting, and pagination

@@ -11,6 +11,7 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::shared::schema::{collections, fields};
 use crate::shared::validation::validate_uid;
+use ob_database::fields as db_fields;
 use std::sync::OnceLock;
 
 static COUPON_CODE_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
@@ -176,7 +177,7 @@ async fn apply_coupon(
         _ => {
             // Fall back: query by code field (handles case where code != document ID)
             let query = format!(
-                "SELECT * FROM {} WHERE {} = $code LIMIT 1",
+                "SELECT * FROM {} WHERE data->>'{}' = $code LIMIT 1",
                 collections::COUPONS,
                 fields::CODE
             );
@@ -267,7 +268,7 @@ async fn apply_coupon(
     }
 
     // Seller scope check
-    if let Some(coupon_seller) = coupon.get(fields::SELLER_ID).and_then(|v| v.as_str()) {
+    if let Some(coupon_seller) = coupon.get(db_fields::SELLER_ID).and_then(|v| v.as_str()) {
         let seller_ids = req.seller_ids.as_deref().unwrap_or(&[]);
         if !seller_ids.iter().any(|s| s == coupon_seller) {
             return Err(ob_core::Error::Validation(
@@ -448,8 +449,8 @@ async fn create_coupon(
         fields::USED_COUNT: 0,
         fields::EXPIRES_AT: expires_at,
         fields::IS_ACTIVE: req.is_active,
-        fields::SELLER_ID: req.seller_id,
-        fields::CREATED_AT: now,
+        db_fields::SELLER_ID: req.seller_id,
+        db_fields::CREATED_AT: now,
         fields::CREATED_BY_ADMIN_ID: user_id,
     });
 
@@ -524,7 +525,7 @@ async fn redeem_coupon(
     let now = chrono::Utc::now().to_rfc3339();
     let max_uses = coupon.get(fields::MAX_USES).and_then(|v| v.as_i64());
 
-    // Use update_document for the atomic increment instead of SurrealDB syntax.
+    // Use update_document for the atomic increment instead of a raw SQL update.
     // Read current usedCount, check limit, increment, and write back.
     let current_used = coupon
         .get(fields::USED_COUNT)
@@ -543,7 +544,7 @@ async fn redeem_coupon(
                     &code,
                     serde_json::json!({
                         fields::USED_COUNT: current_used + 1,
-                        fields::UPDATED_AT: now,
+                        db_fields::UPDATED_AT: now,
                     }),
                     fields::USED_COUNT,
                     &serde_json::json!(current_used),
@@ -567,7 +568,7 @@ async fn redeem_coupon(
                 &code,
                 serde_json::json!({
                     fields::USED_COUNT: current_used + 1,
-                    fields::UPDATED_AT: now,
+                    db_fields::UPDATED_AT: now,
                 }),
             )
             .await
@@ -590,7 +591,7 @@ async fn redeem_coupon(
             collections::COUPON_USES,
             serde_json::json!({
                 fields::COUPON_ID: code,
-                fields::USER_ID: user_id,
+                db_fields::USER_ID: user_id,
                 fields::ORDER_ID: req.order_id,
                 fields::REDEEMED_AT: now,
             }),
@@ -1011,7 +1012,7 @@ mod tests {
         });
 
         assert_eq!(usage_doc["couponId"], "TESTCODE");
-        assert_eq!(usage_doc["userId"], "user1");
+        assert_eq!(usage_doc[db_fields::USER_ID], "user1");
         assert_eq!(usage_doc["orderId"], "order1");
         assert_eq!(usage_doc["redeemedAt"], now);
     }
@@ -1193,7 +1194,7 @@ mod tests {
                     "isActive": true,
                     fields::COUPON_TYPE: "percentage",
                     fields::DISCOUNT_VALUE: 10.0,
-                    fields::SELLER_ID: "seller_a",
+                    db_fields::SELLER_ID: "seller_a",
                 }),
             )
             .await
@@ -1354,7 +1355,7 @@ mod tests {
             Some(2)
         );
         assert_eq!(
-            saved.get(fields::SELLER_ID).and_then(|v| v.as_str()),
+            saved.get(db_fields::SELLER_ID).and_then(|v| v.as_str()),
             Some(seller_id.as_str())
         );
     }
@@ -1516,7 +1517,7 @@ mod tests {
             .db
             .query_bind(
                 &format!(
-                    "SELECT * FROM {} WHERE couponId = $coupon_id AND userId = $user_id LIMIT 1",
+                    "SELECT * FROM {} WHERE data->>'couponId' = $coupon_id AND data->>'userId' = $user_id LIMIT 1",
                     collections::COUPON_USES
                 ),
                 json!({"coupon_id": &code, "user_id": &user_id}),
@@ -1525,7 +1526,7 @@ mod tests {
             .unwrap();
         let redemption = uses.first().unwrap();
         assert_eq!(
-            redemption.get("orderId").and_then(|v| v.as_str()),
+            redemption.get(fields::ORDER_ID).and_then(|v| v.as_str()),
             Some(order_id.as_str())
         );
     }

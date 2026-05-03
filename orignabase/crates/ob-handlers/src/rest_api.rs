@@ -9,6 +9,7 @@ use axum::{
     routing::get,
 };
 use ob_auth::middleware::AuthContext;
+use ob_database::fields as db_fields;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -91,7 +92,7 @@ async fn get_products(
     let mut query = format!(
         "SELECT * FROM {} WHERE data->>'{}' = '{}'",
         collections::PRODUCTS,
-        fields::LIFECYCLE_STATUS,
+        db_fields::LIFECYCLE_STATUS,
         lifecycle_status::ACTIVE,
     );
 
@@ -122,14 +123,14 @@ async fn get_products(
     if let Some(min) = qs.min_price {
         query.push_str(&format!(
             " AND NULLIF(data->>'{}', '')::numeric >= {}",
-            fields::PRICE_CENTS,
+            db_fields::PRICE_CENTS,
             min,
         ));
     }
     if let Some(max) = qs.max_price {
         query.push_str(&format!(
             " AND NULLIF(data->>'{}', '')::numeric <= {}",
-            fields::PRICE_CENTS,
+            db_fields::PRICE_CENTS,
             max,
         ));
     }
@@ -137,19 +138,25 @@ async fn get_products(
     match qs.sort.as_deref() {
         Some("price_asc") => query.push_str(&format!(
             " ORDER BY (data->>'{}')::\"numeric\" ASC, data->>'{}' DESC",
-            fields::PRICE_CENTS,
-            fields::CREATED_AT,
+            db_fields::PRICE_CENTS,
+            db_fields::CREATED_AT,
         )),
         Some("price_desc") => query.push_str(&format!(
             " ORDER BY (data->>'{}')::\"numeric\" DESC, data->>'{}' DESC",
-            fields::PRICE_CENTS,
-            fields::CREATED_AT,
+            db_fields::PRICE_CENTS,
+            db_fields::CREATED_AT,
         )),
-        Some("oldest") => query.push_str(&format!(" ORDER BY data->>'{}' ASC", fields::CREATED_AT)),
-        Some("newest") | None => {
-            query.push_str(&format!(" ORDER BY data->>'{}' DESC", fields::CREATED_AT))
+        Some("oldest") => {
+            query.push_str(&format!(" ORDER BY data->>'{}' ASC", db_fields::CREATED_AT))
         }
-        Some(_) => query.push_str(&format!(" ORDER BY data->>'{}' DESC", fields::CREATED_AT)),
+        Some("newest") | None => query.push_str(&format!(
+            " ORDER BY data->>'{}' DESC",
+            db_fields::CREATED_AT
+        )),
+        Some(_) => query.push_str(&format!(
+            " ORDER BY data->>'{}' DESC",
+            db_fields::CREATED_AT
+        )),
     }
 
     let limit = qs.limit.clamp(1, 100);
@@ -223,7 +230,7 @@ async fn get_product_recommendations(
             &format!(
                 "SELECT data->>'productId' FROM {} WHERE data->>'categoryId' = $cid AND data->>'productId' != $pid AND data->>'{}' = $status ORDER BY (data->>'purchaseCount')::bigint DESC LIMIT 5",
                 collections::PRODUCTS,
-                fields::LIFECYCLE_STATUS,
+                db_fields::LIFECYCLE_STATUS,
             ),
             json!({
                 "cid": category_id,
@@ -236,7 +243,7 @@ async fn get_product_recommendations(
 
     let ids: Vec<serde_json::Value> = similar
         .iter()
-        .filter_map(|v| v.get("productId").cloned())
+        .filter_map(|v| v.get(fields::PRODUCT_ID).cloned())
         .collect();
 
     Ok(Json(
@@ -266,7 +273,7 @@ async fn create_product(
         .ok_or_else(|| ob_core::Error::Validation("Request body must be a JSON object".into()))?;
 
     // Require name
-    match obj.get(fields::NAME).and_then(|v| v.as_str()) {
+    match obj.get(db_fields::NAME).and_then(|v| v.as_str()) {
         Some(name) if name.trim().is_empty() => {
             return Err(ob_core::Error::Validation(
                 "Product name cannot be empty".into(),
@@ -281,7 +288,7 @@ async fn create_product(
     }
 
     // Require priceCents: must be > 0 and <= 10,000,000
-    match obj.get(fields::PRICE_CENTS).and_then(|v| v.as_i64()) {
+    match obj.get(db_fields::PRICE_CENTS).and_then(|v| v.as_i64()) {
         Some(price) if price <= 0 => {
             return Err(ob_core::Error::Validation(
                 "Product price must be greater than 0 cents".into(),
@@ -310,7 +317,9 @@ async fn create_product(
     }
 
     // Validate lifecycleStatus if present (draft -> active -> inactive -> deleted)
-    if let Some(status) = obj.get(fields::LIFECYCLE_STATUS).and_then(|v| v.as_str())
+    if let Some(status) = obj
+        .get(db_fields::LIFECYCLE_STATUS)
+        .and_then(|v| v.as_str())
         && !lifecycle_status::ALL.contains(&status)
     {
         return Err(ob_core::Error::Validation(format!(
@@ -338,14 +347,14 @@ async fn create_product(
     let product_obj = product
         .as_object_mut()
         .ok_or_else(|| ob_core::Error::Validation("Product body must be a JSON object".into()))?;
-    product_obj.insert(fields::SELLER_ID.into(), json!(user_id));
+    product_obj.insert(db_fields::SELLER_ID.into(), json!(user_id));
     // Products use dateCreated (not createdAt) per schema
     product_obj.insert(
-        fields::DATE_CREATED.into(),
+        db_fields::DATE_CREATED.into(),
         json!(chrono::Utc::now().to_rfc3339()),
     );
     product_obj.insert(
-        fields::UPDATED_AT.into(),
+        db_fields::UPDATED_AT.into(),
         json!(chrono::Utc::now().to_rfc3339()),
     );
     product_obj.insert(fields::IMAGE_URLS.into(), json!(normalized_image_urls));
@@ -450,7 +459,7 @@ async fn list_orders(
 
     if qs.status.is_some() {
         query.push_str(" AND status = $status");
-        bind_params.insert("status".into(), json!(qs.status));
+        bind_params.insert(db_fields::STATUS.into(), json!(qs.status));
     }
 
     let limit = qs.limit.clamp(1, 100);
@@ -482,11 +491,11 @@ async fn get_order(
 
     // Verify user owns this order (buyer or seller)
     let buyer_id = order
-        .get(fields::BUYER_ID)
+        .get(db_fields::BUYER_ID)
         .and_then(|b| b.as_str())
         .unwrap_or("");
     let seller_id = order
-        .get(fields::SELLER_ID)
+        .get(db_fields::SELLER_ID)
         .and_then(|s| s.as_str())
         .unwrap_or("");
 

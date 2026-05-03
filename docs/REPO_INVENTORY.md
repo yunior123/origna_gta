@@ -5434,7 +5434,6 @@ Tracked files: `3865`
 - `orignabase/migrations/001_full_schema.sql`
 - `orignabase/reliability-tests/chaos/data-consistency.sh`
 - `orignabase/reliability-tests/chaos/kill-meilisearch.sh`
-- `orignabase/reliability-tests/chaos/kill-surrealdb.sh`
 - `orignabase/reliability-tests/chaos/network-partition.sh`
 - `orignabase/rules.ob`
 - `orignabase/rules.test.ob`

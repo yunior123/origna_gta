@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:origna_gta/core/providers.dart';
 import 'package:origna_gta/core/schema/schema_constants.dart'
@@ -235,8 +235,8 @@ final sellerOrderNetProvider = Provider.autoDispose
             (acc, item) => acc + (item.priceCents * item.quantity),
           );
           // Per-seller fee = seller's own subtotal × platform fee rate
-          final platformFeeCents =
-              (sellerTotalCents * BusinessRules.platformFeePercent / 100.0)
+          final int platformFeeCents =
+              ((sellerTotalCents * BusinessRules.platformFeePercent) / 100)
                   .round();
           return SellerOrderNetAmounts(
             sellerTotal: sellerTotalCents,

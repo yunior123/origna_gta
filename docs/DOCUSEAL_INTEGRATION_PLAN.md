@@ -37,6 +37,7 @@ DocuSeal is an open-source document signing platform (MIT license) that provides
 
 ### 2.3 API Overview
 
+**Authentication**: API token sent as `X-Auth-Token: <API_KEY>` and stored in macOS Keychain as `docuseal-api-key`.
 
 **Core Endpoints**:
 
@@ -190,7 +191,7 @@ orignabase/crates/ob-docuseal/
 ├── Cargo.toml
 └── src/
     ├── lib.rs          — Public API, re-exports
-    ├── client.rs       — DocuSeal HTTP client (reqwest + Bearer auth)
+    ├── client.rs       — DocuSeal HTTP client (reqwest + `X-Auth-Token` auth)
     ├── templates.rs    — Template CRUD (create, list, update, delete)
     ├── submissions.rs  — Submission management (create, list, get PDF)
     ├── webhooks.rs     — Webhook signature verification + event processing
@@ -669,12 +670,14 @@ e2e/specs/phase7-signatures/
 ## 8. Implementation Phases
 
 ### Phase 1: Infrastructure (1-2 days)
-- [ ] Deploy DocuSeal Docker container on VPS
-- [ ] Configure Caddy reverse proxy for `signatures.*.orignagta.ca`
-- [ ] Configure SMTP (Postal/email)
-- [ ] Set up DNS records
-- [ ] Verify DocuSeal admin dashboard accessible
-- [ ] Create API key in DocuSeal
+- [x] Add DocuSeal Docker container definition to OrignaBase compose
+- [x] Add dedicated DocuSeal PostgreSQL service and persistent volume
+- [x] Configure Caddy reverse proxy for `signatures.*.orignagta.ca`
+- [x] Allow DocuSeal CDN and signatures hosts in OrignaGTA web CSP
+- [x] Configure SMTP (Postal/email) via DocuSeal SMTP env wiring in OrignaBase compose
+- [x] Set up DNS records for `signatures` (proxied), `signatures.dev` (DNS-only), and `signatures.staging` (DNS-only)
+- [x] Verify DocuSeal admin dashboard accessible at `https://signatures.orignagta.ca/setup`
+- [x] Create API key in DocuSeal and save it to macOS Keychain as `docuseal-api-key`
 
 ### Phase 2: Backend Core (3-4 days)
 - [ ] Create `ob-docuseal` crate (client, models, config)

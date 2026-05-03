@@ -9,6 +9,7 @@
 //!
 //! Run with: `cargo test --test extended_handlers_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -31,7 +32,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -130,7 +131,7 @@ async fn test_600_product_create_minimal_fields() {
     .await;
 
     assert_eq!(status, 200);
-    let id = body["data"]["create"]["id"].as_str(); // ignore-magic
+    let id = body["data"]["create"][fields::ID].as_str(); // ignore-magic
     assert!(id.is_some(), "Should return product ID");
 }
 
@@ -161,9 +162,9 @@ async fn test_601_product_create_with_all_fields() {
 
     assert_eq!(status, 200);
     let product = &body["data"]["create"]; // ignore-magic
-    assert!(product["id"].as_str().is_some()); // ignore-magic
-    assert_eq!(product["name"], "Full Product"); // ignore-magic
-    assert_eq!(product["priceCents"], 5999); // ignore-magic
+    assert!(product[fields::ID].as_str().is_some()); // ignore-magic
+    assert_eq!(product[fields::NAME], "Full Product"); // ignore-magic
+    assert_eq!(product[fields::PRICE_CENTS], 5999); // ignore-magic
 }
 
 #[tokio::test]
@@ -181,7 +182,7 @@ async fn test_602_product_update_price() {
         ),
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"] // ignore-magic
+    let product_id = create_body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -197,7 +198,7 @@ async fn test_602_product_update_price() {
     .await;
 
     assert_eq!(status, 200);
-    assert_eq!(body["data"]["update"]["priceCents"], 2500); // ignore-magic
+    assert_eq!(body["data"]["update"][fields::PRICE_CENTS], 2500); // ignore-magic
 }
 
 #[tokio::test]
@@ -215,7 +216,7 @@ async fn test_603_product_delete() {
         ),
     )
     .await;
-    let product_id = create_body["data"]["create"]["id"] // ignore-magic
+    let product_id = create_body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -230,7 +231,7 @@ async fn test_603_product_delete() {
 
     assert_eq!(status, 200);
     // delete returns the deleted object
-    assert!(body["data"]["delete"]["id"].as_str().is_some()); // ignore-magic
+    assert!(body["data"]["delete"][fields::ID].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -285,7 +286,10 @@ async fn test_605_cart_create_and_read() {
     .await;
 
     assert_eq!(status, 200);
-    let cart_id = body["data"]["create"]["id"].as_str().unwrap().to_string(); // ignore-magic
+    let cart_id = body["data"]["create"][fields::ID]
+        .as_str()
+        .unwrap()
+        .to_string(); // ignore-magic
 
     // Read cart back
     let (status, body) = graphql(
@@ -314,7 +318,7 @@ async fn test_606_cart_update_quantity() {
         ),
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"] // ignore-magic
+    let cart_id = create_body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -346,7 +350,7 @@ async fn test_607_cart_delete() {
         ),
     )
     .await;
-    let cart_id = create_body["data"]["create"]["id"] // ignore-magic
+    let cart_id = create_body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -360,7 +364,7 @@ async fn test_607_cart_delete() {
 
     assert_eq!(status, 200);
     // delete returns the deleted object
-    assert!(body["data"]["delete"]["id"].as_str().is_some()); // ignore-magic
+    assert!(body["data"]["delete"][fields::ID].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -402,7 +406,7 @@ async fn test_609_order_create() {
     let (status, body) = graphql(&client, Some(&token), &query).await;
 
     assert_eq!(status, 200);
-    assert!(body["data"]["create"]["id"].as_str().is_some()); // ignore-magic
+    assert!(body["data"]["create"][fields::ID].as_str().is_some()); // ignore-magic
 }
 
 #[tokio::test]
@@ -417,7 +421,7 @@ async fn test_610_order_update_status() {
         r#"mutation {{ create(collection: "orders", data: {{userId: "{user_id}", items: [{{productId: "p1", quantity: 1, priceCents: 500}}], totalAmountCents: 500, status: "pending"}}) }}"# // ignore-magic
     );
     let (_, create_body) = graphql(&client, Some(&token), &query).await;
-    let order_id = create_body["data"]["create"]["id"] // ignore-magic
+    let order_id = create_body["data"]["create"][fields::ID] // ignore-magic
         .as_str()
         .unwrap()
         .to_string();
@@ -433,7 +437,7 @@ async fn test_610_order_update_status() {
     .await;
 
     assert_eq!(status, 200);
-    assert_eq!(body["data"]["update"]["status"], "confirmed"); // ignore-magic
+    assert_eq!(body["data"]["update"][fields::STATUS], "confirmed"); // ignore-magic
 }
 
 #[tokio::test]
@@ -596,7 +600,7 @@ async fn test_617_sequential_product_operations() {
             ),
         )
         .await;
-        let product_id = create_body["data"]["create"]["id"] // ignore-magic
+        let product_id = create_body["data"]["create"][fields::ID] // ignore-magic
             .as_str()
             .unwrap()
             .to_string();
@@ -689,7 +693,12 @@ async fn test_620_batch_delete_products() {
             ),
         )
         .await;
-        ids.push(body["data"]["create"]["id"].as_str().unwrap().to_string()); // ignore-magic
+        ids.push(
+            body["data"]["create"][fields::ID]
+                .as_str()
+                .unwrap()
+                .to_string(),
+        ); // ignore-magic
     }
 
     // Batch delete

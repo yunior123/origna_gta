@@ -17,6 +17,7 @@ use ob_auth::middleware::AuthContext;
 use crate::HandlersState;
 use crate::shared::schema::{business_rules, collections, fields};
 use crate::shared::validation::validate_uid;
+use ob_database::fields as db_fields;
 use std::sync::OnceLock;
 
 static LICENSE_KEY_RE: OnceLock<regex_lite::Regex> = OnceLock::new();
@@ -162,7 +163,7 @@ async fn activate_license(
 
     // Verify status
     let status = license
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -172,7 +173,7 @@ async fn activate_license(
 
     // Verify ownership
     let owner_id = license
-        .get(fields::USER_ID)
+        .get(db_fields::USER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -217,7 +218,7 @@ async fn activate_license(
 
             let update = serde_json::json!({
                 fields::ACTIVATIONS: updated_activations,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             });
             state
                 .db
@@ -257,7 +258,7 @@ async fn activate_license(
 
     let update = serde_json::json!({
         fields::ACTIVATIONS: new_activations,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -323,7 +324,7 @@ async fn deactivate_license(
 
     // Verify ownership
     let owner_id = license
-        .get(fields::USER_ID)
+        .get(db_fields::USER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
@@ -348,7 +349,7 @@ async fn deactivate_license(
 
     let update = serde_json::json!({
         fields::ACTIVATIONS: remaining,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -407,7 +408,7 @@ async fn download_book(
     }
 
     let owner = license
-        .get(fields::USER_ID)
+        .get(db_fields::USER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if owner != user_id {
@@ -415,7 +416,7 @@ async fn download_book(
     }
 
     let status = license
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if status != "active" {
@@ -444,12 +445,12 @@ async fn download_book(
     let token_doc = serde_json::json!({
         fields::ACCESS_TOKEN: token,
         fields::LICENSE_KEY: license_key,
-        fields::USER_ID: user_id,
+        db_fields::USER_ID: user_id,
         fields::PRODUCT_ID: req.product_id,
         fields::BOOK_SOURCE_URL: book_source_url,
         fields::EXPIRES_AT: expires_at.to_rfc3339(),
         fields::USED: false,
-        fields::CREATED_AT: now.to_rfc3339(),
+        db_fields::CREATED_AT: now.to_rfc3339(),
     });
 
     state
@@ -507,7 +508,7 @@ async fn download_software(
     }
 
     let owner = license
-        .get(fields::USER_ID)
+        .get(db_fields::USER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if owner != user_id {
@@ -515,7 +516,7 @@ async fn download_software(
     }
 
     let status = license
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     if status != "active" {
@@ -538,7 +539,7 @@ async fn download_software(
     let token_doc = serde_json::json!({
         fields::ACCESS_TOKEN: token,
         fields::LICENSE_KEY: license_key,
-        fields::USER_ID: user_id,
+        db_fields::USER_ID: user_id,
         fields::PRODUCT_ID: req.product_id,
         fields::SOFTWARE_SOURCE_URL: license
             .get(fields::SOFTWARE_SOURCE_URL)
@@ -547,7 +548,7 @@ async fn download_software(
             .unwrap_or(serde_json::json!("")),
         fields::EXPIRES_AT: expires_at.to_rfc3339(),
         fields::USED: false,
-        fields::CREATED_AT: now.to_rfc3339(),
+        db_fields::CREATED_AT: now.to_rfc3339(),
     });
 
     state
@@ -587,7 +588,7 @@ async fn verify_license(
     }
 
     let status = license
-        .get(fields::STATUS)
+        .get(db_fields::STATUS)
         .and_then(|v| v.as_str())
         .unwrap_or("unknown")
         .to_string();
@@ -624,7 +625,7 @@ async fn verify_license(
             }
             let update = serde_json::json!({
                 "activations": updated,
-                fields::UPDATED_AT: now,
+                db_fields::UPDATED_AT: now,
             });
             state
                 .db
@@ -648,7 +649,7 @@ async fn get_book_redirect(
 ) -> Result<Redirect, ob_core::Error> {
     validate_string_token("t", &req.t)?;
     let query = format!(
-        "SELECT * FROM {} WHERE accessToken = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'accessToken' = '{}' LIMIT 1",
         collections::BOOK_ACCESS_TOKENS,
         ob_core::escape_sql_string(&req.t),
     );
@@ -675,7 +676,7 @@ async fn get_software_redirect(
 ) -> Result<Redirect, ob_core::Error> {
     validate_string_token("t", &req.t)?;
     let query = format!(
-        "SELECT * FROM {} WHERE accessToken = '{}' LIMIT 1",
+        "SELECT * FROM {} WHERE data->>'accessToken' = '{}' LIMIT 1",
         collections::SOFTWARE_ACCESS_TOKENS,
         ob_core::escape_sql_string(&req.t),
     );
@@ -730,7 +731,7 @@ fn validate_redirect_token_state(token_doc: &Value) -> Result<(), ob_core::Error
 }
 
 async fn mark_download_token_used(state: &HandlersState, collection: &str, token_doc: &Value) {
-    if let Some(raw_id) = token_doc.get("id").and_then(|v| v.as_str()) {
+    if let Some(raw_id) = token_doc.get(db_fields::ID).and_then(|v| v.as_str()) {
         let doc_id = raw_id
             .strip_prefix(&format!("{collection}:"))
             .unwrap_or(raw_id);
@@ -741,7 +742,7 @@ async fn mark_download_token_used(state: &HandlersState, collection: &str, token
                 doc_id,
                 serde_json::json!({
                     "used": true,
-                    fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
+                    db_fields::UPDATED_AT: chrono::Utc::now().to_rfc3339(),
                 }),
             )
             .await;

@@ -25,7 +25,18 @@
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
-		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://challenges.cloudflare.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.orignagta.ca https://api.dev.orignagta.ca https://api.staging.orignagta.ca https://api.stripe.com https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev wss://api.orignagta.ca wss://api.dev.orignagta.ca wss://api.staging.orignagta.ca; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://accounts.google.com; worker-src 'self' blob:; frame-ancestors 'self'; manifest-src 'self'"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdn.docuseal.com https://challenges.cloudflare.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.orignagta.ca https://api.dev.orignagta.ca https://api.staging.orignagta.ca https://api.stripe.com https://signatures.orignagta.ca https://signatures.dev.orignagta.ca https://signatures.staging.orignagta.ca https://challenges.cloudflare.com https://accounts.google.com https://*.googleapis.com https://pub-f9698d0f50d146bcac0e2dc9eb09de57.r2.dev wss://api.orignagta.ca wss://api.dev.orignagta.ca wss://api.staging.orignagta.ca; frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://signatures.orignagta.ca https://signatures.dev.orignagta.ca https://signatures.staging.orignagta.ca https://challenges.cloudflare.com https://accounts.google.com; worker-src 'self' blob:; frame-ancestors 'self'; manifest-src 'self'"
+		-Server
+	}
+}
+
+(signatures_security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()"
+		Content-Security-Policy "frame-ancestors 'self' https://orignagta.ca https://www.orignagta.ca https://dev.orignagta.ca https://staging.orignagta.ca"
 		-Server
 	}
 }
@@ -82,6 +93,12 @@ api.orignagta.ca {
 	}
 
 	reverse_proxy orignabase:8080
+}
+
+signatures.orignagta.ca, signatures.dev.orignagta.ca, signatures.staging.orignagta.ca {
+	import signatures_security_headers
+	encode zstd gzip
+	reverse_proxy docuseal:3000
 }
 
 orignagta.ca, www.orignagta.ca {

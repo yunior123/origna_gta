@@ -3,6 +3,7 @@
 //! These tests run against the live dev OrignaBase server.
 //! Run with: `cd orignabase && cargo test --test coupon_integration_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::time::sleep;
@@ -33,7 +34,7 @@ async fn login_buyer(client: &reqwest::Client) -> (String, String) {
         .as_str()
         .expect("missing access_token in login response")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id in login response")
         .to_string();
@@ -59,7 +60,7 @@ async fn login_seller(client: &reqwest::Client) -> (String, String) {
         .as_str()
         .expect("missing access_token in login response")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id in login response")
         .to_string();
@@ -85,7 +86,7 @@ async fn login_admin(client: &reqwest::Client) -> (String, String) {
         .as_str()
         .expect("missing access_token in login response")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id in login response")
         .to_string();

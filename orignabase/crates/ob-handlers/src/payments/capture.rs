@@ -11,6 +11,7 @@ use crate::HandlersState;
 use crate::shared::auth::resolve_self_user_id;
 use crate::shared::schema::{OrderStatus, PaymentStatus, collections, fields};
 use crate::shared::validation::validate_uid;
+use ob_database::fields as db_fields;
 
 // ---------------------------------------------------------------------------
 // Request / Response types
@@ -83,11 +84,11 @@ async fn capture_payment(
         .get(fields::ITEMS)
         .and_then(|v| v.as_array())
         .and_then(|arr| arr.first())
-        .and_then(|item| item.get(fields::SELLER_ID))
+        .and_then(|item| item.get(db_fields::SELLER_ID))
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let buyer_id = order
-        .get(fields::BUYER_ID)
+        .get(db_fields::BUYER_ID)
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let is_admin = auth.roles.iter().any(|role| role == "admin");
@@ -216,7 +217,9 @@ async fn capture_payment(
         .await
         .map_err(|e| ob_core::Error::Internal(format!("Parse error: {e}")))?;
 
-    let stripe_status = capture_result["status"].as_str().unwrap_or("unknown");
+    let stripe_status = capture_result[db_fields::STATUS]
+        .as_str()
+        .unwrap_or("unknown");
 
     if stripe_status != "succeeded" {
         error!(
@@ -235,7 +238,7 @@ async fn capture_payment(
         fields::ORDER_STATUS: OrderStatus::Processing.as_str(),
         fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
         fields::PAYMENT_INTENT_ID: pi_id,
-        fields::UPDATED_AT: now,
+        db_fields::UPDATED_AT: now,
     });
 
     state
@@ -419,9 +422,9 @@ mod tests {
                     fields::ORDER_ID: oid,
                     fields::ORDER_STATUS: OrderStatus::PendingPayment.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
-                    fields::BUYER_ID: "buyer_ns",
+                    db_fields::BUYER_ID: "buyer_ns",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                     fields::PAYMENT_INTENT_ID: "pi_1",
                 }),
@@ -476,9 +479,9 @@ mod tests {
                     fields::ORDER_ID: oid,
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Captured.as_str(),
-                    fields::BUYER_ID: "buyer_ip",
+                    db_fields::BUYER_ID: "buyer_ip",
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -543,7 +546,7 @@ mod tests {
             .and(path("/payment_intents/pi_capture/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_capture",
-                fields::STATUS: "succeeded"
+                db_fields::STATUS: "succeeded"
             })))
             .mount(&mock_server)
             .await;
@@ -564,9 +567,9 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_capture",
-                    fields::BUYER_ID: format!("b_succ_{}", uuid::Uuid::new_v4().simple()),
+                    db_fields::BUYER_ID: format!("b_succ_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -615,7 +618,7 @@ mod tests {
             .and(path("/payment_intents/pi_buyer_capture/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_buyer_capture",
-                fields::STATUS: "succeeded"
+                db_fields::STATUS: "succeeded"
             })))
             .mount(&mock_server)
             .await;
@@ -636,9 +639,9 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_buyer_capture",
-                    fields::BUYER_ID: buyer_id,
+                    db_fields::BUYER_ID: buyer_id,
                     fields::ITEMS: [{
-                        fields::SELLER_ID: seller_id
+                        db_fields::SELLER_ID: seller_id
                     }],
                 }),
             )
@@ -694,7 +697,7 @@ mod tests {
             .and(path("/payment_intents/pi_from_session/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_from_session",
-                fields::STATUS: "succeeded"
+                db_fields::STATUS: "succeeded"
             })))
             .mount(&mock_server)
             .await;
@@ -715,9 +718,9 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::AwaitingShippingApproval.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_123",
-                    fields::BUYER_ID: format!("b_fetch_{}", uuid::Uuid::new_v4().simple()),
+                    db_fields::BUYER_ID: format!("b_fetch_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -768,7 +771,7 @@ mod tests {
             .and(path("/payment_intents/pi_bad/capture"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "pi_bad",
-                fields::STATUS: "requires_capture"
+                db_fields::STATUS: "requires_capture"
             })))
             .mount(&mock_server)
             .await;
@@ -789,9 +792,9 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_missing_pi",
-                    fields::BUYER_ID: format!("b_mpi_{}", uuid::Uuid::new_v4().simple()),
+                    db_fields::BUYER_ID: format!("b_mpi_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -824,9 +827,9 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_bad",
-                    fields::BUYER_ID: format!("b_bad_{}", uuid::Uuid::new_v4().simple()),
+                    db_fields::BUYER_ID: format!("b_bad_{}", uuid::Uuid::new_v4().simple()),
                     fields::ITEMS: [{
-                        fields::SELLER_ID: sid
+                        db_fields::SELLER_ID: sid
                     }],
                 }),
             )
@@ -880,8 +883,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::CHECKOUT_SESSION_ID: "cs_fail",
-                    fields::BUYER_ID: format!("b_csf_{}", uuid::Uuid::new_v4().simple()),
-                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
+                    db_fields::BUYER_ID: format!("b_csf_{}", uuid::Uuid::new_v4().simple()),
+                    fields::ITEMS: [{ db_fields::SELLER_ID: sid }],
                 }),
             )
             .await
@@ -930,8 +933,8 @@ mod tests {
                     fields::ORDER_STATUS: OrderStatus::PaymentAuthorized.as_str(),
                     fields::PAYMENT_STATUS: PaymentStatus::Authorized.as_str(),
                     fields::PAYMENT_INTENT_ID: "pi_http_err",
-                    fields::BUYER_ID: format!("b_http_{}", uuid::Uuid::new_v4().simple()),
-                    fields::ITEMS: [{ fields::SELLER_ID: sid }],
+                    db_fields::BUYER_ID: format!("b_http_{}", uuid::Uuid::new_v4().simple()),
+                    fields::ITEMS: [{ db_fields::SELLER_ID: sid }],
                 }),
             )
             .await

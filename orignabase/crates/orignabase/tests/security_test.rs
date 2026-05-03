@@ -205,7 +205,7 @@ mod injection {
 
     #[tokio::test]
     #[ignore]
-    async fn surreal_operator_in_json() {
+    async fn operator_in_json() {
         let c = client();
         let token = register_and_login(&c).await;
         let (status, _) = graphql_request(

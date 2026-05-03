@@ -466,7 +466,7 @@ void main() {
 
       expect(map[Fields.productId], 'prod123');
       expect(map[Fields.name], 'Test Product');
-      expect(map[Fields.price], 29.99);
+      expect(map[Fields.priceCents], 2999);
       expect(map[Fields.stockQuantity], 50);
       expect(map[Fields.rating], 4.5);
       expect(map[Fields.lifecycleStatus], 'active');
@@ -713,7 +713,7 @@ void main() {
 
       expect(map[Fields.productId], 'p1');
       expect(map[Fields.name], 'Test');
-      expect(map[Fields.price], 10.0);
+      expect(map[Fields.priceCents], 1000);
       expect(map[Fields.madeInCountry], 'CA');
       expect(map[Fields.weightUnit], 'kg');
       expect(map[Fields.dimensionUnit], 'cm');

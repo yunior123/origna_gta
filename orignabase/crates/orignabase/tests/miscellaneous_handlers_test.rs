@@ -8,6 +8,7 @@
 //!
 //! Run with: `cargo test --test miscellaneous_handlers_test -- --ignored`
 
+use ob_database::fields;
 use serde_json::{Value, json};
 use uuid::Uuid;
 
@@ -30,7 +31,7 @@ async fn register_test_user(client: &reqwest::Client) -> (String, String, String
         .as_str()
         .expect("missing access_token")
         .to_string();
-    let user_id = body["user"]["id"] // ignore-magic
+    let user_id = body["user"][fields::ID] // ignore-magic
         .as_str()
         .expect("missing user.id")
         .to_string();
@@ -283,7 +284,7 @@ async fn test_707_product_lifecycle_draft_to_active() {
 
     if status_create == 200 || status_create == 201 {
         // Product was created, now try to transition to active
-        let product_id = body_create.get("id").or(body_create.get("productId")); // ignore-magic
+        let product_id = body_create.get(fields::ID).or(body_create.get("productId")); // ignore-magic
 
         if let Some(id) = product_id.and_then(|v| v.as_str()) {
             let (status_update, _body_update) = make_request(
