@@ -3,7 +3,7 @@
  * =================================================
  * Tests the 3-tier service checkout flow against the Ventures backend API.
  * Tiers: OrignaCode ($500), OrignaLaunch ($3000), OrignaTeam ($1000/mo).
- * No contract signing — serviceCode-based direct Stripe checkout.
+ * Direct Stripe checkout with post-payment DocuSeal contract bundles.
  */
 import { test, expect, describe } from 'bun:test';
 import { chromium, devices, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';
@@ -249,14 +249,33 @@ function serviceMap(services: Array<Record<string, unknown>>) {
   return new Map(services.map((service) => [service.code ?? service.service_code, service]));
 }
 
-async function createCheckoutSession(serviceCode: string, payerEmail?: string) {
-  const body: Record<string, string> = { service_code: serviceCode };
+async function createCheckoutSession(
+  serviceCode: string,
+  payerEmail?: string,
+  developerCount?: number,
+) {
+  const body: Record<string, string | number> = { service_code: serviceCode };
   if (payerEmail) body.payer_email = payerEmail;
+  if (developerCount !== undefined) body.developer_count = developerCount;
   const res = await venturesApiFetch('/payments/create-checkout-session', {
     method: 'POST',
     body: JSON.stringify(body),
   });
   return { status: res.status, body: await res.json().catch(() => null) };
+}
+
+function expectDocuSealBundle(
+  contracts: any,
+  expectedSlugs: string[],
+) {
+  expect(contracts?.provider).toBe('docuseal');
+  expect(contracts?.flow).toBe('post_payment_signature');
+  const templates = contracts?.templates ?? contracts?.templatesByService;
+  const items = Array.isArray(templates) ? templates : [];
+  expect(items.map((item: any) => item.slug)).toEqual(expectedSlugs);
+  for (const item of items) {
+    expect(item.signingUrl).toContain('https://signatures.orignagta.ca/d/');
+  }
 }
 
 async function readVenturesBundle() {
@@ -301,6 +320,26 @@ describe('OrignaVentures — Tier Configuration', () => {
     expect(String(byCode.get('origna_launch')?.summary_en ?? '')).toContain('hosting');
     expect(String(byCode.get('origna_team')?.summary_en ?? '')).toContain('1,000 CAD/month');
     expect(String(byCode.get('origna_team')?.summary_en ?? '')).toContain('Dedicated developer outsourcing');
+  });
+
+  test('Meta exposes DocuSeal bundle mapping for each plan', async () => {
+    const { status, body } = await readMeta();
+    expect(status).toBe(200);
+    expect(body?.contracts?.provider).toBe('docuseal');
+    expect(body?.contracts?.flow).toBe('post_payment_signature');
+    const templatesByService = body?.contracts?.templatesByService ?? {};
+    expectDocuSealBundle(
+      { provider: 'docuseal', flow: 'post_payment_signature', templates: templatesByService.origna_code },
+      ['ventures-master-services-v1', 'origna-code-source-license-v1'],
+    );
+    expectDocuSealBundle(
+      { provider: 'docuseal', flow: 'post_payment_signature', templates: templatesByService.origna_launch },
+      ['ventures-master-services-v1', 'origna-code-source-license-v1', 'origna-launch-statement-of-work-v1'],
+    );
+    expectDocuSealBundle(
+      { provider: 'docuseal', flow: 'post_payment_signature', templates: templatesByService.origna_team },
+      ['ventures-master-services-v1', 'origna-team-retainer-v1'],
+    );
   });
 
   test('Home page no longer mentions old tier names (Essential/Professional/Enterprise)', async () => {
@@ -358,6 +397,12 @@ describe('OrignaVentures — Checkout Session API', () => {
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
       expect(body.sessionId).toBeTruthy();
       expect(body.status).toBe('awaiting_payment');
+      expect(body.serviceCode).toBe(VENTURES_TIERS.ORIGNA_CODE.code);
+      expect(body.developerCount).toBe(1);
+      expectDocuSealBundle(body.contracts, [
+        'ventures-master-services-v1',
+        'origna-code-source-license-v1',
+      ]);
     } else if (status === 429) {
       expect(true).toBe(true);
     } else {
@@ -370,6 +415,12 @@ describe('OrignaVentures — Checkout Session API', () => {
     if (status === 200 && body) {
       expect(body.provider).toBe('stripe');
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
+      expect(body.serviceCode).toBe(VENTURES_TIERS.ORIGNA_LAUNCH.code);
+      expectDocuSealBundle(body.contracts, [
+        'ventures-master-services-v1',
+        'origna-code-source-license-v1',
+        'origna-launch-statement-of-work-v1',
+      ]);
     } else if (status === 429) {
       expect(true).toBe(true);
     } else {
@@ -378,12 +429,18 @@ describe('OrignaVentures — Checkout Session API', () => {
   }, 30_000);
 
   test('OrignaTeam ($1000/mo) creates valid Stripe checkout session', async () => {
-    const { status, body } = await createCheckoutSession(VENTURES_TIERS.ORIGNA_TEAM.code, TEST_EMAIL);
+    const { status, body } = await createCheckoutSession(VENTURES_TIERS.ORIGNA_TEAM.code, TEST_EMAIL, 3);
     if (status === 200 && body) {
       expect(body.provider).toBe('stripe');
       expect(body.checkoutUrl).toContain('checkout.stripe.com');
       expect(body.sessionId).toBeTruthy();
       expect(body.status).toBe('awaiting_payment');
+      expect(body.serviceCode).toBe(VENTURES_TIERS.ORIGNA_TEAM.code);
+      expect(body.developerCount).toBe(3);
+      expectDocuSealBundle(body.contracts, [
+        'ventures-master-services-v1',
+        'origna-team-retainer-v1',
+      ]);
     } else if (status === 429) {
       expect(true).toBe(true);
     } else {
@@ -399,6 +456,8 @@ describe('OrignaVentures — Checkout Session API', () => {
         expect(body.status).toBe('awaiting_payment');
         expect(body.sessionId).toBeTruthy();
         expect(body.checkoutUrl).toContain('checkout.stripe.com');
+        expect(body.serviceCode).toBe(tier.code);
+        expect(body.contracts?.provider).toBe('docuseal');
       } else if (status === 429) {
         expect(true).toBe(true);
       } else {
@@ -547,4 +606,56 @@ describe('OrignaVentures — Live Payment Buttons (Playwright)', () => {
     expect(body?.provider).toBe('stripe');
     expect(body?.checkoutUrl).toContain('checkout.stripe.com');
   }, 30_000);
+
+  test('PW07-button-flow: live pricing buttons post the coordinated checkout payload', async () => {
+    const { browser, context, page } = await openVenturesPage('desktop');
+    const capturedBodies: any[] = [];
+
+    try {
+      await page.route('**/api/payments/create-checkout-session', async (route) => {
+        const request = route.request();
+        capturedBodies.push(JSON.parse(request.postData() ?? '{}'));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            provider: 'stripe',
+            sessionId: `cs_e2e_${capturedBodies.length}`,
+            checkoutUrl: `${VENTURES_WEB_URL}/?e2e_checkout=${capturedBodies.length}`,
+            status: 'awaiting_payment',
+            serviceCode: capturedBodies[capturedBodies.length - 1].service_code,
+            developerCount:
+              capturedBodies[capturedBodies.length - 1].service_code === 'origna_team'
+                ? capturedBodies[capturedBodies.length - 1].developer_count
+                : 1,
+            contracts: {
+              provider: 'docuseal',
+              flow: 'post_payment_signature',
+              templates: [
+                {
+                  slug: 'ventures-master-services-v1',
+                  signingUrl:
+                    'https://signatures.orignagta.ca/d/ventures-master-services-v1',
+                },
+              ],
+            },
+          }),
+        });
+      });
+
+      await goToPricing(page, 'desktop');
+      await page.locator('[aria-label="btn-tier-buy-origna_code"]').first().click();
+      await page.waitForURL(/e2e_checkout=1/, { timeout: 20_000 });
+
+      expect(capturedBodies).toHaveLength(1);
+      expect(capturedBodies[0]).toEqual({
+        service_code: 'origna_code',
+        payment_provider: 'stripe',
+        locale: 'en',
+        developer_count: 1,
+      });
+    } finally {
+      await closeVenturesPage(browser, context);
+    }
+  }, 60_000);
 });

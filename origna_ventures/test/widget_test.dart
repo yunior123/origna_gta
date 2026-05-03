@@ -149,6 +149,21 @@ void main() {
     expect(find.text('\$1,000'), findsOneWidget);
   });
 
+  testWidgets('pricing cards explain post-payment DocuSeal signing',
+      (tester) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await _pumpApp(tester, size: const Size(1440, 1600));
+
+    expect(
+      find.text('DocuSeal agreements are sent after Stripe checkout.'),
+      findsNWidgets(3),
+    );
+  });
+
   testWidgets('team tier supports adjusting developer count up to priced total',
       (tester) async {
     addTearDown(() {
@@ -202,7 +217,7 @@ void main() {
       return true;
     };
 
-    await _pumpApp(tester, size: const Size(1440, 2600));
+    await _pumpApp(tester, size: const Size(1440, 3600));
 
     await tester
         .ensureVisible(find.bySemanticsLabel('btn-tier-buy-origna_code'));

@@ -1844,6 +1844,36 @@ class _TierCardState extends State<_TierCard>
                             ),
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.draw_outlined,
+                              size: 15,
+                              color: isPopular
+                                  ? Colors.white.withValues(alpha: 0.42)
+                                  : ThemeConfig.textMuted,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                loc.tr(
+                                  'DocuSeal agreements are sent after Stripe checkout.',
+                                  'Les accords DocuSeal sont envoyes apres le paiement Stripe.',
+                                  'Los acuerdos DocuSeal se envian despues del pago con Stripe.',
+                                ),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  height: 1.35,
+                                  color: isPopular
+                                      ? Colors.white.withValues(alpha: 0.42)
+                                      : ThemeConfig.textMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         if (t.tierId == TierId.orignaCode) ...[
                           const SizedBox(height: 12),
                           Center(

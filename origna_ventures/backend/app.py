@@ -183,6 +183,13 @@ def contract_signing_url(slug: str) -> str:
     return f"{base_url}/d/{slug}"
 
 
+def contract_templates_for_service(service_code: str) -> List[Dict[str, str]]:
+    return [
+        {"slug": slug, "signingUrl": contract_signing_url(slug)}
+        for slug in contract_bundle_for_service(service_code)
+    ]
+
+
 class PaymentSessionRequest(BaseModel):
     payer_email: Optional[EmailStr] = None
     payment_provider: str = Field(default="stripe", pattern="^(stripe)$")
@@ -1196,10 +1203,7 @@ def health() -> Dict[str, str]:
 @app.get("/api/meta")
 def meta() -> Dict[str, Any]:
     contract_templates = {
-        service_code: [
-            {"slug": slug, "signingUrl": contract_signing_url(slug)}
-            for slug in contract_bundle_for_service(service_code)
-        ]
+        service_code: contract_templates_for_service(service_code)
         for service_code in SERVICE_CATALOG
     }
     return {
@@ -1543,6 +1547,15 @@ def payment_session(payload: PaymentSessionRequest, request: Request) -> Dict[st
         "sessionId": session.get("id"),
         "checkoutUrl": session.get("url"),
         "status": _PAYMENT_STATUS_AWAITING,
+        "serviceCode": service_code,
+        "developerCount": payload.developer_count
+        if service_code == _SERVICE_CODE_ORIGNA_TEAM
+        else 1,
+        "contracts": {
+            "provider": "docuseal",
+            "flow": "post_payment_signature",
+            "templates": contract_templates_for_service(service_code),
+        },
     }
 
 

@@ -2624,4 +2624,18 @@ The following items were verified as done and are no longer reusable as active t
   - `git ls-files -o --exclude-standard` -> clean after ignoring generated `orignabase/target_*/` work directories.
   - `git diff --check` -> passed.
   - Legacy database/email-provider grep excluding build artifacts -> clean.
+120. **Ventures plan checkout flow E2E hardening and deploy on 2026-05-03**:
+- Hardened the OrignaVentures checkout response so every successful plan checkout now returns `serviceCode`, `developerCount`, and the DocuSeal contract bundle (`provider=docuseal`, `flow=post_payment_signature`, and template signing URLs) in addition to the Stripe session URL.
+- Added localized plan-card UX copy clarifying that DocuSeal agreements are sent after Stripe checkout, so the three-card flow stays direct while setting the right buyer expectation.
+- Expanded backend, Flutter widget, and live E2E coverage for the coordinated plan flow:
+  - backend tests assert checkout metadata and response contract bundles for OrignaCode, OrignaLaunch, and OrignaTeam.
+  - Flutter widget tests assert the post-payment DocuSeal signing note and service-code/developer-count checkout payloads.
+  - live E2E now validates `/api/meta` DocuSeal templates per service, checkout response contract fields, mobile pricing checkout, live Stripe tax page behavior, and a real browser click on the live Flutter pricing button with network interception to prove the card posts `{service_code, payment_provider, locale, developer_count}`.
+- Deployed OrignaVentures frontend and backend to the VPS after the patch.
+- Verification:
+  - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py` -> passed, 37 tests.
+  - `cd origna_ventures && flutter analyze --no-fatal-infos && flutter test` -> passed, 15 tests.
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd origna_ventures && ./deploy.sh` -> passed; frontend build/deploy, backend rebuild, healthcheck, Caddy reload, and live scroll/contact smoke passed.
+  - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed, 32 tests, 1 intentionally skipped live email-send test.
   - `git diff --check` -> passed.

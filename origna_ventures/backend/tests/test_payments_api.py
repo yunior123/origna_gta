@@ -296,11 +296,28 @@ def test_payment_session_persists_payment_row(client, monkeypatch):
     )
 
     assert response.status_code == 200
-    assert response.json() == {
+    body = response.json()
+    assert body == {
         "provider": "stripe",
         "sessionId": "cs_test_123",
         "checkoutUrl": "https://checkout/session/test",
         "status": "awaiting_payment",
+        "serviceCode": "origna_team",
+        "developerCount": 1,
+        "contracts": {
+            "provider": "docuseal",
+            "flow": "post_payment_signature",
+            "templates": [
+                {
+                    "slug": "ventures-master-services-v1",
+                    "signingUrl": "https://signatures.orignagta.ca/d/ventures-master-services-v1",
+                },
+                {
+                    "slug": "origna-team-retainer-v1",
+                    "signingUrl": "https://signatures.orignagta.ca/d/origna-team-retainer-v1",
+                },
+            ],
+        },
     }
 
     conn = sqlite3.connect(db_path)
@@ -343,6 +360,14 @@ def test_payment_session_persists_origna_team_developer_count(client, monkeypatc
     )
 
     assert response.status_code == 200
+    body = response.json()
+    assert body["serviceCode"] == "origna_team"
+    assert body["developerCount"] == 4
+    assert body["contracts"]["provider"] == "docuseal"
+    assert [item["slug"] for item in body["contracts"]["templates"]] == [
+        "ventures-master-services-v1",
+        "origna-team-retainer-v1",
+    ]
 
     conn = sqlite3.connect(db_path)
     row = conn.execute(

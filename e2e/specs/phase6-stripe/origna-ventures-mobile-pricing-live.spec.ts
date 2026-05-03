@@ -32,4 +32,13 @@ test('launch tier checkout contract returns Stripe URL', async () => {
   expect(body?.provider).toBe('stripe');
   expect(body?.checkoutUrl).toContain('checkout.stripe.com');
   expect(body?.sessionId).toBeTruthy();
+  expect(body?.serviceCode).toBe('origna_launch');
+  expect(body?.developerCount).toBe(1);
+  expect(body?.contracts?.provider).toBe('docuseal');
+  expect(body?.contracts?.flow).toBe('post_payment_signature');
+  expect(body?.contracts?.templates?.map((item: any) => item.slug)).toEqual([
+    'ventures-master-services-v1',
+    'origna-code-source-license-v1',
+    'origna-launch-statement-of-work-v1',
+  ]);
 });
