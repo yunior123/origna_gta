@@ -32,7 +32,7 @@
       "step_1": "1. Créer un compte {name}",
       "step_2": "2. Obtenir vos clés API sur le tableau de bord {name}",
       "step_3": "3. Ajouter les clés aux variables d'environnement",
-      "step_4": "4. Redéployer les Cloud Functions",
+      "step_4": "4. Redéployer les services OrignaBase",
       "enable_title": "Activer {name} ?",
       "disable_title": "Désactiver {name} ?",
       "enable_desc": "Cela autorisera de nouveaux paiements via {name}.",

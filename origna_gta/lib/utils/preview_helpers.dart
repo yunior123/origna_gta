@@ -43,7 +43,7 @@ final ThemeData previewLightTheme = ThemeData.light().copyWith(
 );
 
 // ============================================================================
-// FIREBASE-SAFE PROVIDER SCOPE
+// SELF-HOSTED BACKEND-SAFE PROVIDER SCOPE
 // ============================================================================
 
 /// Central ProviderScope for previews — overrides backend-dependent

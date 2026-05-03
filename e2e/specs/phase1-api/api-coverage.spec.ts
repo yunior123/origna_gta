@@ -1,7 +1,7 @@
 /**
  * OrignaGTA — Comprehensive API Coverage E2E Tests
  * =================================================
- * Tests ALL callable Cloud Functions that were previously uncovered.
+ * Tests API compatibility endpoints that were previously uncovered.
  * Headless API tests (no browser needed) — verifies DB state after mutations.
  *
  * Coverage: 65 previously-uncovered callable functions across 14 domains.

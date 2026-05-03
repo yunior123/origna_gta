@@ -10,7 +10,7 @@ Date: 2026-03-03
 
 ### Wave A1 — Crashes & Navigation
 1. Remove `categories_screen.dart` + route `/categories` — screen is redundant; home chips cover it.
-2. Fix Firebase exception in chat screen — wrap Firestore stream with error handler / null guard.
+2. Fix chat stream backend exception — wrap the backend stream with an error handler / null guard.
 3. PasskeyAuthenticator stub already fixed (full 7-method stub in web/index.html + start-preview.sh).
 
 ### Wave A2 — Overflow Fixes

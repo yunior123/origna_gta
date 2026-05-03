@@ -1675,7 +1675,7 @@
       "step_1": "1. Create a {name} account",
       "step_2": "2. Get your API keys from the {name} dashboard",
       "step_3": "3. Add the keys to environment variables",
-      "step_4": "4. Redeploy the Cloud Functions",
+      "step_4": "4. Redesplegar los servicios OrignaBase",
       "enable_title": "Enable {name}?",
       "disable_title": "Disable {name}?",
       "enable_desc": "This will allow new payments through {name}.",

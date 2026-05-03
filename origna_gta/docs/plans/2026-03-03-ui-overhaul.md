@@ -108,22 +108,19 @@ git commit -m "fix: category chips horizontal scroll on all breakpoints"
 
 ---
 
-### Task A3: Fix Firebase Exception in Chat Screen
+### Task A3: Fix Chat Stream Backend Exception
 
 **File:** `lib/screens/chat_screen.dart`
 
 **Step 1: Read the stream/catch blocks** — lines 64, 146, 225
 
-Wrap the Firestore stream with `handleError` to catch `FirebaseException` and emit an empty list / error state instead of crashing:
+Wrap the backend chat stream with `handleError` to log the failure and keep the chat screen on the last good state instead of crashing:
 
 ```dart
 // In the StreamProvider or StreamBuilder, add:
 .handleError((e) {
-  if (e is FirebaseException) {
-    AppError.log(e, hint: 'chat_stream');
-    return; // emit nothing — StreamBuilder shows last good state
-  }
-  throw e;
+  AppError.log(e, hint: 'chat_stream');
+  return; // emit nothing; StreamBuilder shows last good state
 })
 ```
 
@@ -141,7 +138,7 @@ flutter analyze --no-fatal-infos 2>&1 | tail -3
 
 **Step 3: Commit**
 ```bash
-git commit -m "fix: handle FirebaseException in chat stream without crash"
+git commit -m "fix: handle chat stream backend errors without crash"
 ```
 
 ---

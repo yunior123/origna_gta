@@ -440,7 +440,7 @@ describe('7. Race Condition — Last Item in Stock', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 8. FIRESTORE DIRECT WRITE PREVENTION (Client cannot bypass Cloud Functions)
+// 8. ORIGNABASE DIRECT WRITE PREVENTION (Client cannot bypass API rules)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('8. Direct Write Prevention', () => {
   // timeout: 60_000

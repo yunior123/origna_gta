@@ -2639,3 +2639,16 @@ The following items were verified as done and are no longer reusable as active t
   - `cd origna_ventures && ./deploy.sh` -> passed; frontend build/deploy, backend rebuild, healthcheck, Caddy reload, and live scroll/contact smoke passed.
   - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed, 32 tests, 1 intentionally skipped live email-send test.
   - `git diff --check` -> passed.
+
+121. **Legacy architecture reference audit completed on 2026-05-03**:
+- Removed stale Cloud Functions/Firebase/Firestore wording from active admin copy, Ventures deployment notes, E2E comments, project metadata comments, and March UI plan docs where the current implementation is OrignaBase/FastAPI-backed.
+- Kept intentional compatibility references where they describe real current behavior, including FCM push delivery and the `sentry_dns` remote-config alias retained for old rows.
+- Verification:
+  - Focused stale-reference grep across edited areas -> clean.
+  - `git diff --check` -> passed.
+  - `git ls-files -o --exclude-standard` -> clean.
+  - `cd origna_gta && flutter analyze --no-fatal-infos && flutter test test/unit/localization_check_test.dart --reporter=compact` -> passed, 4 localization tests.
+  - `cd origna_ventures && flutter analyze --no-fatal-infos && flutter test` -> passed, 15 tests.
+  - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py` -> passed, 37 tests.
+  - `cd e2e && bun x tsc --noEmit && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-live.spec.ts specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts` -> passed, 34 tests, 1 intentionally skipped live email-send test.
+  - `cd orignabase && cargo fmt --all -- --check && cargo clippy -p ob-handlers -- -D warnings && cargo test -p ob-handlers` -> passed, including 1,808 unit tests, 36 proptests, and 66 snapshot tests.

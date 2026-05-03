@@ -357,7 +357,7 @@ Unhealthy containers are automatically restarted by Docker.
 - Flutter sends events through the Sentry-compatible SDK to the configured GlitchTip DSN.
 - Errors are tagged with environment (dev/staging/production).
 - Critical errors trigger alerts.
-- The app reads `glitchtip_dsn` from OrignaBase remote config, with a temporary fallback to legacy `sentry_dns`.
+- The app reads `glitchtip_dsn` from OrignaBase remote config, with `sentry_dns` retained only as a compatibility alias for old remote-config rows.
 
 ### GlitchTip Deployment
 
