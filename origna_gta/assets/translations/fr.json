@@ -965,7 +965,7 @@
     "delivery_local_business_days_exact": "Livraison estimée en {days} jour(s) ouvrable(s) (local)",
     "delivery_local_business_days": "{min}–{max} jours ouvrables (local)",
     "delivery_within_weeks_or_longer": "Livraison sous 4–8 semaines ou plus",
-    "delivery_to_canada_cuba": "Livraison au Canada et à Cuba",
+    "delivery_to_canada": "Livraison au Canada",
     "delivery_unknown_origin": "Inconnu",
     "low_stock_alert_subtitle": "Vous serez notifié lorsque ce produit sera de nouveau disponible.",
     "low_stock_threshold": "Stock bas — seulement {count} restant(s)",
@@ -1839,13 +1839,7 @@
     "set_as_default": "Définir par défaut",
     "count_subtitle": "{count} adresse(s) sur {max} enregistrée(s)",
     "pickup_only": "Retrait uniquement",
-    "maritime_shipping": "Transport maritime",
-    "cuba_maritime_notice": "L'expédition à Cuba se fait par fret maritime (21-45 jours ouvrables). Tarifs basés sur le poids.",
-    "postal_code_cuba": "Code postal cubain (5 chiffres)",
-    "valid_postal_cuba": "Entrez un code postal cubain valide (5 chiffres)",
-    "valid_phone_cuba": "Entrez un numéro de téléphone cubain valide (préfixe +53)",
     "valid_address_from_suggestions": "Veuillez sélectionner une adresse valide dans les suggestions",
-    "cuba_havana_only": "L'expédition maritime vers Cuba dessert actuellement uniquement La Havane. Veuillez indiquer La Havane comme ville.",
     "save_failed": "Échec de l'enregistrement de l'adresse"
   },
   "legal": {

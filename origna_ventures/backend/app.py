@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 import logging
 import requests
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("origna_ventures")
 logging.basicConfig(
@@ -998,6 +999,8 @@ _TRUSTED_PROXY_COUNT = int(
 )
 _MAX_USER_AGENT_LENGTH = 512
 _STRIPE_SIGNATURE_TOLERANCE_SECONDS = 300
+_MAX_REQUEST_CONTENT_LENGTH_BYTES = 1_000_000
+_MAX_STRIPE_WEBHOOK_BYTES = 256_000
 _RATE_LIMITS: Dict[str, List[float]] = {}
 _rate_limit_counter = 0
 
@@ -1017,6 +1020,25 @@ def require_admin_key(request: Request) -> None:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+@app.middleware("http")
+async def reject_oversized_requests(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            parsed_length = int(content_length)
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid Content-Length"},
+            )
+        if parsed_length > _MAX_REQUEST_CONTENT_LENGTH_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "Request body too large"},
+            )
+    return await call_next(request)
 
 
 def db() -> sqlite3.Connection:
@@ -1599,6 +1621,8 @@ def verify_stripe_signature(payload: bytes, header: str) -> bool:
 @app.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request) -> Dict[str, Any]:
     payload = await request.body()
+    if len(payload) > _MAX_STRIPE_WEBHOOK_BYTES:
+        raise HTTPException(status_code=413, detail="Webhook payload too large")
     sig_header = request.headers.get("stripe-signature", "")
     if not verify_stripe_signature(payload, sig_header):
         raise HTTPException(status_code=400, detail="Invalid Stripe signature")
@@ -1607,8 +1631,12 @@ async def stripe_webhook(request: Request) -> Dict[str, Any]:
         event = json.loads(payload.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
-    event_id = event.get("id", secrets.token_hex(8))
-    event_type = event.get("type", "")
+    event_id = event.get("id")
+    event_type = event.get("type")
+    if not isinstance(event_id, str) or not event_id:
+        raise HTTPException(status_code=400, detail="Invalid Stripe event id")
+    if not isinstance(event_type, str) or not event_type:
+        raise HTTPException(status_code=400, detail="Invalid Stripe event type")
 
     pending_emails: list[Dict[str, Any]] = []
 

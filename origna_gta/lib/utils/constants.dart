@@ -104,8 +104,7 @@ enum DeliverySpeed {
     'International Express',
     '7-15 business days',
     1999,
-  ),
-  maritime('maritime', 'Maritime Shipping', '21-45 business days', 0);
+  );
 
   final String value;
   final String displayName;
@@ -142,8 +141,6 @@ enum DeliverySpeed {
         return now.add(const Duration(days: 30));
       case DeliverySpeed.internationalExpress:
         return now.add(const Duration(days: 15));
-      case DeliverySpeed.maritime:
-        return now.add(const Duration(days: 45)); // 21-45 days, show max
     }
   }
 
@@ -177,9 +174,6 @@ enum DeliverySpeed {
       case DeliverySpeed.internationalExpress:
         // International speeds only available if cart contains international items
         return hasInternational;
-      case DeliverySpeed.maritime:
-        // Maritime available for Cuba-bound shipments
-        return true;
     }
   }
 

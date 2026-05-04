@@ -29,6 +29,5 @@ Notes
   especially `checkout.seller_integration.*`, `product.*`, and `admin.*`.
 - The address flow is no longer part of the hardcoded-English gap:
   - `address.valid_address_from_suggestions`
-  - `address.cuba_havana_only`
   - `address.save_failed`
   now exist in `en/fr/es` and are translated at the screen boundary.

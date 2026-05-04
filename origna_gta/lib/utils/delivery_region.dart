@@ -3,7 +3,6 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 
 enum DeliveryRegion {
   canada,
-  cuba,
   international;
 
   static DeliveryRegion fromCountry(String? country) {
@@ -15,15 +14,10 @@ enum DeliveryRegion {
         lower == CountryValues.canadaCode.toLowerCase()) {
       return DeliveryRegion.canada;
     }
-    if (lower == CountryValues.cuba.toLowerCase() ||
-        lower == CountryValues.cubaCode.toLowerCase()) {
-      return DeliveryRegion.cuba;
-    }
     return DeliveryRegion.international;
   }
 
-  bool get isDomestic =>
-      this == DeliveryRegion.canada || this == DeliveryRegion.cuba;
+  bool get isDomestic => this == DeliveryRegion.canada;
 
   bool get isInternational => this == DeliveryRegion.international;
 
@@ -31,8 +25,6 @@ enum DeliveryRegion {
     switch (this) {
       case DeliveryRegion.canada:
         return '🇨🇦';
-      case DeliveryRegion.cuba:
-        return '🇨🇺';
       case DeliveryRegion.international:
         return '🌍';
     }
@@ -40,7 +32,7 @@ enum DeliveryRegion {
 
   String localizedLabel() {
     if (isDomestic) {
-      return 'product.delivery_to_canada_cuba'.tr();
+      return 'product.delivery_to_canada'.tr();
     }
     return 'orders.ships_international'.tr();
   }

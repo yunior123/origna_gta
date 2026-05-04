@@ -309,60 +309,11 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                 value: CountryValues.canada,
                                 child: Text(CountryValues.canada),
                               ),
-                              DropdownMenuItem(
-                                value: CountryValues.cuba,
-                                child: Text(
-                                  '${CountryValues.cuba} (${CountryValues.cubaCode}) — ${'address.maritime_shipping'.tr()}',
-                                ),
-                              ),
                             ],
                             onChanged: (v) {
                               if (v != null) viewModel.setCountry(v);
                             },
                           ),
-                          if (state.selectedCountry == CountryValues.cuba)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                top: DesignTokens.spacing8,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(
-                                  DesignTokens.spacing12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: DesignTokens.tertiary.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                    DesignTokens.radius8,
-                                  ),
-                                  border: Border.all(
-                                    color: DesignTokens.tertiary.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      size: 16,
-                                      color: DesignTokens.tertiary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'address.cuba_maritime_notice'.tr(),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: DesignTokens.tertiary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
                           const SizedBox(height: DesignTokens.spacing16),
                           DropdownButtonFormField<String>(
                             key: ValueKey(state.selectedProvince),
@@ -414,58 +365,36 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                                   ? DesignTokens.darkSurface
                                   : DesignTokens.white,
                             ),
-                            items:
-                                (state.selectedCountry == CountryValues.cuba
-                                        ? ProvinceCodeValues.cubaProvinces
-                                        : ProvinceCodeValues.all
-                                              .where(
-                                                (p) =>
-                                                    p !=
-                                                    ProvinceCodeValues.havana,
-                                              )
-                                              .toList())
-                                    .map(
-                                      (code) => DropdownMenuItem(
-                                        value: code,
-                                        child: Text(
-                                          '${ProvinceCodeValues.names[code]} ($code)',
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
+                            items: ProvinceCodeValues.all
+                                .map(
+                                  (code) => DropdownMenuItem(
+                                    value: code,
+                                    child: Text(
+                                      '${ProvinceCodeValues.names[code]} ($code)',
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                             onChanged: (v) => viewModel.setProvince(v!),
                           ),
                           const SizedBox(height: DesignTokens.spacing16),
                           _buildTextField(
                             key: const Key('address_postal_code_field'),
                             controller: _postalCodeController,
-                            label: state.selectedCountry == CountryValues.cuba
-                                ? 'address.postal_code_cuba'.tr()
-                                : 'address.postal_code'.tr(),
+                            label: 'address.postal_code'.tr(),
                             icon: Icons.markunread_mailbox_outlined,
                             textCapitalization: TextCapitalization.characters,
                             validator: (v) {
                               if (v == null || v.isEmpty) {
                                 return 'common.required'.tr();
                               }
-                              final isCuba =
-                                  state.selectedCountry == CountryValues.cuba;
-                              if (!isCuba) {
-                                final cleaned = v
-                                    .replaceAll(' ', '')
-                                    .toUpperCase();
-                                if (!RegExp(
-                                  r'^[A-Z]\d[A-Z]\d[A-Z]\d$',
-                                ).hasMatch(cleaned)) {
-                                  return 'address.valid_postal'.tr();
-                                }
-                              } else {
-                                final cleaned = v
-                                    .replaceAll(' ', '')
-                                    .toUpperCase();
-                                if (!RegExp(r'^\d{5}$').hasMatch(cleaned)) {
-                                  return 'address.valid_postal_cuba'.tr();
-                                }
+                              final cleaned = v
+                                  .replaceAll(' ', '')
+                                  .toUpperCase();
+                              if (!RegExp(
+                                r'^[A-Z]\d[A-Z]\d[A-Z]\d$',
+                              ).hasMatch(cleaned)) {
+                                return 'address.valid_postal'.tr();
                               }
                               return null;
                             },
@@ -481,25 +410,15 @@ class _AddEditAddressScreenState extends ConsumerState<AddEditAddressScreen> {
                               if (v == null || v.isEmpty) {
                                 return 'common.required'.tr();
                               }
-                              final isCuba =
-                                  state.selectedCountry == CountryValues.cuba;
                               final e164 = RegExp(r'^\+[1-9]\d{1,14}$');
                               final trimmed = v.trim();
                               if (!e164.hasMatch(trimmed)) {
                                 return 'address.valid_phone'.tr();
                               }
-                              if (!isCuba) {
-                                final canadian = RegExp(r'^\+1\d{10}$');
-                                if (trimmed.startsWith('+1') &&
-                                    !canadian.hasMatch(trimmed)) {
-                                  return 'address.valid_phone'.tr();
-                                }
-                              } else {
-                                final cuban = RegExp(r'^\+53\d{8}$');
-                                if (trimmed.startsWith('+53') &&
-                                    !cuban.hasMatch(trimmed)) {
-                                  return 'address.valid_phone_cuba'.tr();
-                                }
+                              final canadian = RegExp(r'^\+1\d{10}$');
+                              if (trimmed.startsWith('+1') &&
+                                  !canadian.hasMatch(trimmed)) {
+                                return 'address.valid_phone'.tr();
                               }
                               return null;
                             },

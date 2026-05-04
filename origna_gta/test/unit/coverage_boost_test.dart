@@ -600,8 +600,8 @@ void main() {
   // provinceTaxRates and getTaxRate
   // ==========================================================================
   group('provinceTaxRates', () {
-    test('all 29 provinces present (13 Canada + 16 Cuba)', () {
-      expect(provinceTaxRates.length, 29);
+    test('all Canadian provinces and territories present', () {
+      expect(provinceTaxRates.length, 13);
     });
 
     test('Ontario HST is 13%', () {

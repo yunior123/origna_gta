@@ -965,7 +965,7 @@
     "delivery_local_business_days_exact": "Estimated in {days} business day(s) (local)",
     "delivery_local_business_days": "{min}–{max} business days (local)",
     "delivery_within_weeks_or_longer": "Delivery within 4–8 weeks or longer",
-    "delivery_to_canada_cuba": "Delivery to Canada & Cuba",
+    "delivery_to_canada": "Delivery to Canada",
     "delivery_unknown_origin": "Unknown",
     "low_stock_alert_subtitle": "You will be notified when this product is back in stock.",
     "low_stock_threshold": "Low stock — only {count} left",
@@ -1839,13 +1839,7 @@
     "set_as_default": "Set as Default",
     "count_subtitle": "{count} of {max} addresses saved",
     "pickup_only": "Pickup only",
-    "maritime_shipping": "Maritime shipping",
-    "cuba_maritime_notice": "Shipping to Cuba is via maritime freight (21-45 business days). Weight-based rates apply.",
-    "postal_code_cuba": "Cuban postal code (5 digits)",
-    "valid_postal_cuba": "Enter a valid Cuban postal code (5 digits)",
-    "valid_phone_cuba": "Enter a valid Cuban phone number (+53 prefix)",
     "valid_address_from_suggestions": "Please select a valid address from the suggestions",
-    "cuba_havana_only": "Maritime shipping to Cuba currently serves Havana only. Please enter Havana as your city.",
     "save_failed": "Failed to save address"
   },
   "legal": {

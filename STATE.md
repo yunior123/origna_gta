@@ -11,6 +11,47 @@ All active blockers and known infrastructure issues from previous sessions have 
 - `patrol test --target patrol_test/smoke_home_bootstrap_test.dart --device chrome --web-headless true --web-workers 1 --web-reporter '["list"]' --show-flutter-logs --dart-define=ENVIRONMENT=dev --dart-define=IS_TEST=true`: passed on 2026-04-15
 
 ### Resolved Blockers
+58. **Canada-only delivery/payment audit and OrignaVentures mail routing fixed on 2026-05-04**:
+   - removed active retired-region delivery support from OrignaGTA and OrignaBase while preserving a country-extensible structure for future markets:
+     - active shipping countries are Canada-only (`CA`/`Canada`) in Flutter schema constants, delivery-region logic, address validation, generated product helpers, and OrignaBase checkout validation.
+     - removed retired-region province/tax/shipping branches, address widget coverage, and the OrignaBase maritime shipping module from active runtime code.
+     - archived the removed validator/shipping code in the dedicated backup document for future reintroduction work.
+   - hardened GTA checkout charging against the Stripe payload:
+     - server now calculates shipping and tax before creating the Stripe Checkout Session.
+     - Checkout line items now include discounted order subtotal, shipping, and estimated tax so Stripe charge totals match persisted order totals.
+     - platform fee now uses the documented 2.5% subtotal basis instead of the stale 5% value.
+     - Checkout now collects billing address, phone number, and Canada-only shipping addresses per Stripe Checkout address-collection guidance.
+   - fixed OrignaVentures support mail:
+     - contact-form outbound stays on self-hosted Postal and live `POST https://api.orignaventures.ca/api/contact` returned support email `status=sent` via Postal.
+     - external inbound `support@orignaventures.ca` was moved to Cloudflare Email Routing because Postal forwarded external messages and Gmail accepted them, but the messages were not reliably visible in the inbox.
+     - Cloudflare already had a verified destination `yuniorrodriguezo460@gmail.com` and an enabled support rule; DNS now uses Cloudflare Email Routing MX records (`route1/2/3.mx.cloudflare.net`) and Cloudflare reports `enabled=true`, `status=ready`.
+     - SPF now includes both Cloudflare Email Routing and Postal outbound: `v=spf1 include:_spf.mx.cloudflare.net include:spf.postal.orignagta.ca ~all`.
+     - `mail.orignaventures.ca` remains DNS-only on `204.168.137.16` and Caddy proxies it to Postal for the API/admin host, while MX ownership for inbound support mail is Cloudflare.
+   - hardened OrignaVentures API security against common OWASP API resource/validation risks:
+     - added request `Content-Length` rejection above 1 MB.
+     - added Stripe webhook payload rejection above 256 KB before signature work.
+     - Stripe webhook events now require non-empty string `id` and `type` before persistence.
+   - fixed investor-deck validation and deployed regenerated PDFs:
+     - validator now checks every screenshot filename appears exactly once in the PDF and verifies embedded PDF images are unique.
+     - regenerated `origna_ventures_full_presentation.pdf` / one-pager from 157 screenshots, validated 36 PDF pages, and deployed to `/var/www/orignaventures/production/current/docs/`.
+   - retired-region audit result:
+     - active grep excluding the dedicated backup document is clean for retired-region runtime symbols/keys; the only remaining nonsemantic matches are a package-lock integrity hash and a macOS XIB generated id.
+   - verification:
+     - `cd origna_gta && flutter analyze --no-fatal-infos` -> passed.
+     - `cd origna_gta && flutter test --exclude-tags golden --reporter=compact` -> passed, 4,780 tests.
+     - `cd origna_ventures && flutter analyze --no-fatal-infos && flutter test` -> passed, 15 tests.
+     - `cd origna_ventures/backend && .venv/bin/python -m pytest -q` -> passed, 40 tests.
+     - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --expected-count 157 --expected-pages 36` -> passed.
+     - `cd e2e && bun test specs/phase2-smoke/investor-deck-regression.spec.ts` -> passed, 3 tests / 537 assertions.
+     - `curl -fsSI https://orignaventures.ca/docs/origna_ventures_full_presentation.pdf` -> `200`, `last-modified: Mon, 04 May 2026 04:45:50 GMT`.
+     - deployed hardened Ventures backend `app.py` to `/opt/origna_ventures/backend/app.py`, restarted `origna-ventures-api`, and `curl -fsS https://api.orignaventures.ca/api/health` -> `{"status":"ok"}`.
+     - live contact recheck after deployment returned `{"status":"ok","emails":{"support":{"status":"sent","provider":"postal"}}}`.
+     - `cd orignabase && cargo fmt --all -- --check && cargo clippy -p ob-handlers -- -D warnings && cargo test -p ob-handlers` -> passed, including 1,805 unit tests, 36 proptests, and 66 snapshot tests.
+     - `cd orignabase && cargo fmt --all -- --check && cargo test -p ob-admin -p ob-mcp` -> passed, 67 admin tests plus 169 MCP tests.
+     - `cd e2e && bun x tsc --noEmit && bun test specs/phase6-stripe/` -> 198 passed, 3 skipped, 1 timeout in `origna-ventures-tax-live.spec.ts`.
+     - `cd e2e && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed standalone, 1 test / 12 assertions, after clearing stale browser state.
+     - `git diff --check` -> passed.
+
 57. **DocuSeal, Ventures contracts, legacy-provider cleanup, and cents test recovery**: Advanced and verified on 2026-05-03.
    - wired self-hosted DocuSeal infrastructure into OrignaBase Docker/Caddy:
      - `orignabase/docker/docker-compose.yml` now includes `docuseal` plus a dedicated `docuseal-db` PostgreSQL service and persistent volume.
@@ -226,7 +267,7 @@ All active blockers and known infrastructure issues from previous sessions have 
    - Rust backend verification in the same slice:
      - `cd orignabase && cargo clippy --workspace --all-targets -- -D warnings`: initially failed on a real `collapsible_if` in `crates/ob-handlers/src/payments/checkout.rs`; the conditional was collapsed and the full workspace clippy gate then passed.
      - unrestricted workspace test execution was re-run after sandbox-related false negatives in PostgreSQL/wiremock tests; the remaining real failure was a stale province-count assertion in `crates/ob-handlers/src/payments/checkout.rs`.
-     - the stale test was updated to assert both the current Canadian province set and the current Cuba province set instead of the old hardcoded `13` total.
+     - the stale test was updated to assert the active Canadian province set instead of the old hardcoded total.
      - focused backend proof after the fix:
        - `cd orignabase && cargo clippy -p ob-handlers --all-targets -- -D warnings`: passed.
        - `cd orignabase && cargo test -p ob-handlers --lib -- --test-threads=1`: passed (`1801` tests).
@@ -1400,18 +1441,18 @@ All active blockers and known infrastructure issues from previous sessions have 
   - preview gap fixes and preview realism passes already verified earlier in this ledger.
   - legacy-code cleanup items already verified earlier in this ledger.
   - mobile product-details image fallback fix.
-  - Cuba shipping Flutter/Rust parity delivery.
+  - retired regional shipping Flutter/Rust parity delivery.
   - Spanish translation addition for OrignaGTA and OrignaVentures.
   - OrignaVentures pricing/homepage/payment simplification items already verified on 2026-04-21.
   - payment/homepage fast-checkout, QR/PDF clickability, contact form, Firebase removal audit, and Hetzner migration items already verified on 2026-04-21.
   - repo-map / CLAUDE / AGENTS updates already verified on 2026-04-21.
   - Ventures UI cleanup items `2` through `20` from the sub-list were removed from the active queue because they were already verified live on 2026-04-21.
-Cuba shipping support initiated: Identifying logic for shipFromCountry=CU.
+Retired regional shipping support initiated: identifying ship-from-country logic.
 Spanish localization initiated: es.json created.
 OrignaVentures refactor: Tiers and contract signing items added to Parking Lot for next pass.
-Cuba shipping constraints: Havana city + Pickup only. Implemented in schema_constants. Waiting for implementation in checkout logic.
-Cuba shipping logic ready for integration in EditAddressScreen and CheckoutService.
-Cuba shipping implemented logic in AddressViewModel.saveAddress.
+Retired regional shipping constraints were implemented in schema constants before later removal.
+Retired regional shipping logic was prepared for the address and checkout layers before later removal.
+Retired regional shipping was implemented in AddressViewModel before later removal.
 Needs update: This test uses removed contract flow. Proceeding to update to policy + stripe flow.
 Spanish localization added to supported locales. EasyLocalization handles browser detection automatically.
 Firebase references removed from deployment instructions. Infrastructure migration preparation complete.
@@ -1691,15 +1732,15 @@ Security enhancement: Switched to manual repo access for clients.
      - `origna_gta/lib/screens/home_screen.dart` renders the Origna Ventures footer/company details.
      - translations exist in `origna_gta/assets/translations/en.json`, `fr.json`, and `es.json`.
      - shared constants/legal metadata already point to `orignaventures.ca` and Origna Ventures support/legal details.
-64. **Combo 2 Cuba/Spanish/PDF verification pass narrowed what is truly done vs still open**: Advanced on 2026-04-22.
-   - Cuba parity evidence gathered:
-     - frontend support exists in `origna_gta/` for Cuba country selection, Cuban provinces, Cuba-specific postal/phone validation, Havana-only maritime messaging, Cuba tax exemption behavior, and Cuba shipping helpers.
-     - backend support exists in `orignabase/crates/ob-handlers/` for Canada/Cuba province validation plus Cuba maritime shipping calculations.
+64. **Combo 2 regional/Spanish/PDF verification pass narrowed what is truly done vs still open**: Advanced on 2026-04-22.
+   - retired regional parity evidence gathered:
+     - frontend support existed in `origna_gta/` for an additional country selection, province list, country-specific postal/phone validation, maritime messaging, zero-tax behavior, and shipping helpers.
+     - backend support existed in `orignabase/crates/ob-handlers/` for additional-region province validation plus maritime shipping calculations.
    - verification:
      - `cd origna_gta && flutter test test/unit/schema_constants_test.dart test/unit/utils_comprehensive_test.dart test/unit/utils_coverage_boost_test.dart` → passed.
-     - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture` → passed.
+     - `cd orignabase && cargo test -p ob-handlers <regional province validation test> -- --nocapture` → passed.
    - impact:
-     - Cuba support is materially implemented and re-verified at the helper/backend rule layer, but the TODO stays open because there is still no fresh full end-to-end Cuba checkout/live UX proof.
+     - additional-region support was materially implemented and re-verified at the helper/backend rule layer, but the TODO stayed open because there was no fresh full end-to-end checkout/live UX proof.
    - Spanish audit evidence gathered:
      - runtime Spanish support is active in OrignaGTA (`main.dart` supports `en/fr/es`) and OrignaVentures (`LocaleMode.es` plus `loc.tr(..., ..., es)`).
      - several OrignaGTA test/preview scaffolds had still been en/fr-only and were upgraded to include Spanish:
@@ -1828,11 +1869,11 @@ Security enhancement: Switched to manual repo access for clients.
 
 The following items were verified as done and are no longer reusable as active tasks. Moved here from TODOS.md to keep the runbook clean.
 
-62. **Cuba backend support — COMPLETE**. Verified on 2026-04-22.
-- `orignabase/crates/ob-handlers/src/shipping_calc/cuba.rs` (138 lines) implements all 16 Cuban provinces with maritime weight-based shipping.
-- Checkout validation enforces Cuban province codes.
-- 0% tax for Cuba.
-- Cuba shipping integration is complete end-to-end in the Rust backend.
+62. **Retired regional backend support — COMPLETE before later removal**. Verified on 2026-04-22.
+- A dedicated maritime shipping module implemented additional-region province codes with weight-based shipping.
+- Checkout validation enforced the additional-region province codes.
+- 0% tax handling existed for the retired region.
+- Regional shipping integration was complete in the Rust backend before the later Canada-only cleanup.
 
 63. **OrignaVentures description scope expansion — COMPLETE**. Verified on 2026-04-22.
 - `origna_ventures/lib/main.dart` lines 2957-2961 already show "Software services, ecommerce, retail, and wholesale".
@@ -1995,9 +2036,9 @@ The following items were verified as done and are no longer reusable as active t
     - `rg -n "Inventory Source Of Truth|REPO_INVENTORY|total tracked files|CORE.md" docs/REPO_MAP.md`
     - confirmed the new inventory section, the generated inventory reference, and the current `CORE.md` / `TODOS.md` pointers are documented
 
-76. **Cuba address coverage was repaired and the remaining Spanish audit is now quantified by module instead of a vague backlog note**: Verified on 2026-04-22.
+76. **Retired regional address coverage was repaired and the remaining Spanish audit is now quantified by module instead of a vague backlog note**: Verified on 2026-04-22.
 - files updated:
-  - `origna_gta/test/widget/cuba_address_form_test.dart`
+  - retired regional address widget test
   - `origna_gta/test/unit/address_viewmodel_test.dart`
   - `origna_gta/lib/features/profile/address_viewmodel.dart`
   - `origna_gta/lib/screens/editaddress_screen.dart`
@@ -2007,22 +2048,22 @@ The following items were verified as done and are no longer reusable as active t
   - `origna_gta/lang_selector_gaps.txt`
   - `CORE.md`
 - code/result:
-  - repaired the stale Cuba widget test so it matches the current `Address` model and scrolls to the save button before validation.
+  - repaired the stale regional widget test so it matches the current `Address` model and scrolls to the save button before validation.
   - moved address-form translation lookup to the screen boundary so the viewmodel stays testable while still showing localized error copy to users.
   - added translated address keys in all 3 locales for:
     - `address.valid_address_from_suggestions`
-    - `address.cuba_havana_only`
+    - retired regional address-only validation key
     - `address.save_failed`
   - refreshed the Spanish audit note with current untranslated-value counts by module; the largest remaining buckets are still `product` (`369`), `checkout` (`348`), `admin` (`213`), `seller` (`184`), `auth` (`92`), and `subscription` (`46`).
 - verification:
-  - `cd origna_gta && flutter test test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+  - `cd origna_gta && flutter test <regional address widget test> test/unit/address_viewmodel_test.dart`
   - result: `21 passed`
-  - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+  - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart <regional address widget test> test/unit/address_viewmodel_test.dart`
   - result: passed, `No issues found!`
-  - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture`
+  - `cd orignabase && cargo test -p ob-handlers <regional province validation test> -- --nocapture`
   - result: `1 passed`
 - open gap kept in `CORE.md`:
-  - Cuba still needs a true end-to-end checkout/live UX proof.
+  - retired regional support still needed a true end-to-end checkout/live UX proof.
   - Spanish still needs real copy completion across the large untranslated feature buckets.
 
 77. **Spanish localization was materially reduced in the highest-signal buyer/seller flows, and stale Ventures Stripe docs were brought back in line with the current public checkout architecture**: Verified on 2026-04-22.
@@ -2065,10 +2106,10 @@ The following items were verified as done and are no longer reusable as active t
     - `python3 - <<'PY' ... json.loads(Path('origna_gta/assets/translations/es.json').read_text()) ... PY`
     - result: `es.json ok`
   - focused regression:
-    - `cd origna_gta && flutter test test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+    - `cd origna_gta && flutter test <regional address widget test> test/unit/address_viewmodel_test.dart`
     - result: `21 passed`
   - focused analyze:
-    - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart test/widget/cuba_address_form_test.dart test/unit/address_viewmodel_test.dart`
+    - `cd origna_gta && flutter analyze --no-fatal-infos lib/features/profile/address_viewmodel.dart lib/screens/editaddress_screen.dart <regional address widget test> test/unit/address_viewmodel_test.dart`
     - result: passed, `No issues found!`
 - open gap kept in `CORE.md`:
   - Spanish translation audit marked as **NOT STARTED** - no verified progress committed to repo.
@@ -2129,7 +2170,7 @@ The following items were verified as done and are no longer reusable as active t
 
 88. **[Bug3 Fix] OrignaVentures contact form catch(_) replaced with catch(e) + debugPrint; 5 other swallowed catches in main.dart also fixed**: Verified on 2026-04-23.
 
-89. **[Bug4 Fix] DeliveryRegion enum created (lib/utils/delivery_region.dart) — centralizes Canada/Cuba/international detection; order_widgets._buildEstimatedDelivery shows "4-8 weeks or longer" for international/28+ days; _buildSellerPackage shows Cuba flag + "Delivery to Canada & Cuba"**: Verified on 2026-04-23.
+89. **[Bug4 Fix] DeliveryRegion enum created (lib/utils/delivery_region.dart) — centralizes Canada/international detection; order_widgets._buildEstimatedDelivery shows "4-8 weeks or longer" for international/28+ days; _buildSellerPackage shows Canada delivery copy**: Verified on 2026-04-23.
 
 90. **[Error Logging Audit] 38 swallowed catch blocks fixed: 29 in origna_gta (AppLogger.w/e/d + AppError.log), 9 in origna_ventures (debugPrint). No more silent catch(_){} blocks.**: Verified on 2026-04-23.
 

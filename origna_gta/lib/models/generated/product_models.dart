@@ -35,10 +35,7 @@ bool _isDomesticCountryCode(String? country) {
     return true;
   }
 
-  return normalized == 'ca' ||
-      normalized == 'canada' ||
-      normalized == 'cu' ||
-      normalized == 'cuba';
+  return normalized == 'ca' || normalized == 'canada';
 }
 
 ({int minDays, int maxDays}) _rangeFromExplicitEstimatedDays(

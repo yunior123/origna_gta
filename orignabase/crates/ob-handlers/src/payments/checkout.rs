@@ -22,7 +22,7 @@ use ob_database::fields as db_fields;
 /// Request body for POST /api/payments/checkout — creates a Stripe Checkout Session.
 ///
 /// Requires JWT auth. Validates: cart non-empty, items <= 30, quantity <= 100 per item,
-/// subtotal <= $100,000 CAD, valid Canadian province. Creates order records in PostgreSQL
+/// subtotal <= $100,000 CAD, active-market province. Creates order records in PostgreSQL
 /// and returns the Stripe session URL for redirect. Supports idempotency via [idempotency_key].
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -74,12 +74,14 @@ pub struct CheckoutResponse {
 }
 
 const VALID_PROVINCES: &[&str] = &[
-    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT", "HAB", "MAT",
-    "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU", "IJ", "ART", "MAY",
+    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
 ];
+const ACTIVE_SHIPPING_COUNTRIES: &[&str] = &["CA", "CANADA"];
+const ACTIVE_STRIPE_SHIPPING_COUNTRIES: &[&str] = &["CA"];
 const MAX_CART_ITEMS: usize = 30;
 const MAX_ITEM_QUANTITY: u32 = 100;
 const MAX_CHECKOUT_SUBTOTAL_CENTS: i64 = 10_000_000;
+const PLATFORM_FEE_BPS: i64 = 250;
 
 /// Standard flat-rate shipping cost in cents for non-free orders.
 const STANDARD_SHIPPING_CENTS: i64 = 899;
@@ -101,9 +103,7 @@ fn province_tax_rate_bps(province: &str) -> u64 {
         "SK" => 1100, // 5% GST + 6% PST = 11%
         // GST only
         "AB" | "NT" | "NU" | "YT" => 500, // 5% GST
-        // Cuba (no tax)
-        p if crate::shipping_calc::cuba::is_cuba_province(p) => 0,
-        _ => 500, // Default to GST only
+        _ => 500,                         // Default to GST only
     }
 }
 
@@ -120,7 +120,7 @@ fn calculate_tax_cents(taxable_base_cents: i64, province: &str) -> i64 {
 ///
 /// Parameters:
 /// - `subtotal_cents`: post-validation cart subtotal in integer cents.
-/// - `buyer_province`: normalized Canadian province code for the buyer.
+/// - `buyer_province`: normalized active-market province code for the buyer.
 /// - `items`: validated product snapshots assembled during checkout validation.
 ///
 /// Returns:
@@ -177,22 +177,6 @@ fn calculate_shipping_cost_cents(
         }
     }
 
-    // Cuba maritime shipping logic (ignores free shipping threshold)
-    if crate::shipping_calc::cuba::is_cuba_province(buyer_province) {
-        let mut total_weight_kg = 0.0;
-        for item in items {
-            let weight = crate::shipping_calc::cuba::parse_weight_kg(item);
-            let qty = item
-                .get(fields::QUANTITY)
-                .and_then(|v| v.as_u64())
-                .unwrap_or(1) as f64;
-            total_weight_kg += weight * qty;
-        }
-        return Ok(
-            crate::shipping_calc::cuba::calculate_cuba_maritime_total_cents(total_weight_kg),
-        );
-    }
-
     // Free shipping threshold
     if subtotal_cents >= crate::shared::schema::business_rules::FREE_SHIPPING_THRESHOLD_CENTS {
         return Ok(0);
@@ -227,6 +211,11 @@ fn calculate_shipping_cost_cents(
 
 fn normalize_country(country: &str) -> String {
     country.trim().to_uppercase()
+}
+
+fn is_active_shipping_country(country: &str) -> bool {
+    let normalized = normalize_country(country);
+    ACTIVE_SHIPPING_COUNTRIES.contains(&normalized.as_str())
 }
 
 fn normalize_province(province: &str) -> String {
@@ -553,9 +542,9 @@ async fn create_checkout_session(
     validate_string("postalCode", &req.shipping_address.postal_code, 20)?;
 
     let country = normalize_country(&req.shipping_address.country);
-    if country != "CA" && country != "CANADA" && country != "CU" && country != "CUBA" {
+    if !is_active_shipping_country(&country) {
         return Err(ob_core::Error::Validation(
-            "Shipping is only available within Canada and Cuba".into(),
+            "Shipping is currently available within Canada only".into(),
         ));
     }
 
@@ -568,7 +557,7 @@ async fn create_checkout_session(
     }
 
     let postal = normalize_postal_code(&req.shipping_address.postal_code);
-    if (country == "CA" || country == "CANADA") && !is_valid_canadian_postal(&postal) {
+    if !is_valid_canadian_postal(&postal) {
         return Err(ob_core::Error::Validation(
             "Invalid Canadian postal code format".into(),
         ));
@@ -887,11 +876,18 @@ async fn create_checkout_session(
     }
 
     // --- Create Stripe Checkout Session ---
+    // --- Calculate shipping and tax before creating Stripe Checkout ---
+    let shipping_cost_cents =
+        calculate_shipping_cost_cents(actual_subtotal_cents, &province, &validated_items)?;
+    let taxable_base_cents = actual_subtotal_cents + shipping_cost_cents;
+    let tax_amount_cents = calculate_tax_cents(taxable_base_cents, &province);
+    let total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents;
+
     let stripe_key = state.config.require_secret("stripe_secret_key")?;
     let order_id = uuid::Uuid::new_v4().simple().to_string();
 
-    // Calculate platform fee: 5% of subtotal (not total) — integer math only, no floats
-    let platform_fee_cents = actual_subtotal_cents * 5 / 100;
+    // Calculate platform fee from subtotal only — integer math, no floats.
+    let platform_fee_cents = actual_subtotal_cents * PLATFORM_FEE_BPS / 10_000;
 
     let success_url = format!(
         "{}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&order_id={order_id}",
@@ -906,6 +902,14 @@ async fn create_checkout_session(
         ("mode".to_string(), "payment".to_string()),
         ("success_url".to_string(), success_url),
         ("cancel_url".to_string(), cancel_url),
+        (
+            "billing_address_collection".to_string(),
+            "required".to_string(),
+        ),
+        (
+            "phone_number_collection[enabled]".to_string(),
+            "true".to_string(),
+        ),
         ("payment_method_types[0]".to_string(), "card".to_string()),
         ("payment_method_types[1]".to_string(), "klarna".to_string()),
         (
@@ -921,6 +925,12 @@ async fn create_checkout_session(
             user_id.clone(),
         ),
     ];
+    for (i, country) in ACTIVE_STRIPE_SHIPPING_COUNTRIES.iter().enumerate() {
+        form_data.push((
+            format!("shipping_address_collection[allowed_countries][{i}]"),
+            (*country).to_string(),
+        ));
+    }
     if let Some(coupon_code) = &normalized_coupon_code {
         form_data.push((
             format!("metadata[{}]", STRIPE_META_COUPON_CODE),
@@ -961,24 +971,62 @@ async fn create_checkout_session(
         }
     }
 
-    for (i, item) in validated_items.iter().enumerate() {
-        let price_cents = item[db_fields::PRICE_CENTS].as_i64().unwrap_or(0);
-        let name = item[fields::TITLE].as_str().unwrap_or("Item");
-        let qty = item[fields::QUANTITY].as_u64().unwrap_or(1);
-
+    let mut line_item_index = 0usize;
+    if actual_subtotal_cents > 0 {
         form_data.push((
-            format!("line_items[{}][price_data][currency]", i),
+            format!("line_items[{line_item_index}][price_data][currency]"),
             "cad".to_string(),
         ));
         form_data.push((
-            format!("line_items[{}][price_data][product_data][name]", i),
-            name.to_string(),
+            format!("line_items[{line_item_index}][price_data][product_data][name]"),
+            "Order subtotal".to_string(),
         ));
         form_data.push((
-            format!("line_items[{}][price_data][unit_amount]", i),
-            price_cents.to_string(),
+            format!("line_items[{line_item_index}][price_data][unit_amount]"),
+            actual_subtotal_cents.to_string(),
         ));
-        form_data.push((format!("line_items[{}][quantity]", i), qty.to_string()));
+        form_data.push((
+            format!("line_items[{line_item_index}][quantity]"),
+            "1".to_string(),
+        ));
+        line_item_index += 1;
+    }
+    if shipping_cost_cents > 0 {
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][currency]"),
+            "cad".to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][product_data][name]"),
+            "Shipping".to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][unit_amount]"),
+            shipping_cost_cents.to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][quantity]"),
+            "1".to_string(),
+        ));
+        line_item_index += 1;
+    }
+    if tax_amount_cents > 0 {
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][currency]"),
+            "cad".to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][product_data][name]"),
+            "Estimated tax".to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][price_data][unit_amount]"),
+            tax_amount_cents.to_string(),
+        ));
+        form_data.push((
+            format!("line_items[{line_item_index}][quantity]"),
+            "1".to_string(),
+        ));
     }
 
     let stripe_response = state
@@ -1007,13 +1055,6 @@ async fn create_checkout_session(
         .as_str()
         .ok_or_else(|| ob_core::Error::Internal("Missing session ID from Stripe".into()))?;
     let checkout_url = session["url"].as_str().map(str::to_string);
-
-    // --- Calculate shipping and tax ---
-    let shipping_cost_cents =
-        calculate_shipping_cost_cents(actual_subtotal_cents, &province, &validated_items)?;
-    let taxable_base_cents = actual_subtotal_cents + shipping_cost_cents;
-    let tax_amount_cents = calculate_tax_cents(taxable_base_cents, &province);
-    let total_amount_cents = actual_subtotal_cents + shipping_cost_cents + tax_amount_cents;
 
     // --- Create order document ---
     let now = chrono::Utc::now().to_rfc3339();
@@ -1181,6 +1222,21 @@ mod tests {
     use std::sync::Arc;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    async fn received_stripe_form_body(mock_server: &MockServer) -> String {
+        let requests = mock_server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        String::from_utf8_lossy(&requests[0].body).into_owned()
+    }
+
+    fn assert_form_body_contains(body: &str, expected_parts: &[&str]) {
+        for expected in expected_parts {
+            assert!(
+                body.contains(expected),
+                "expected Stripe form body to contain `{expected}`, got `{body}`"
+            );
+        }
+    }
 
     async fn setup_state() -> HandlersState {
         // SAFETY: Test-only env var modification in single-threaded test context
@@ -1432,25 +1488,15 @@ mod tests {
     }
 
     #[test]
-    fn test_canada_and_cuba_provinces_are_valid() {
+    fn test_active_market_provinces_are_valid() {
         let expected_canada = vec![
             "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
         ];
-        let expected_cuba = vec![
-            "HAB", "MAT", "VC", "SC", "HOL", "CMG", "CAV", "SSP", "CFG", "PR", "GRA", "LT", "GU",
-            "IJ", "ART", "MAY",
-        ];
 
-        assert_eq!(
-            VALID_PROVINCES.len(),
-            expected_canada.len() + expected_cuba.len()
-        );
+        assert_eq!(VALID_PROVINCES.len(), expected_canada.len());
 
         for p in &expected_canada {
             assert!(VALID_PROVINCES.contains(p), "Missing province: {}", p);
-        }
-        for p in &expected_cuba {
-            assert!(VALID_PROVINCES.contains(p), "Missing Cuba province: {}", p);
         }
     }
 
@@ -1598,7 +1644,7 @@ mod tests {
         assert!(
             bad_country
                 .to_string()
-                .contains("Shipping is only available within Canada")
+                .contains("Shipping is currently available within Canada only")
         );
 
         let bad_postal = create_checkout_session(
@@ -1896,6 +1942,22 @@ mod tests {
         assert!(resp.success);
         assert_eq!(resp.session_id, "cs_test_123");
 
+        let stripe_body = received_stripe_form_body(&mock_server).await;
+        assert_form_body_contains(
+            &stripe_body,
+            &[
+                "billing_address_collection=required",
+                "phone_number_collection%5Benabled%5D=true",
+                "shipping_address_collection%5Ballowed_countries%5D%5B0%5D=CA",
+                "line_items%5B0%5D%5Bprice_data%5D%5Bproduct_data%5D%5Bname%5D=Order+subtotal",
+                "line_items%5B0%5D%5Bprice_data%5D%5Bunit_amount%5D=3000",
+                "line_items%5B1%5D%5Bprice_data%5D%5Bproduct_data%5D%5Bname%5D=Shipping",
+                "line_items%5B1%5D%5Bprice_data%5D%5Bunit_amount%5D=899",
+                "line_items%5B2%5D%5Bprice_data%5D%5Bproduct_data%5D%5Bname%5D=Estimated+tax",
+                "line_items%5B2%5D%5Bprice_data%5D%5Bunit_amount%5D=507",
+            ],
+        );
+
         let order = state
             .db
             .get_document(collections::ORDERS, &resp.order_id)
@@ -2025,6 +2087,18 @@ mod tests {
         assert!(!resp.duplicate);
         assert_eq!(resp.session_id, "cs_coupon_123");
         assert_eq!(resp.tax_amount_cents, 468);
+
+        let stripe_body = received_stripe_form_body(&mock_server).await;
+        assert_form_body_contains(
+            &stripe_body,
+            &[
+                "shipping_address_collection%5Ballowed_countries%5D%5B0%5D=CA",
+                "metadata%5Bcoupon_code%5D=SAVE10",
+                "line_items%5B0%5D%5Bprice_data%5D%5Bunit_amount%5D=2700",
+                "line_items%5B1%5D%5Bprice_data%5D%5Bunit_amount%5D=899",
+                "line_items%5B2%5D%5Bprice_data%5D%5Bunit_amount%5D=468",
+            ],
+        );
 
         let order = state
             .db

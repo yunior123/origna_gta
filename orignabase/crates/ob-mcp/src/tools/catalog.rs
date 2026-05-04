@@ -3,7 +3,6 @@
 use crate::McpState;
 use crate::errors::{McpError, McpResult};
 use ob_core::constants::mcp_params as p;
-use ob_database::fields;
 use serde_json::{Value, json};
 
 /// Search products by query, category, price range
@@ -174,6 +173,7 @@ pub async fn check_inventory(state: McpState, params: &Value) -> McpResult<Value
 mod tests {
     use super::*;
     use crate::McpState;
+    use ob_database::fields;
     use std::sync::Arc;
 
     async fn make_state() -> McpState {

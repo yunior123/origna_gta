@@ -1614,3 +1614,51 @@ def test_contact_endpoint_exposes_postal_delivery_status(client, monkeypatch):
         "Origna Client",
         "OrignaLaunch",
     )
+
+
+def test_api_rejects_oversized_declared_request_body(client):
+    test_client, _ = client
+
+    response = test_client.post(
+        "/api/contact",
+        content=b"{}",
+        headers={
+            "content-type": "application/json",
+            "content-length": str(backend_app._MAX_REQUEST_CONTENT_LENGTH_BYTES + 1),
+        },
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Request body too large"
+
+
+def test_stripe_webhook_rejects_missing_event_identity(client, monkeypatch):
+    test_client, _ = client
+    monkeypatch.setattr(backend_app.settings, "stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET_REDACTED")
+    raw = json.dumps({"type": "checkout.session.completed", "data": {"object": {}}}).encode()
+    signature = sign_stripe_payload("STRIPE_WEBHOOK_SECRET_REDACTED", raw)
+
+    response = test_client.post(
+        "/api/stripe/webhook",
+        content=raw,
+        headers={"Stripe-Signature": signature, "Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid Stripe event id"
+
+
+def test_stripe_webhook_rejects_oversized_payload_before_signature(client, monkeypatch):
+    test_client, _ = client
+    monkeypatch.setattr(backend_app.settings, "stripe_webhook_secret", "STRIPE_WEBHOOK_SECRET_REDACTED")
+    raw = b"{" + b'"padding":"' + (b"x" * backend_app._MAX_STRIPE_WEBHOOK_BYTES) + b'"}'
+    signature = sign_stripe_payload("STRIPE_WEBHOOK_SECRET_REDACTED", raw)
+
+    response = test_client.post(
+        "/api/stripe/webhook",
+        content=raw,
+        headers={"Stripe-Signature": signature, "Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "Webhook payload too large"

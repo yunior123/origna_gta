@@ -1,3 +1,58 @@
+# Cuba Integration Backup
+
+Archived before removing active Cuba support on 2026-05-03.
+
+Base commit before removal: `3c1a1ed4`.
+
+Full pre-removal files can be recovered with:
+
+```bash
+git show 3c1a1ed4:origna_gta/lib/utils/cuba_shipping_validator.dart
+git show 3c1a1ed4:orignabase/crates/ob-handlers/src/shipping_calc/cuba.rs
+git show 3c1a1ed4:origna_gta/lib/core/schema/schema_constants.dart
+git show 3c1a1ed4:origna_gta/lib/screens/editaddress_screen.dart
+git show 3c1a1ed4:orignabase/crates/ob-handlers/src/payments/checkout.rs
+git show 3c1a1ed4:orignabase/crates/ob-handlers/src/shipping_calc/mod.rs
+```
+
+## Flutter Validator
+
+```dart
+import 'package:origna_gta/core/schema/schema_constants.dart';
+
+class CubaShippingValidator {
+  static bool isValidCity(String city) =>
+      city.trim().toLowerCase() == 'havana' ||
+      ProvinceCodeValues.cubaProvinces.contains(city.trim().toUpperCase());
+
+  static bool isValidProvinceForMaritime(String provinceCode) =>
+      ProvinceCodeValues.cubaProvinces.contains(provinceCode);
+
+  static bool isHavana(String city) => city.trim().toLowerCase() == 'havana';
+
+  static int calculateMaritimeCost(double totalWeightKg) {
+    final clampedWeight = totalWeightKg.clamp(
+      MaritimeShippingConstants.minWeightKg,
+      MaritimeShippingConstants.maxWeightKg,
+    );
+    int costCents = MaritimeShippingConstants.baseRateCents;
+    costCents += (clampedWeight * MaritimeShippingConstants.perKgRateCents)
+        .round();
+    if (clampedWeight > MaritimeShippingConstants.surchargeHeavyKg) {
+      costCents += MaritimeShippingConstants.heavySurchargeCents;
+    }
+    return costCents;
+  }
+
+  static String estimatedDeliveryWindow() {
+    return '${MaritimeShippingConstants.estimatedDaysMin}-${MaritimeShippingConstants.estimatedDaysMax} business days';
+  }
+}
+```
+
+## Rust Maritime Module
+
+```rust
 //! Cuba maritime shipping logic.
 //! Reused across `checkout.rs` and `shipping_calc/mod.rs`.
 
@@ -20,14 +75,12 @@ pub fn is_cuba_province(province: &str) -> bool {
     CUBA_PROVINCES.contains(&province.trim().to_uppercase().as_str())
 }
 
-/// Helper to parse weight from a JSON value, defaulting to 1.0 kg if missing or invalid.
 pub fn parse_weight_kg(item: &Value) -> f64 {
     item.get("weightKg")
         .and_then(|v| v.as_f64())
         .unwrap_or(MARITIME_MIN_WEIGHT_KG)
 }
 
-/// Calculate total maritime shipping cost based on the total weight of items.
 pub fn calculate_cuba_maritime_total_cents(total_weight_kg: f64) -> i64 {
     let clamped_weight = total_weight_kg.clamp(MARITIME_MIN_WEIGHT_KG, MARITIME_MAX_WEIGHT_KG);
 
@@ -40,7 +93,6 @@ pub fn calculate_cuba_maritime_total_cents(total_weight_kg: f64) -> i64 {
     cost_cents
 }
 
-/// Calculate total maritime shipping cost and provide itemized breakdown
 pub fn calculate_cuba_maritime_itemized<T>(
     items: &[T],
     get_id: impl Fn(&T) -> String,
@@ -78,74 +130,4 @@ pub fn calculate_cuba_maritime_itemized<T>(
 
     (total_cents, breakdown)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Debug, Clone)]
-    struct MockItem {
-        id: String,
-        weight: f64,
-        qty: f64,
-    }
-
-    #[test]
-    fn test_is_cuba_province() {
-        assert!(is_cuba_province("HAB"));
-        assert!(is_cuba_province("hab"));
-        assert!(is_cuba_province(" SC "));
-        assert!(!is_cuba_province("ON"));
-        assert!(!is_cuba_province(""));
-    }
-
-    #[test]
-    fn test_calculate_cuba_maritime_total_cents() {
-        // Under 1 kg -> base $25 + 1kg * $5 = $30
-        assert_eq!(calculate_cuba_maritime_total_cents(0.5), 3000);
-        assert_eq!(calculate_cuba_maritime_total_cents(1.0), 3000);
-
-        // 5 kg -> base $25 + 5kg * $5 = $50
-        assert_eq!(calculate_cuba_maritime_total_cents(5.0), 5000);
-
-        // 25 kg -> base $25 + 25kg * $5 + $15 heavy = $165
-        assert_eq!(calculate_cuba_maritime_total_cents(25.0), 16500);
-
-        // 40 kg (clamped to 30kg) -> base $25 + 30kg * $5 + $15 heavy = $190
-        assert_eq!(calculate_cuba_maritime_total_cents(40.0), 19000);
-    }
-
-    #[test]
-    fn test_calculate_cuba_maritime_itemized() {
-        let items = vec![
-            MockItem {
-                id: "item1".to_string(),
-                weight: 2.0,
-                qty: 1.0,
-            }, // 2kg
-            MockItem {
-                id: "item2".to_string(),
-                weight: 0.5,
-                qty: 2.0,
-            }, // 1kg
-        ];
-
-        // Total weight = 3kg
-        // Total cost = $25 + 3kg * $5 = $40 (4000 cents)
-        let (total, breakdown) = calculate_cuba_maritime_itemized(
-            &items,
-            |it| it.id.clone(),
-            |it| it.weight,
-            |it| it.qty,
-        );
-
-        assert_eq!(total, 4000);
-        assert_eq!(breakdown.len(), 2);
-
-        // item1 share = 2/3 of 4000 = 2667
-        // item2 share = 1/3 of 4000 = 1333
-        assert_eq!(*breakdown.get("item1").unwrap(), 2667);
-        assert_eq!(*breakdown.get("item2").unwrap(), 1333);
-        assert_eq!(2667 + 1333, 4000);
-    }
-}
+```

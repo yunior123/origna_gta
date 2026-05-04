@@ -381,31 +381,6 @@ void main() {
       }
     });
 
-    test('Cuban provinces have zero tax rates', () {
-      const cubanProvinces = [
-        'HAB',
-        'MAT',
-        'VC',
-        'SC',
-        'HOL',
-        'CMG',
-        'CAV',
-        'SSP',
-        'CFG',
-        'PR',
-        'GRA',
-        'LT',
-        'GU',
-        'IJ',
-        'ART',
-        'MAY',
-      ];
-      for (final code in cubanProvinces) {
-        final rates = provinceTaxRates[code]!;
-        expect(rates.isEmpty, isTrue, reason: '$code should have no tax rates');
-      }
-    });
-
     test('covers all Canadian provinces and territories', () {
       final expected = [
         'AB',

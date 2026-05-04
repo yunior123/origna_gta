@@ -11,7 +11,6 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use ob_database::fields;
 use serde_json::Value;
 use std::sync::Arc;
 #[cfg(not(test))]
@@ -231,6 +230,7 @@ impl StdioTransport {
 mod tests {
     use super::*;
     use crate::safeguards::{IdempotencyTracker, SpendLimit};
+    use ob_database::fields;
     use serde_json::json;
     use std::sync::Arc;
 

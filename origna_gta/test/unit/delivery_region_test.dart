@@ -27,22 +27,6 @@ void main() {
       expect(DeliveryRegion.fromCountry('ca'), DeliveryRegion.canada);
     });
 
-    test('Cuba returns cuba', () {
-      expect(DeliveryRegion.fromCountry('Cuba'), DeliveryRegion.cuba);
-    });
-
-    test('cuba (lowercase) returns cuba', () {
-      expect(DeliveryRegion.fromCountry('cuba'), DeliveryRegion.cuba);
-    });
-
-    test('CU returns cuba', () {
-      expect(DeliveryRegion.fromCountry('CU'), DeliveryRegion.cuba);
-    });
-
-    test('cu (lowercase) returns cuba', () {
-      expect(DeliveryRegion.fromCountry('cu'), DeliveryRegion.cuba);
-    });
-
     test('USA returns international', () {
       expect(DeliveryRegion.fromCountry('USA'), DeliveryRegion.international);
     });
@@ -67,10 +51,6 @@ void main() {
       expect(DeliveryRegion.canada.isDomestic, isTrue);
     });
 
-    test('cuba is domestic', () {
-      expect(DeliveryRegion.cuba.isDomestic, isTrue);
-    });
-
     test('international is not domestic', () {
       expect(DeliveryRegion.international.isDomestic, isFalse);
     });
@@ -79,10 +59,6 @@ void main() {
   group('DeliveryRegion.isInternational', () {
     test('canada is not international', () {
       expect(DeliveryRegion.canada.isInternational, isFalse);
-    });
-
-    test('cuba is not international', () {
-      expect(DeliveryRegion.cuba.isInternational, isFalse);
     });
 
     test('international is international', () {
@@ -95,10 +71,6 @@ void main() {
       expect(DeliveryRegion.canada.flagEmoji, '🇨🇦');
     });
 
-    test('cuba flag is 🇨🇺', () {
-      expect(DeliveryRegion.cuba.flagEmoji, '🇨🇺');
-    });
-
     test('international flag is 🌍', () {
       expect(DeliveryRegion.international.flagEmoji, '🌍');
     });
@@ -107,10 +79,6 @@ void main() {
   group('DeliveryRegion.localizedLabel', () {
     test('canada returns non-empty string', () {
       expect(DeliveryRegion.canada.localizedLabel(), isNotEmpty);
-    });
-
-    test('cuba returns non-empty string', () {
-      expect(DeliveryRegion.cuba.localizedLabel(), isNotEmpty);
     });
 
     test('international returns non-empty string', () {

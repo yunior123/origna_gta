@@ -68,7 +68,7 @@ describe('Production solar product live verification', () => {
     expect(product.priceCents).toBe(1_300_000);
     expect(product.estimatedShipDays).toBe(35);
     expect(['CA', 'Canada']).not.toContain(product.madeInCountry ?? '');
-    expect(product.shipFromCountries).toEqual(['Canada', 'Cuba']);
+    expect(product.shipFromCountries).toEqual(['Canada']);
     expect(product.lifecycleStatus).toBe('active');
     expect(product.imageUrls).toEqual(EXPECTED_IMAGE_URLS);
 

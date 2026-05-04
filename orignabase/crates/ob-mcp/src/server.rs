@@ -5,7 +5,6 @@ use crate::auth::McpContext;
 use crate::errors::{JsonRpcError, McpError, McpResult};
 use crate::safeguards::{IdempotencyTracker, SpendLimit};
 use crate::tools;
-use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::{error, info};
@@ -285,6 +284,7 @@ pub struct JsonRpcResponse {
 mod tests {
     use super::*;
     use crate::auth::McpClaims;
+    use ob_database::fields;
     use std::sync::Arc;
 
     fn make_claims(role: Option<&str>) -> McpClaims {

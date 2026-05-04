@@ -599,7 +599,7 @@
     "delivery_local_business_days_exact": "Entrega estimada en {days} día(s) hábil(es) (local)",
     "delivery_local_business_days": "{min}–{max} días hábiles (local)",
     "delivery_within_weeks_or_longer": "Entrega dentro de 4–8 semanas o más",
-    "delivery_to_canada_cuba": "Entrega a Canadá y Cuba",
+    "delivery_to_canada": "Entrega a Canadá",
     "delivery_unknown_origin": "Desconocido",
     "low_stock_alert_subtitle": "You will be notified when this product is back in stock.",
     "low_stock_threshold": "Low stock — only {count} left",
@@ -704,10 +704,8 @@
     "place_order": "Realizar pedido",
     "standard": "Estándar",
     "express": "Exprés",
-    "maritime": "Marítimo",
     "standard_days": "5-7 días hábiles",
     "express_days": "1-2 días hábiles",
-    "maritime_days": "21-45 días hábiles",
     "checkout": "Checkout",
     "step_cart": "Carrito",
     "step_details": "Details",
@@ -1195,11 +1193,7 @@
     "set_as_default": "Establecer como predeterminada",
     "count_subtitle": "{count} de {max} direcciones guardadas",
     "pickup_only": "Solo retiro",
-    "maritime_shipping": "Envío marítimo",
-    "cuba_maritime_notice": "El envío a Cuba se realiza por vía marítima (21-45 días hábiles). Se aplican tarifas según el peso.",
-    "postal_code_cuba": "Código postal cubano (5 dígitos)",
-    "valid_postal_cuba": "Ingrese un código postal cubano válido (5 dígitos)",
-    "valid_phone_cuba": "Ingrese un número de teléfono cubano válido (prefijo +53)"
+    "valid_address_from_suggestions": "Seleccione una dirección válida de las sugerencias"
   },
   "seller": {
     "dashboard": "Panel del vendedor",

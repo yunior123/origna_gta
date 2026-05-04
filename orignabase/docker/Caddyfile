@@ -88,6 +88,17 @@ orignagta.ca, www.orignagta.ca {
 	file_server
 }
 
+mail.orignagta.ca, mail.orignaventures.ca {
+	reverse_proxy 172.18.0.1:5000 {
+		header_up Host mail.orignagta.ca
+		header_up X-Forwarded-Host mail.orignagta.ca
+	}
+	encode zstd gzip
+	log {
+		output file /var/log/postal-caddy.log
+	}
+}
+
 # Dev fallback — direct IP access (HTTP only, no TLS)
 :80 {
 	import api_security_headers

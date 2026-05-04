@@ -102,7 +102,9 @@ class OrignaBaseQARepository implements QARepository {
           questions.clear();
           for (final raw in rawQuestions) {
             if (raw is! Map) continue;
-            final data = raw.map((key, value) => MapEntry(key.toString(), value));
+            final data = raw.map(
+              (key, value) => MapEntry(key.toString(), value),
+            );
             final id =
                 data[Fields.questionId] as String? ??
                 data['id'] as String? ??

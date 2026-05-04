@@ -28,9 +28,8 @@ export 'package:origna_gta/models/models.dart';
 
 /// Provincial/territorial tax rates for client-side estimation.
 ///
-/// Canadian provinces use 2-letter codes; Cuban provinces use 3-letter codes.
+/// Canadian provinces use 2-letter codes.
 /// HST provinces have a single combined rate; others split GST + PST/QST.
-/// Cuban provinces have no Canadian sales tax (pickup-only).
 /// NOTE: These are frontend estimates only — the backend uses Stripe Tax API.
 const Map<String, Map<String, double>> provinceTaxRates = {
   'AB': {'GST': 0.05},
@@ -46,23 +45,6 @@ const Map<String, Map<String, double>> provinceTaxRates = {
   'QC': {'GST': 0.05, 'QST': 0.09975},
   'SK': {'GST': 0.05, 'PST': 0.06},
   'YT': {'GST': 0.05},
-  // Cuban provinces — pickup-only, no Canadian sales tax applies
-  'HAB': {},
-  'MAT': {},
-  'VC': {},
-  'SC': {},
-  'HOL': {},
-  'CMG': {},
-  'CAV': {},
-  'SSP': {},
-  'CFG': {},
-  'PR': {},
-  'GRA': {},
-  'LT': {},
-  'GU': {},
-  'IJ': {},
-  'ART': {},
-  'MAY': {},
 };
 
 /// Maximum total keywords to generate for search prefixes.
@@ -199,18 +181,13 @@ Map<String, int> calculateDetailedTaxes(Address? address, int totalCents) {
 }
 
 /// Fallback shipping calculation when coordinates are unavailable.
-/// Uses province-based flat rates for Canada.
-/// Cuba uses weight-based maritime shipping calculation.
+/// Uses province-based flat rates for the active Canadian market.
 /// Returns integer cents.
 int calculateFallbackShipping(
   List<CartItemDetailModel> items,
   String sellerProvince,
   String buyerProvince,
 ) {
-  if (ProvinceCodeValues.cubaProvinces.contains(buyerProvince)) {
-    return _calculateMaritimeShipping(items);
-  }
-
   final totalItems = items.fold(0, (i, item) => i + item.quantity);
   int baseCostCents = 2699;
 
@@ -228,28 +205,6 @@ int calculateFallbackShipping(
   return baseCostCents + additionalItemsCostCents;
 }
 
-int _calculateMaritimeShipping(List<CartItemDetailModel> items) {
-  double totalWeightKg = 0.0;
-  for (final item in items) {
-    final weightKg = (item.weightKg ?? MaritimeShippingConstants.minWeightKg)
-        .clamp(
-          MaritimeShippingConstants.minWeightKg,
-          MaritimeShippingConstants.maxWeightKg,
-        );
-    totalWeightKg += weightKg * item.quantity;
-  }
-
-  int costCents = MaritimeShippingConstants.baseRateCents;
-  costCents += (totalWeightKg * MaritimeShippingConstants.perKgRateCents)
-      .round();
-
-  if (totalWeightKg > MaritimeShippingConstants.surchargeHeavyKg) {
-    costCents += MaritimeShippingConstants.heavySurchargeCents;
-  }
-
-  return costCents;
-}
-
 /// Calculate shipping cost based on distance, quantity, weight, and delivery speed.
 /// Aligns with backend shipping_service.py for deterministic totals.
 /// Returns a Map of sellerId to shipping cost in integer cents.
@@ -263,23 +218,6 @@ Future<Map<String, int>> calculateShippingCost(
       buyerAddress.latitude == null ||
       buyerAddress.longitude == null) {
     return {};
-  }
-
-  final buyerProvince = buyerAddress.state;
-  final isCubaShipping = ProvinceCodeValues.cubaProvinces.contains(
-    buyerProvince,
-  );
-  if (isCubaShipping) {
-    final Map<String, int> sellerCosts = {};
-    final itemsBySeller = <String, List<CartItemDetailModel>>{};
-    for (var item in items) {
-      itemsBySeller.putIfAbsent(item.sellerId, () => []).add(item);
-    }
-    for (var sellerId in itemsBySeller.keys) {
-      final sellerItems = itemsBySeller[sellerId]!;
-      sellerCosts[sellerId] = _calculateMaritimeShipping(sellerItems);
-    }
-    return sellerCosts;
   }
 
   final Map<String, int> sellerCosts = {};

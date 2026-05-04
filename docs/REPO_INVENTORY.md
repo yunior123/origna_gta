@@ -997,7 +997,6 @@ Tracked files: `996`
 - `origna_gta/lib/utils/circuit_breaker.dart`
 - `origna_gta/lib/utils/constants.dart`
 - `origna_gta/lib/utils/csv_parser.dart`
-- `origna_gta/lib/utils/cuba_shipping_validator.dart`
 - `origna_gta/lib/utils/deferred_widget.dart`
 - `origna_gta/lib/utils/design_tokens.dart`
 - `origna_gta/lib/utils/env_config.dart`
@@ -1780,7 +1779,6 @@ Tracked files: `3865`
 - `orignabase/crates/ob-handlers/src/shared/schema.rs`
 - `orignabase/crates/ob-handlers/src/shared/specs.rs`
 - `orignabase/crates/ob-handlers/src/shared/validation.rs`
-- `orignabase/crates/ob-handlers/src/shipping_calc/cuba.rs`
 - `orignabase/crates/ob-handlers/src/shipping_calc/mod.rs`
 - `orignabase/crates/ob-handlers/src/users/mod.rs`
 - `orignabase/crates/ob-handlers/src/warehouses/mod.rs`

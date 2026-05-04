@@ -16,7 +16,7 @@ import 'package:origna_gta/core/schema/schema_constants.dart';
 class NotificationRepository {
   /// Creates a notification repository with the given OrignaBase [client].
   NotificationRepository(this._ob, {bool enableRealtime = true})
-      : _enableRealtime = enableRealtime;
+    : _enableRealtime = enableRealtime;
 
   /// The OrignaBase client used for database operations.
   final OrignaBase _ob;
@@ -116,9 +116,7 @@ class NotificationRepository {
 
       realtime = RealtimeClient(_ob);
       realtime.connect();
-      refreshTimer = Timer.periodic(const Duration(seconds: 3), (
-        _,
-      ) async {
+      refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
         try {
           if (!controller.isClosed) {
             controller.add(await fetchOrderedNotifications());

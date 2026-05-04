@@ -554,8 +554,8 @@ void main() {
   });
 
   group('provinceTaxRates', () {
-    test('covers all 29 provinces (13 Canada + 16 Cuba)', () {
-      expect(provinceTaxRates.length, 29);
+    test('covers all Canadian provinces and territories', () {
+      expect(provinceTaxRates.length, 13);
     });
 
     test('all Canadian provinces have at least GST or HST', () {
@@ -580,35 +580,6 @@ void main() {
           rates.containsKey('GST') || rates.containsKey('HST'),
           isTrue,
           reason: '$code missing GST or HST',
-        );
-      }
-    });
-
-    test('Cuban provinces have no Canadian sales tax', () {
-      const cubanProvinces = [
-        'HAB',
-        'MAT',
-        'VC',
-        'SC',
-        'HOL',
-        'CMG',
-        'CAV',
-        'SSP',
-        'CFG',
-        'PR',
-        'GRA',
-        'LT',
-        'GU',
-        'IJ',
-        'ART',
-        'MAY',
-      ];
-      for (final code in cubanProvinces) {
-        final rates = provinceTaxRates[code]!;
-        expect(
-          rates.isEmpty,
-          isTrue,
-          reason: '$code should have no tax rates (pickup-only)',
         );
       }
     });
@@ -1122,10 +1093,7 @@ void main() {
   group('calculateTieredShipping - boundary distances', () {
     test('exactly 15km uses 1.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(
-        calculateTieredShipping(15.0, items, DeliverySpeed.standard),
-        199,
-      );
+      expect(calculateTieredShipping(15.0, items, DeliverySpeed.standard), 199);
     });
 
     test('15.01km uses 4.99 tier', () {
@@ -1138,10 +1106,7 @@ void main() {
 
     test('exactly 50km uses 4.99 tier', () {
       final items = [_makeCartItem(quantity: 1)];
-      expect(
-        calculateTieredShipping(50.0, items, DeliverySpeed.standard),
-        499,
-      );
+      expect(calculateTieredShipping(50.0, items, DeliverySpeed.standard), 499);
     });
 
     test('50.01km uses 9.99 tier', () {
@@ -1311,39 +1276,6 @@ void main() {
             reason: '${entry.key} has non-positive rate',
           );
         }
-      }
-    });
-
-    test('Cuban provinces have empty tax rates', () {
-      const cubanProvinces = [
-        'HAB',
-        'MAT',
-        'VC',
-        'SC',
-        'HOL',
-        'CMG',
-        'CAV',
-        'SSP',
-        'CFG',
-        'PR',
-        'GRA',
-        'LT',
-        'GU',
-        'IJ',
-        'ART',
-        'MAY',
-      ];
-      for (final code in cubanProvinces) {
-        expect(
-          provinceTaxRates[code],
-          isNotNull,
-          reason: '$code missing from map',
-        );
-        expect(
-          provinceTaxRates[code]!.isEmpty,
-          isTrue,
-          reason: '$code should have no tax rates',
-        );
       }
     });
 

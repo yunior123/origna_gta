@@ -1,6 +1,5 @@
 use ob_core::Result;
 use ob_database::DatabaseClient;
-use ob_database::fields;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
@@ -120,6 +119,7 @@ fn to_pg_type(t: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ob_database::fields;
 
     #[test]
     fn test_pg_type_mapping() {

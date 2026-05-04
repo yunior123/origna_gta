@@ -20,16 +20,10 @@ Rules:
 
 ## P0 — Close current verified-but-open delivery blockers
 
-### 1) Cuba parity closeout
-- [x] Update the store to support Cuba in every aspect similarly to Canada.
-- Current verified state: **COMPLETED** - frontend country/province/address validation, Cuba maritime shipping logic, zero-tax handling, backend Canada/Cuba province validation, and the dedicated Cuba address widget flow are present and re-verified.
-- Verified evidence already on record:
-  - `cd origna_gta && flutter test test/unit/schema_constants_test.dart` → `24 passed`
-  - `cd orignabase && cargo test -p ob-handlers test_canada_and_cuba_provinces_are_valid -- --nocapture` → `1 passed`
-  - `cd origna_gta && flutter test test/unit/utils_comprehensive_test.dart test/unit/utils_coverage_boost_test.dart` → passed
-- Still required before close:
-  - full end-to-end Cuba checkout/live UX audit
-  - proof that real Cuba-specific address, shipping, tax, and checkout UX all behave correctly end-to-end
+### 1) Multi-country delivery architecture
+- [x] Keep Canada as the only active shipping market.
+- [x] Preserve a country/province policy boundary so future regions can be added later without scattered checkout conditionals.
+- Current verified state: active checkout/address/shipping/tax paths are Canada-only; retired regional code is archived in `docs/CUBA_INTEGRATION_BACKUP.md`.
 
 ### 2) Spanish audit closeout
 - [ ] Audit Spanish translations across the app.
@@ -47,7 +41,8 @@ Rules:
   - Current verified state:
     - Ventures checkout-session idempotency regression fixed and redeployed
     - webhook-security `500` regression fixed and redeployed
-    - `origna_ventures/backend/tests/test_payments_api.py` passes at `19 passed`
+    - `origna_ventures/backend/tests/test_payments_api.py` passes at `40 passed`
+    - public Ventures API rejects oversized request bodies and malformed Stripe webhook event identity
     - live no-email checkout probes for `origna_code`, `origna_launch`, `origna_team` return `200`
     - `origna-ventures-tax-live.spec.ts` is green
     - webhook-security block in `origna-ventures-live.spec.ts` is green again
@@ -128,7 +123,7 @@ Rules:
 
 ### 8) Delivery messaging closeout
 - [x] Replace stale shopper delivery messaging and re-verify country coverage.
-- Current verified state: **COMPLETED** — `DeliveryRegion` enum centralizes Canada/Cuba/international detection; `_buildEstimatedDelivery()` shows "4-8 weeks or longer" for international/28+ days; `_buildSellerPackage()` shows Cuba flag + "Delivery to Canada & Cuba"; order-success screen uses policy copy for non-local physical orders.
+- Current verified state: **COMPLETED** — `DeliveryRegion` enum centralizes Canada/international detection; `_buildEstimatedDelivery()` shows "4-8 weeks or longer" for international/28+ days; `_buildSellerPackage()` shows Canada delivery copy; order-success screen uses policy copy for non-local physical orders.
 - Verified evidence: `flutter test test/unit/delivery_region_test.dart test/widget/ordersuccess_screen_test.dart` → passed; `flutter analyze` → passed on affected files.
 
 ## P1 — Product, design, and release work
@@ -149,7 +144,7 @@ Rules:
   - Advanced state: OrignaGTA production was redeployed again as release `20260422113324`; latest OrignaVentures frontend/docs were already redeployed earlier; a final both-apps pass is still pending.
 - [x] Commit and push all changes to GitHub.
 - Verified on 2026-04-22: Latest commits pushed:
-  - `c3efdb61` docs: Mark Cuba support as verified in CORE.md
+  - `3c1a1ed4` docs: Archive retired regional support before the Canada-only cleanup
   - `619c60be` docs: Correct Spanish translation status in CORE.md and STATE.md  
   - `95c9fecf` feat: Spanish translations, Ventures payment hardening, solar product live
 - [ ] Build the iOS app.

@@ -115,13 +115,40 @@ def validate_screenshots(path: Path, expected_count: int) -> None:
         raise SystemExit("\n".join(issues))
 
 
-def validate_pdf(path: Path, expected_count: int, expected_pages: int) -> None:
+def validate_pdf(
+    path: Path,
+    expected_count: int,
+    expected_pages: int,
+    screenshot_dir: Path | None = None,
+) -> None:
     doc = fitz.open(path)
     text = "\n".join(page.get_text() for page in doc)
     names = PDF_NAME_RE.findall(text)
     bad_names = [name for name in names if BAD_NAME_RE.search(name)]
+    duplicate_names = sorted({name for name in names if names.count(name) > 1})
+    missing_names: list[str] = []
+    extra_names: list[str] = []
+    if screenshot_dir is not None:
+        screenshot_names = sorted(file.name for file in screenshot_dir.glob("*.png"))
+        missing_names = [name for name in screenshot_names if name not in names]
+        extra_names = [name for name in names if name not in screenshot_names]
+
+    image_hashes: dict[str, tuple[int, int]] = {}
+    duplicate_images: list[str] = []
     render_issues: list[int] = []
     for page in doc:
+        for image in page.get_images(full=True):
+            xref = image[0]
+            image_bytes = doc.extract_image(xref)["image"]
+            image_hash = hashlib.sha256(image_bytes).hexdigest()
+            if image_hash in image_hashes:
+                first_page, first_xref = image_hashes[image_hash]
+                duplicate_images.append(
+                    f"page {page.number + 1} xref {xref} duplicates "
+                    f"page {first_page} xref {first_xref}"
+                )
+            else:
+                image_hashes[image_hash] = (page.number + 1, xref)
         pix = page.get_pixmap(matrix=fitz.Matrix(0.2, 0.2), alpha=False)
         image = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         if sum(ImageStat.Stat(image.resize((64, 45))).var) / 3 < 20:
@@ -131,8 +158,21 @@ def validate_pdf(path: Path, expected_count: int, expected_pages: int) -> None:
         issues.append(f"{path}: expected {expected_pages} pages, found {doc.page_count}")
     if len(names) != expected_count:
         issues.append(f"{path}: expected {expected_count} screenshot names, found {len(names)}")
+    if duplicate_names:
+        issues.append(f"{path}: duplicate screenshot names: {duplicate_names[:10]}")
+    if missing_names:
+        issues.append(f"{path}: screenshot names missing from PDF: {missing_names[:10]}")
+    if extra_names:
+        issues.append(f"{path}: PDF names not in screenshot directory: {extra_names[:10]}")
     if bad_names:
         issues.append(f"{path}: bad screenshot names: {bad_names[:10]}")
+    if len(image_hashes) < expected_count:
+        issues.append(
+            f"{path}: expected at least {expected_count} unique embedded images, "
+            f"found {len(image_hashes)}"
+        )
+    if duplicate_images:
+        issues.append(f"{path}: duplicate embedded images: {duplicate_images[:10]}")
     if "Unable to render screenshot" in text:
         issues.append(f"{path}: contains screenshot placeholder text")
     if render_issues:
@@ -151,7 +191,7 @@ def main() -> None:
 
     validate_screenshots(args.screenshots, args.expected_count)
     for deck in args.deck:
-        validate_pdf(deck, args.expected_count, args.expected_pages)
+        validate_pdf(deck, args.expected_count, args.expected_pages, args.screenshots)
     print(
         f"validated {args.expected_count} screenshots and {len(args.deck)} deck PDF(s)"
     )

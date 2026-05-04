@@ -20,8 +20,6 @@ use crate::HandlersState;
 use crate::shared::auth::require_authenticated;
 use crate::shared::schema::{app_config, business_rules, collections};
 
-pub mod cuba;
-
 // ===========================================================================
 // Shipping tier constants (from Python ShippingTiers)
 // ===========================================================================
@@ -534,20 +532,6 @@ async fn calculate_shipping(
             ));
         }
 
-        // Cuba Maritime routing
-        if cuba::is_cuba_province(buyer_province) {
-            let (seller_cost, seller_breakdown) = cuba::calculate_cuba_maritime_itemized(
-                &chargeable,
-                |it| item_identifier(it),
-                |it| effective_weight(it),
-                |it| it.quantity.max(1) as f64,
-            );
-
-            total_shipping += seller_cost;
-            overall_breakdown.extend(seller_breakdown);
-            continue;
-        }
-
         // Try Geoapify for express/same-day or perishable
         let should_call_geo = speed == "express" || speed == "same_day" || has_perishable;
 
@@ -618,13 +602,11 @@ async fn calculate_shipping(
         overall_breakdown.extend(seller_breakdown);
     }
 
-    // Apply free shipping threshold ($75 CAD) - Not applicable for Cuba maritime
+    // Apply free shipping threshold ($75 CAD)
     let mut final_shipping = total_shipping;
-    let is_cuba = cuba::is_cuba_province(buyer_province);
-    if !is_cuba
-        && req
-            .subtotal_cents
-            .is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS)
+    if req
+        .subtotal_cents
+        .is_some_and(|s| s >= business_rules::FREE_SHIPPING_THRESHOLD_CENTS)
     {
         final_shipping = 0;
     }
