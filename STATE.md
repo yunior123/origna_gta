@@ -2745,3 +2745,23 @@ The following items were verified as done and are no longer reusable as active t
   - `cd e2e && bun test specs/phase6-stripe/` -> 198 passed, 3 intentional skips, 1 timeout in Ventures tax browser check.
   - `cd e2e && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed, 1 test / 12 expect calls.
   - `cd e2e && bun test specs/phase1-api/security-auth-fixes.spec.ts specs/phase1-api/security-payment-fixes.spec.ts specs/phase1-api/checkout-validation.spec.ts` -> passed, 53 tests / 59 expect calls.
+
+126. **Latest security/deck/payment build committed, pushed, and deployed on 2026-05-05**:
+- Committed and pushed `3c0c16c7 chore: harden security and investor deck` to `origin/main`.
+- Deployed OrignaVentures frontend/backend/docs to the VPS, rebuilt `origna-ventures-api`, reloaded Caddy, and then updated the production release symlink to `/var/www/orignaventures/production/releases/20260505163515`.
+- Deployed OrignaGTA web:
+  - dev release `20260505162946`.
+  - staging release `20260505163116`.
+  - production release `20260505163231`.
+- Applied the remote OrignaBase VPS-safe DocuSeal hardening by pinning `/opt/orignabase/docker-compose.yml` to `docuseal/docuseal:2.3.6`, preserving the existing remote `.env.docuseal` and live data mount, and recreating only the DocuSeal app container.
+- Verification:
+  - `git push origin main` -> pushed `6e195996..3c0c16c7`.
+  - `origna_ventures/deploy.sh` -> frontend/backend deploy passed; backend health returned `{"status":"ok"}`; post-deploy Ventures scroll smoke passed.
+  - `scripts/deploy_web.sh dev` with skipped repeated regressions -> passed.
+  - `scripts/deploy_web.sh staging` with skipped repeated regressions -> passed.
+  - `scripts/deploy_web.sh production` with skipped repeated regressions -> passed.
+  - `scripts/deploy_ventures.sh production` -> release symlink updated to `20260505163515`.
+  - `curl -I https://dev.orignagta.ca`, `https://staging.orignagta.ca`, `https://orignagta.ca`, `https://orignaventures.ca`, and `https://signatures.orignagta.ca` -> HTTP 200.
+  - `curl https://api.dev.orignagta.ca/health`, `https://api.staging.orignagta.ca/health`, `https://api.orignagta.ca/health`, and `https://api.orignaventures.ca/api/health` -> ok.
+  - VPS `docker compose ps docuseal docuseal-db orignabase-dev orignabase-staging orignabase-prod caddy` -> all targeted services running; DocuSeal healthy on `docuseal/docuseal:2.3.6`.
+  - `VENTURES_TARGET_URL=https://orignaventures.ca bun test specs/phase6-stripe/origna-ventures-contact-live.spec.ts -t "live page keeps Flutter shell mounted"` -> passed.
