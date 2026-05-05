@@ -22,13 +22,14 @@ from urllib.parse import urlparse
 import logging
 import requests
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 logger = logging.getLogger("origna_ventures")
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
 )
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
@@ -117,6 +118,11 @@ class Settings:
     github_permission: str = os.getenv("ORIGNA_GITHUB_PERMISSION", "pull")
     github_api_version: str = os.getenv("ORIGNA_GITHUB_API_VERSION", "2022-11-28")
     admin_api_key: str = os.getenv("ORIGNA_ADMIN_API_KEY", "")
+    trusted_hosts: str = os.getenv(
+        "ORIGNA_TRUSTED_HOSTS",
+        "api.orignaventures.ca,orignaventures.ca,www.orignaventures.ca,"
+        "localhost,127.0.0.1,testserver",
+    )
     docuseal_base_url: str = os.getenv(
         "ORIGNA_DOCUSEAL_BASE_URL", "https://signatures.orignagta.ca"
     )
@@ -976,14 +982,29 @@ class EmailTestRequest(BaseModel):
     body: str = Field(default="Postal integration test.")
 
 
-app = FastAPI(title="Origna Ventures Payment API")
+def production_docs_enabled(environment: str) -> bool:
+    return environment.strip().lower() not in {"prod", "production"}
+
+
+def parse_csv_setting(value: str) -> list[str]:
+    return [entry.strip() for entry in value.split(",") if entry.strip()]
+
+
+_docs_enabled = production_docs_enabled(settings.environment)
+
+app = FastAPI(
+    title="Origna Ventures Payment API",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=parse_csv_setting(settings.trusted_hosts),
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        origin.strip()
-        for origin in settings.cors_allowed_origins.split(",")
-        if origin.strip()
-    ],
+    allow_origins=parse_csv_setting(settings.cors_allowed_origins),
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Stripe-Signature"],

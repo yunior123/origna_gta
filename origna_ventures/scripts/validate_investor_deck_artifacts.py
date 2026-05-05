@@ -185,8 +185,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--screenshots", type=Path, required=True)
     parser.add_argument("--deck", type=Path, action="append", default=[])
-    parser.add_argument("--expected-count", type=int, default=64)
-    parser.add_argument("--expected-pages", type=int, default=63)
+    parser.add_argument("--expected-count", type=int, default=157)
+    parser.add_argument("--expected-pages", type=int, default=28)
     args = parser.parse_args()
 
     validate_screenshots(args.screenshots, args.expected_count)

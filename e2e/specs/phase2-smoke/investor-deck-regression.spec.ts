@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { describe, expect, test } from 'bun:test';
 
 const repoRoot = new URL('../../../', import.meta.url).pathname;
@@ -8,6 +9,14 @@ const captureScript = join(repoRoot, 'e2e/lib/capture_investor_deck_desktop.ts')
 const screenshotDir = join(
   repoRoot,
   'origna_ventures/output/desktop-screenshots',
+);
+const fullDeckPdf = join(
+  repoRoot,
+  'origna_ventures/web/docs/origna_ventures_full_presentation.pdf',
+);
+const deckValidator = join(
+  repoRoot,
+  'origna_ventures/scripts/validate_investor_deck_artifacts.py',
 );
 
 const requiredCaptureTargets = [
@@ -171,4 +180,29 @@ describe('Ecommerce deck regression guard', () => {
       expect(names, `missing screenshot for ${target}`).toContain(target);
     }
   });
+
+  test(
+    'checked-in full PDF embeds every screenshot exactly once with no repeated image hashes',
+    () => {
+      const result = spawnSync(
+        'python3',
+        [
+          deckValidator,
+          '--screenshots',
+          screenshotDir,
+          '--deck',
+          fullDeckPdf,
+          '--expected-count',
+          '157',
+          '--expected-pages',
+          '28',
+        ],
+        { encoding: 'utf8' },
+      );
+
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(result.stdout).toContain('validated 157 screenshots');
+    },
+    30_000,
+  );
 });

@@ -2693,3 +2693,55 @@ The following items were verified as done and are no longer reusable as active t
   - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py` -> passed, 37 tests.
   - `cd e2e && bun x tsc --noEmit && bun test specs/phase1-api/selfhosted-integrations.spec.ts specs/phase6-stripe/origna-ventures-live.spec.ts specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts` -> passed, 34 tests, 1 intentionally skipped live email-send test.
   - `cd orignabase && cargo fmt --all -- --check && cargo clippy -p ob-handlers -- -D warnings && cargo test -p ob-handlers` -> passed, including 1,808 unit tests, 36 proptests, and 66 snapshot tests.
+
+122. **Ventures investor deck rebuilt as image-first PDF on 2026-05-04**:
+- Replaced the full presentation's text-heavy intro section with one compact OrignaVentures-themed cover followed immediately by screenshot proof pages.
+- The checked-in full deck now has 28 pages: 1 cover plus 27 product-proof pages containing all 157 current screenshot files.
+- Every screenshot filename appears exactly once in the PDF, and PDF embedded image hashes are validated as unique to prevent repeated-image regressions.
+- Rendered pages 1, 2, 3, and 28 to `/tmp/origna-pdf-review/` and manually checked that the deck is image-first and no longer front-loads repeated pitch-copy pages.
+- Verification:
+  - `python3 origna_ventures/scripts/validate_investor_deck_artifacts.py --screenshots origna_ventures/output/desktop-screenshots --deck origna_ventures/web/docs/origna_ventures_full_presentation.pdf --deck origna_ventures/output/origna_ventures_full_deck.pdf --expected-count 157 --expected-pages 28` -> passed.
+  - `cd e2e && bun test specs/phase2-smoke/investor-deck-regression.spec.ts` -> passed, 4 tests / 539 expect calls.
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+
+123. **Cybersecurity audit and targeted hardening completed on 2026-05-04**:
+- Checked current Flutter, OWASP API, RustSec, tower-http, PostgreSQL, Caddy, and Hetzner guidance and saved the audit notes in `docs/SECURITY_AUDIT_2026-05-04.md`.
+- Hardened OrignaVentures FastAPI by disabling OpenAPI docs in `prod`/`production`, adding `TrustedHostMiddleware`, and normalizing CSV environment parsing for CORS/host allowlists.
+- Hardened DocuSeal Compose by pinning `docuseal/docuseal:2.3.6`, requiring DocuSeal PostgreSQL credentials/database URL, and correcting the PostgreSQL data-volume mount to `/var/lib/postgresql/data`.
+- Reduced Rust dependency exposure by disabling SQLx default features and updating the active `rustls-webpki` 0.103 line to 0.103.13.
+- Freed local disk after the audit by following memory guidance: removed stale Flutter build dirs, stale auxiliary Rust target dirs, and `orignabase/target` artifacts with `./scripts/clean_rust_artifacts.sh --all`. Free space recovered from about 114 MiB during the blocker to 43 GiB.
+- Residual security debt: `cargo audit` and `cargo deny check advisories` still fail on older transitive Rust crates through Stripe/AWS/NATS, SQLx lock metadata, and PDF/image dependencies. These should be fixed by upgrading/removing the owning crates, not by broad ignores.
+- Verification:
+  - `cd origna_ventures/backend && .venv/bin/python -m pytest tests/test_payments_api.py -q` -> passed, 42 tests.
+  - `python3 -m py_compile origna_ventures/backend/app.py` -> passed.
+  - `cd orignabase && cargo check -p ob-database` -> passed before artifact cleanup.
+  - `cd orignabase && cargo check -p ob-handlers` -> passed before artifact cleanup.
+  - `cd orignabase && cargo tree -i sqlx-mysql --target all` -> no active dependency tree printed.
+  - `ruby -e 'require "yaml"; YAML.load_file("docker-compose.yml"); puts "yaml ok"'` from `orignabase/docker` -> passed.
+  - `git diff --check` -> passed.
+
+124. **Top critical flow audit passed on 2026-05-04**:
+- Audited the four highest-risk live paths after the security/deck changes:
+  - GTA home/profile shell, navigation, support/legal menu, cart page, and sign-out.
+  - GTA product discovery: API sort/filter/search, Canada/imported seed coverage, mobile Canada filter stability, and repeated fast home scrolling.
+  - GTA cart add/badge: product-detail add-to-cart and live quantity-control persistence against OrignaBase cart state.
+  - OrignaVentures plan checkout: three service codes, DocuSeal bundle metadata, Stripe checkout URL contract, mobile pricing, live button payloads, webhook signature/replay rejection, and live address-based tax checkout.
+- Verification:
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd e2e && bun test specs/phase2-smoke/smoke-home-profile.spec.ts` -> passed, 21 tests / 26 expect calls.
+  - `cd e2e && bun test specs/phase4-product-flows/search-filters-sort.spec.ts` -> passed, 15 tests / 58 expect calls.
+  - `cd e2e && bun test specs/phase5-complex-flows/cart-badge-add-to-cart.spec.ts` -> passed, 2 tests / 6 expect calls.
+  - `cd e2e && bun test specs/phase6-stripe/origna-ventures-live.spec.ts specs/phase6-stripe/origna-ventures-mobile-pricing-live.spec.ts specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed, 32 tests / 153 expect calls, 1 intentionally skipped live contact-email assertion.
+
+125. **Auth services and Stripe/payment E2E audit passed on 2026-05-04**:
+- Full phase3 auth/nav E2E passed across registration, auth gates, email-verification gate, terms gate, suspended-user block, invalid login/register inputs, valid/invalid JWT profile access, JWT rotation/admin protections, address/profile management, MFA setup/challenge, password reset, Google auth readiness, security settings, and seller onboarding/Connect auth.
+- Full phase6 Stripe/payment E2E passed with one full-suite browser timeout isolated and rerun green:
+  - Checkout validation, Stripe checkout, order creation, stock decrement, idempotency, cart clearing, refunds/returns, seller Connect, premium subscriptions, declined cards, 3DS, subscription webhooks, tampered-token rejection, seller payment screens, payment methods, OrignaBase checkout integration, Stripe Connect access controls, Ventures plan checkout/DocuSeal metadata, webhook security, contact scroll stability, payment edge cases, deep buyer/seller/admin flows, and subscription-cancel UI passed.
+  - `origna-ventures-tax-live.spec.ts` timed out inside the 18-file phase6 run after prior browser load, then passed alone in 6.8s after clearing browsers; recorded as suite-load/browser contention, not a product regression.
+- Phase1 auth/payment security API coverage also passed across JWT rejection, CORS allowlist behavior, admin/seller isolation, unsigned webhook rejection, checkout tampering, self-purchase, Canada-only shipping, stock/price validation, duplicate checkout handling, and deterministic error paths.
+- Verification:
+  - `cd e2e && bun x tsc --noEmit` -> passed.
+  - `cd e2e && bun test specs/phase3-auth-nav/` -> passed, 88 tests / 125 expect calls.
+  - `cd e2e && bun test specs/phase6-stripe/` -> 198 passed, 3 intentional skips, 1 timeout in Ventures tax browser check.
+  - `cd e2e && bun test specs/phase6-stripe/origna-ventures-tax-live.spec.ts` -> passed, 1 test / 12 expect calls.
+  - `cd e2e && bun test specs/phase1-api/security-auth-fixes.spec.ts specs/phase1-api/security-payment-fixes.spec.ts specs/phase1-api/checkout-validation.spec.ts` -> passed, 53 tests / 59 expect calls.

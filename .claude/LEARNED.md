@@ -84,6 +84,7 @@ sysctl vm.swapusage && vm_stat | grep "Pages free"
 
 ## TODO Verification Notes (Apr 2026)
 
+- 2026-05-04: Local disk exhaustion during Rust/security audits is usually `orignabase/target/debug` growth. Check with `df -h .` and `du -sh orignabase/target/* 2>/dev/null | sort -h | tail`; free space with `cd orignabase && ./scripts/clean_rust_artifacts.sh --all`. On this run, available disk recovered from about 114 MiB to 43 GiB. Remove generated Flutter build dirs (`origna_gta/build`, `origna_ventures/build`) and stale auxiliary `orignabase/target_*` dirs first if present.
 - 2026-05-03: Codex has a persistent forgetting issue when launched from subdirs or delegated prompts. Every Codex session must begin by reading repo-root `CLAUDE.md`, `AGENTS.md`, `WORK_CLAIMS.md`, and relevant `.claude/rules/`; every delegated `codex exec` prompt must include that bootstrap sentence explicitly.
 - 2026-05-03: Cloudflare DNS additions for OrignaGTA should use Safari `osascript` against the authenticated Cloudflare dashboard when API tokens fail. Use relative `/api/v4/...` fetches in the Safari tab so session cookies are sent, write async results to `document.title`, and verify with DNS lookups after propagation. The repo-root `CLAUDE.md` has the full zone ID/runbook.
 - On 2026-04-21, both Flutter apps analyzed clean locally: `origna_gta/origna_gta` and `origna_ventures` each returned `No issues found!`.

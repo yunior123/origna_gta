@@ -37,6 +37,19 @@ def ensure_payments_table(db_path: Path) -> None:
     conn.close()
 
 
+def test_production_environment_disables_openapi_docs():
+    assert backend_app.production_docs_enabled("production") is False
+    assert backend_app.production_docs_enabled("prod") is False
+    assert backend_app.production_docs_enabled("dev") is True
+
+
+def test_parse_csv_setting_strips_empty_entries():
+    assert backend_app.parse_csv_setting(" api.orignaventures.ca, ,localhost ") == [
+        "api.orignaventures.ca",
+        "localhost",
+    ]
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     db_path = tmp_path / "origna_ventures_test.db"
