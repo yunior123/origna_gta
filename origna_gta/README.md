@@ -2,6 +2,18 @@
 
 E-commerce marketplace serving Canadian buyers (Web, Android, iOS) using OrignaBase + Stripe Connect Express. Sellers can be worldwide.
 
+## Local product showcase
+
+Launch the dependency-free showcase when you want to preview the marketplace UI
+without connecting a backend or using real customer/product data:
+
+```bash
+flutter run -d web-server -t lib/showcase_main.dart --web-port 8767
+```
+
+The showcase uses clearly fictional product cards and contains no credentials or
+account data.
+
 ## Architecture (MVVM)
 - UI → ViewModels → Repositories → OrignaBase/Stripe services
 - No business logic in widgets
