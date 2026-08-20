@@ -1,6 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-assertion_line: 36
-expression: output
----
-Hello

@@ -1,5 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-expression: output
----
-Fake phone like 555-1234 (too short), and almost-email test@

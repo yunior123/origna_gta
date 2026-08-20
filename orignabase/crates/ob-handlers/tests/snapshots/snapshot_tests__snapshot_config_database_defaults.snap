@@ -1,8 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-expression: db_snapshot
----
-{
-  "max_connections": 20,
-  "url": "postgres://orignabase:orignabase_dev@localhost:5432/orignabase"
-}

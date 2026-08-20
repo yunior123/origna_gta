@@ -1,6 +1,0 @@
-rules messages {
-    read: isAuthenticated();
-    create: isAuthenticated();
-    update: isOwner(resource.sender_id);
-    delete: isOwner(resource.sender_id) || hasRole("admin");
-}

@@ -1,9 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-expression: json
----
-[
-  "percentage",
-  "fixed_amount",
-  "free_shipping"
-]

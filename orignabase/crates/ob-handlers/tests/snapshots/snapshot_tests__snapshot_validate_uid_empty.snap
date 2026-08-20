@@ -1,5 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-expression: err_msg
----
-Validation error: user_id cannot be empty

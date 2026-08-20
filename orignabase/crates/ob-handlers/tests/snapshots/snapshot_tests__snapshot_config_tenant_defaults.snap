@@ -1,8 +1,0 @@
----
-source: crates/ob-handlers/tests/snapshot_tests.rs
-expression: tenant_snapshot
----
-{
-  "header_name": "X-Tenant-ID",
-  "multi_tenant": false
-}
