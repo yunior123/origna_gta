@@ -2,6 +2,18 @@
 
 Origna GTA is a Canada-first multi-vendor e-commerce platform where buyers browse, and local sellers list physical, digital, and perishable products with integrated shipping, payments, and seller payouts.
 
+<p align="center">
+  <img src="docs/images/origna-gta-marketplace.png" alt="Origna GTA marketplace showcase with product cards" width="100%">
+</p>
+
+<p align="center"><em>Local showcase using fictional products. No customer, payment, or account data is displayed.</em></p>
+
+<p align="center">
+  <a href="origna_ventures/web/docs/origna_ventures_onepager.pdf">Service overview</a>
+  ·
+  <a href="origna_ventures/web/docs/origna_ventures_full_presentation.pdf">157-screen product presentation</a>
+</p>
+
 ## Tech Stack
 
 | Layer | Technology |

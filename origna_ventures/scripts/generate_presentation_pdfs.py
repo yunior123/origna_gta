@@ -322,6 +322,23 @@ def make_qr(url: str) -> ImageReader:
     return ImageReader(buffer)
 
 
+def presentation_image(path: Path) -> ImageReader:
+    """Return a compact, high-quality image suitable for a PDF slide."""
+    with Image.open(path) as source:
+        image = source.convert("RGB")
+        image.thumbnail((1200, 900), Image.Resampling.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(
+            buffer,
+            format="JPEG",
+            quality=84,
+            optimize=True,
+            progressive=True,
+        )
+    buffer.seek(0)
+    return ImageReader(buffer)
+
+
 def qr_card(
     c: canvas.Canvas,
     url: str,
@@ -1031,24 +1048,70 @@ def create_full_deck(
         "and the validator checks the PDF for repeated screenshot names and duplicate embedded image hashes.",
         52,
         h - 180,
-        w - 104,
+        340,
         font="Helvetica",
         size=12,
         leading=16,
     )
     summary_cards = [
-        ("157", "validated screen captures", VENTURES_ACCENT),
+        (str(len(screenshots)), "validated screen captures", VENTURES_ACCENT),
         ("3", "service plans", VENTURES_GOLD),
         ("1x", "each screenshot in PDF", VENTURES_SECONDARY),
     ]
-    card_gap = 16
-    card_w = (w - 104 - card_gap * 2) / 3
+    card_gap = 12
+    card_w = (340 - card_gap * 2) / 3
     for index, (value, label, color) in enumerate(summary_cards):
         x = 52 + index * (card_w + card_gap)
-        y = h - 292
+        y = h - 320
         rrect(c, x, y, card_w, 86, r=6, fill=colors.white, stroke=color, lw=0.9)
         ct(c, value, x + card_w / 2, y + 48, "Helvetica-Bold", 30, color)
         ct(c, label, x + card_w / 2, y + 22, "Helvetica", 8.5, VENTURES_MUTED)
+
+    showcase_path = (
+        Path(__file__).resolve().parents[2]
+        / "docs"
+        / "images"
+        / "origna-gta-marketplace.png"
+    )
+    if showcase_path.is_file():
+        showcase = presentation_image(showcase_path)
+        image_width, image_height = showcase.getSize()
+        max_width = w - 490
+        max_height = 230
+        image_scale = min(max_width / image_width, max_height / image_height)
+        draw_width = image_width * image_scale
+        draw_height = image_height * image_scale
+        image_x = w - 52 - draw_width
+        image_y = h - 185 - draw_height
+        rrect(
+            c,
+            image_x - 7,
+            image_y - 7,
+            draw_width + 14,
+            draw_height + 14,
+            r=7,
+            fill=colors.white,
+            stroke=VENTURES_ACCENT,
+            lw=1.0,
+        )
+        c.drawImage(
+            showcase,
+            image_x,
+            image_y,
+            draw_width,
+            draw_height,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+        ct(
+            c,
+            "Fictional product showcase · no customer or account data",
+            image_x + draw_width / 2,
+            image_y - 18,
+            "Helvetica",
+            6.8,
+            VENTURES_MUTED,
+        )
     qrs = [
         ("Pricing", PRICING_URL),
         ("Demo", DEMO_URL),
@@ -1097,7 +1160,7 @@ def create_full_deck(
             c.setFont("Helvetica-Bold", 5.2)
             c.drawString(x + 8, y + cell_h - 12, image_path.name)
             try:
-                img = ImageReader(str(image_path))
+                img = presentation_image(image_path)
                 iw, ih = img.getSize()
                 if iw < 1 or ih < 1:
                     raise ValueError(f"Invalid image dimensions {iw}x{ih}")
@@ -1141,7 +1204,7 @@ if __name__ == "__main__":
     parser.add_argument("--screenshots", type=Path, nargs="*", default=[])
     parser.add_argument("--skip-deck", action="store_true")
     parser.add_argument("--max-screenshots", type=int, default=360)
-    parser.add_argument("--min-screenshots", type=int, default=300)
+    parser.add_argument("--min-screenshots", type=int, default=157)
     args = parser.parse_args()
     create_onepager(args.onepager)
     if args.skip_deck:
