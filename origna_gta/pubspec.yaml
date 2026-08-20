@@ -75,7 +75,10 @@ dependencies:
 
   # OrignaBase — self-hosted Rust BaaS SDK
   orignabase:
-    path: ../orignabase/sdks/flutter/orignabase
+    git:
+      url: https://github.com/yunior123/orignabase.git
+      path: sdks/flutter/orignabase
+      ref: main
 
 dev_dependencies:
   flutter_test:

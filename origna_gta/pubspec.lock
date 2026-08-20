@@ -895,9 +895,11 @@ packages:
   orignabase:
     dependency: "direct main"
     description:
-      path: "../orignabase/sdks/flutter/orignabase"
-      relative: true
-    source: path
+      path: "sdks/flutter/orignabase"
+      ref: main
+      resolved-ref: "24328126b480876d0871602152f285fdf88517b5"
+      url: "https://github.com/yunior123/orignabase.git"
+    source: git
     version: "0.1.0"
   package_config:
     dependency: transitive
@@ -1111,7 +1113,7 @@ packages:
     dependency: transitive
     description:
       name: sentry
-      sha256: REDACTED_SECRET
+      sha256: a49b4fb1cba576fe216347dc2a0e6d76076fb998e6012857db96f991c23b7b3c
       url: "https://pub.dev"
     source: hosted
     version: "9.15.0"
@@ -1119,7 +1121,7 @@ packages:
     dependency: "direct main"
     description:
       name: sentry_flutter
-      sha256: "REDACTED_SECRET"
+      sha256: "25150030c93bd1d4b727ab61cfb09e99121c69ce90fa820bb9ca16dab433e43a"
       url: "https://pub.dev"
     source: hosted
     version: "9.15.0"
